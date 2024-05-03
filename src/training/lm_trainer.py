@@ -20,6 +20,7 @@ class LMTrainer(BaseTrainer):
         "accum_steps",
         "num_steps",
         "warmup_steps",
+        "save_freq",
         "checkpoint_freq",
     ]
 

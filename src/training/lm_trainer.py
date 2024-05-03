@@ -83,7 +83,7 @@ class LMTrainer(BaseTrainer):
                     ):
 
                         # handle inputs
-                        x = self._get_tokens(loader, tokenizer)
+                        x = self._get_tokens(loader, tokenizer, model)
 
                         # get encoding
                         logits = model(x)

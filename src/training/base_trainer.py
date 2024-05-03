@@ -112,4 +112,3 @@ class BaseTrainer:
                     path_in_repo=name,
                     repo_type="model"
             )
-

@@ -121,7 +121,7 @@ class LMTrainer(BaseTrainer):
                 self.log.loss.append(accum_loss)
                 pbar.set_postfix({k: v[-1] for k, v in self.log.items()})
 
-                if (step+1) % self.eval_freq == 0 or step == self.num_steps-1:
+                if (step+1) % self.save_freq == 0 or step == self.num_steps-1:
                     self.save()
 
                 if (step+1) % self.checkpoint_freq == 0 or step == self.num_steps-1:

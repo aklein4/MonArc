@@ -20,7 +20,7 @@ TRAIN_CONFIG = {
     "dtype": torch.bfloat16,
     "lr": 1e-3,
     "bs": 6,
-    "num_steps": 1000,
+    "num_steps": 2,
     "accum_steps": 512//6,
     "warmup_steps": 1,
     "save_freq": 10,
@@ -53,7 +53,7 @@ MODEL_CONFIG = {
 
     "is_prefix_lm": False,
     "is_quasi_lm": True,
-    "segment_size": 16,
+    "segment_size": 32,
     "use_segment_embeds": True,
 
     "_attn_implementation": "eager",

@@ -51,7 +51,7 @@ class LMTrainer(BaseTrainer):
                 dim=1
             )
 
-        return x
+        return x.to(constants.DEVICE)
 
 
     def _loss(self, logits, x, tokenizer):

@@ -57,7 +57,7 @@ class LMTrainer(BaseTrainer):
     def _loss(self, logits, x, tokenizer):
         return F.cross_entropy(
             logits.view(-1, logits.size(-1)),
-            x.input_ids.view(-1),
+            x.view(-1),
             ignore_index=tokenizer.pad_token_id
         )
 

@@ -68,8 +68,9 @@ class BaseTrainer:
 
         # plot eval metrics
         for i, metric in enumerate(self._metrics):
-            ax[i].plot(self.log[metric])
-            ax[i].set_title(metric.upper())
+            out_ax = ax[i] if len(self._metrics) > 1 else ax
+            out_ax.plot(self.log[metric])
+            out_ax.set_title(metric.upper())
 
         # finish plot
         plt.suptitle(f"Training Progress ({len(self.log[self._metrics[0]])} steps)")

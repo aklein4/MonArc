@@ -188,6 +188,7 @@ class AnnelidModel(AnnelidPreTrainedModel):
         
         if mask is not None:
             mask = ~mask # flip for sdpa attention
+            mask = mask.unsqueeze(1) # head dim
             mask = mask.to(input_ids.device)
 
         return mask

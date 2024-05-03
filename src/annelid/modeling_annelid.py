@@ -150,7 +150,6 @@ class AnnelidModel(AnnelidPreTrainedModel):
             # return as bias
             out_mask = torch.zeros(batch_size, seq_length, seq_length, dtype=torch.float32)
             out_mask = torch.masked_fill(out_mask, mask, float('-inf'))
-            return out_mask.unsqueeze(1)
         
         # quasi LM is bidirectional for segments
         elif self.is_quasi_lm:
@@ -188,10 +187,16 @@ class AnnelidModel(AnnelidPreTrainedModel):
             )
             out_mask = torch.zeros(batch_size, 2*seq_length, 2*seq_length, dtype=torch.float32)
             out_mask = torch.masked_fill(out_mask, mask, float('-inf'))
-            return out_mask.unsqueeze(1)
+            out_mask.unsqueeze(1)
         
         # use standard mask for standard LM
-        return None
+        else:
+            out_mask = None
+        
+        if out_mask is not None:
+            out_mask = out_mask.to(input_ids.device).unsqueeze(1)
+
+        return out_mask
 
 
     def get_position_ids(
@@ -201,7 +206,7 @@ class AnnelidModel(AnnelidPreTrainedModel):
         batch_size, seq_length = input_ids.shape
 
         # standard positions
-        pos = torch.arange(seq_length, dtype=torch.long, device=input_ids.device).unsqueeze(0)
+        pos = torch.arange(seq_length, dtype=input_ids.dtype, device=input_ids.device).unsqueeze(0)
 
         # quasi lm repeats the sequence
         if self.is_quasi_lm:

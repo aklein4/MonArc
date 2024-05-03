@@ -23,7 +23,7 @@ TRAIN_CONFIG = {
     "num_steps": 1000,
     "accum_steps": 512//16,
     "warmup_steps": 1,
-    "save_freq": 20,
+    "save_freq": 40,
     "checkpoint_freq": 250,
 }
 

@@ -14,16 +14,16 @@ import utils.constants as constants
 TOKENIZER_URL = "openai-community/gpt2"
 DATA_URL = 'JeanKaddour/minipile' # 'EleutherAI/the_pile_deduplicated'
 
-NAME = "annelid-quick"
+NAME = "quasi-test"
 
 TRAIN_CONFIG = {
     "dtype": torch.bfloat16,
     "lr": 1e-3,
     "bs": 16,
-    "num_steps": 2,
+    "num_steps": 1000,
     "accum_steps": 512//16,
     "warmup_steps": 1,
-    "save_freq": 10,
+    "save_freq": 20,
     "checkpoint_freq": 250,
 }
 

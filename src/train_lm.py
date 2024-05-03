@@ -14,7 +14,7 @@ import utils.constants as constants
 TOKENIZER_URL = "openai-community/gpt2"
 DATA_URL = 'JeanKaddour/minipile' # 'EleutherAI/the_pile_deduplicated'
 
-NAME = "annelid-quick"
+NAME = "lm-test"
 
 TRAIN_CONFIG = {
     "dtype": torch.bfloat16,

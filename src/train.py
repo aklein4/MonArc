@@ -54,6 +54,8 @@ MODEL_CONFIG = {
     "is_quasi_lm": True,
     "segment_size": 16,
     "use_segment_embeds": True,
+
+    "_attn_implementation": "eager",
 }
 
 

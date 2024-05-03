@@ -19,9 +19,9 @@ NAME = "annelid-quick"
 TRAIN_CONFIG = {
     "dtype": torch.bfloat16,
     "lr": 1e-3,
-    "bs": 4,
+    "bs": 1,
     "num_steps": 1000,
-    "accum_steps": 512//8,
+    "accum_steps": 512//1,
     "warmup_steps": 1,
     "checkpoint_freq": 500,
 }

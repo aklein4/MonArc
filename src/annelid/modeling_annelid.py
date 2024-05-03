@@ -100,7 +100,6 @@ class AnnelidModel(AnnelidPreTrainedModel):
 
         # get the id tokens
         tokens = self.embed_tokens(input_ids)
-        print(tokens.shape)
 
         # add segment embeddings
         if self.use_segment_embeds:
@@ -109,7 +108,6 @@ class AnnelidModel(AnnelidPreTrainedModel):
             segment_embs = self.segment_embeds(segment_ids).unsqueeze(0)
 
             tokens = tokens + segment_embs
-        print(tokens.shape)
 
         # prefix embedddings
         if self.is_prefix_lm:
@@ -123,11 +121,10 @@ class AnnelidModel(AnnelidPreTrainedModel):
         if self.is_quasi_lm:
             quasi_ids = torch.zeros_like(input_ids)
             quasi_ids[:, :seq_length//2].fill_(1)
-            quasi_embs = self.prefix_embeds(quasi_ids).unsqueeze(0)
+            quasi_embs = self.prefix_embeds(quasi_ids)
 
             tokens = tokens + quasi_embs
 
-        print(tokens.shape)
         return tokens
     
 

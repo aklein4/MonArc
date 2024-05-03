@@ -35,9 +35,23 @@ class LMTrainer(BaseTrainer):
             padding=True,
             truncation=True,
             max_length=model.config.max_position_embeddings
-        )
+        ).input_ids
 
-        return x.input_ids.to(constants.DEVICE)
+        if x.shape[1] % model.config.segment_size != 0:
+            res = model.config.segment_size - (x.shape[1] % model.config.segment_size)
+            x = torch.cat(
+                [
+                    x,
+                    torch.full(
+                        (x.shape[0], res),
+                        tokenizer.pad_token_id,
+                        dtype=x.dtype
+                    )
+                ],
+                dim=1
+            )
+
+        return x
 
 
     def _loss(self, logits, x, tokenizer):

@@ -31,7 +31,7 @@ TRAIN_CONFIG = {
 MODEL_CONFIG = {
     "model_type": "annelid",
     "architectures": [
-        "AnneliddLMModel"
+        "AnnelidLMModel"
     ],
 
     "bos_token_id": 50256,

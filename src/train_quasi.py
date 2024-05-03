@@ -31,7 +31,7 @@ TRAIN_CONFIG = {
 MODEL_CONFIG = {
     "model_type": "annelid",
     "architectures": [
-        "AnneliddLMModel"
+        "AnnelidLMModel"
     ],
 
     "bos_token_id": 50256,
@@ -56,7 +56,7 @@ MODEL_CONFIG = {
     "segment_size": 32,
     "use_segment_embeds": True,
 
-    "_attn_implementation": "eager",
+    "_attn_implementation": "sdpa",
 }
 
 

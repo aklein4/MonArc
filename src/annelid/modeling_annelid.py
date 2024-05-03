@@ -48,7 +48,7 @@ class AnnelidModel(AnnelidPreTrainedModel):
         # error checking
         assert not (config.is_prefix_lm and config.is_quasi_lm), "Cannot be both prefix and quasi language model!"
         if config.is_prefix_lm or config.is_quasi_lm:
-            assert config._attn_implementation == 'eager', "Prefix and quasi language models only support eager attention (require custom attention masks)"
+            assert config._attn_implementation == 'sdpa', "Prefix and quasi language models only support sdpa attention (require custom attention masks)"
 
         # save custom config info
         self.is_prefix_lm = config.is_prefix_lm
@@ -146,10 +146,6 @@ class AnnelidModel(AnnelidPreTrainedModel):
             ar = torch.arange(seq_length, dtype=torch.long)
             p = torch.maximum(ar[:, None], ar[None, :]).unsqueeze(0)
             mask = torch.where(p < prefix_length[:, None, None], torch.zeros_like(mask), mask)
-
-            # return as bias
-            out_mask = torch.zeros(batch_size, seq_length, seq_length, dtype=torch.float32)
-            out_mask = torch.masked_fill(out_mask, mask, float('-inf'))
         
         # quasi LM is bidirectional for segments
         elif self.is_quasi_lm:
@@ -185,18 +181,16 @@ class AnnelidModel(AnnelidPreTrainedModel):
                 ],
                 dim=1
             )
-            out_mask = torch.zeros(batch_size, 2*seq_length, 2*seq_length, dtype=torch.float32)
-            out_mask = torch.masked_fill(out_mask, mask, float('-inf'))
-            out_mask.unsqueeze(1)
         
         # use standard mask for standard LM
         else:
-            out_mask = None
+            mask = None
         
-        if out_mask is not None:
-            out_mask = out_mask.to(input_ids.device).unsqueeze(1)
+        if mask is not None:
+            mask = ~mask # flip for sdpa attention
+            mask = mask.to(input_ids.device)
 
-        return out_mask
+        return mask
 
 
     def get_position_ids(

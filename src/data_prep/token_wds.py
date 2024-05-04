@@ -56,8 +56,6 @@ class TokenizerMap:
         self.max_length = max_length
     
     def __call__(self, d):
-
-        print(d["text"])
         
         # batch encode text
         input_ids = self.tokenizer(
@@ -66,7 +64,7 @@ class TokenizerMap:
             truncation=True,
             max_length=self.max_length,
             return_tensors="np"
-        ).input_ids[0]
+        ).input_ids
         
         assert np.max(input_ids) < 2**16, f"Input IDs are too large for uint16: {np.max(input_ids)} > {(2**16)-1}"
         input_ids = input_ids.astype(np.uint16)

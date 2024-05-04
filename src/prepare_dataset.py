@@ -20,7 +20,7 @@ SAVE_REPO = 'token-test'
 
 TRAIN_SIZE = 1e8 # 5e10
 VAL_SIZE = 1e7 # 1e9
-VAL_SIZE = 1e7 # 1e9
+TEST_SIZE = 1e7 # 1e9
 
 MAX_LENGTH = 1024
 
@@ -40,8 +40,9 @@ def main():
         SAVE_PATH,
         dataset,
         tokenizer,
-        VAL_SIZE,
         TRAIN_SIZE,
+        VAL_SIZE,
+        TEST_SIZE,
         MAX_LENGTH
     )
 

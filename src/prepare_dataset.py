@@ -1,0 +1,68 @@
+
+
+import os
+
+import datasets
+from transformers import AutoTokenizer
+import huggingface_hub as hf
+
+import utils.constants as constants
+from data_prep.token_wds import create_token_wds
+
+
+TOKENIZER_URL = "openai-community/gpt2"
+
+DATA_URL = 'HuggingFaceFW/fineweb'
+DATA_SUBSET = "CC-MAIN-2024-10"
+
+SAVE_PATH = "token_wds"
+SAVE_REPO = 'token-test-2'
+
+VAL_SIZE = 1000000
+TRAIN_SIZE = 1000000000
+MAX_LENGTH = 1024
+
+
+def main():
+    
+    tokenizer = AutoTokenizer.from_pretrained(TOKENIZER_URL)
+
+    dataset = datasets.load_dataset(
+        DATA_URL,
+        name=DATA_SUBSET,
+        streaming=True,
+        split="train"
+    )
+
+    create_token_wds(
+        SAVE_PATH,
+        dataset,
+        tokenizer,
+        VAL_SIZE,
+        TRAIN_SIZE,
+        MAX_LENGTH
+    )
+
+    hf.create_repo(
+        f"{constants.HF_ID}/{SAVE_REPO}",
+        private=True,
+        token=constants.HF_TOKEN,
+        repo_type="dataset",
+        exist_ok=True,
+    )
+    hf.upload_folder(
+        repo_id=f"{constants.HF_ID}/{SAVE_REPO}",
+        repo_type="dataset",
+        folder_path=os.path.join(SAVE_PATH, "val"),
+        path_in_repo="val",
+    )
+    hf.upload_folder(
+        repo_id=f"{constants.HF_ID}/{SAVE_REPO}",
+        repo_type="dataset",
+        folder_path=os.path.join(SAVE_PATH, "train"),
+        path_in_repo="train",
+    )
+
+
+if __name__ == "__main__":
+    main()

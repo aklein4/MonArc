@@ -15,7 +15,7 @@ TOKENIZER_URL = "openai-community/gpt2"
 DATA_URL = 'HuggingFaceFW/fineweb'
 DATA_SUBSET = "CC-MAIN-2024-10"
 
-SAVE_PATH = "/data/token-test"
+SAVE_PATH = "~/data/token-test"
 SAVE_REPO = 'token-test'
 
 TRAIN_SIZE = 1e6 # 5e10

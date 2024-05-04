@@ -18,9 +18,9 @@ DATA_SUBSET = "CC-MAIN-2024-10"
 SAVE_PATH = "/data/token-test"
 SAVE_REPO = 'token-test'
 
-TRAIN_SIZE = 1e8 # 5e10
-VAL_SIZE = 1e7 # 1e9
-TEST_SIZE = 1e7 # 1e9
+TRAIN_SIZE = 1e6 # 5e10
+VAL_SIZE = 1e5 # 1e9
+TEST_SIZE = 1e5 # 1e9
 
 MAX_LENGTH = 1024
 

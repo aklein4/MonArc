@@ -7,7 +7,7 @@ from tqdm import tqdm
 import webdataset as wds
 
 
-TMP_DIR = "__wds_tmp__"
+TMP_DIR = "WDS_TMP"
 
 MAX_SHARD_COUNT = 1e18
 MAX_SHARD_SIZE = 1e9

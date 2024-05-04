@@ -123,7 +123,6 @@ def _extract_data(path, token_iterator, target_size, desc=None):
         while curr_size < target_size:
             try:
                 input_ids = next(token_iterator)["input_ids"]
-                print(len(input_ids))
             except StopIteration:
                 break
 

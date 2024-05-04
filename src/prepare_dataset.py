@@ -15,11 +15,13 @@ TOKENIZER_URL = "openai-community/gpt2"
 DATA_URL = 'HuggingFaceFW/fineweb'
 DATA_SUBSET = "CC-MAIN-2024-10"
 
-SAVE_PATH = "token_wds"
-SAVE_REPO = 'token-test-2'
+SAVE_PATH = "/data/token-test"
+SAVE_REPO = 'token-test'
 
-VAL_SIZE = 1000000
-TRAIN_SIZE = 1000000000
+TRAIN_SIZE = 1e8 # 5e10
+VAL_SIZE = 1e7 # 1e9
+VAL_SIZE = 1e7 # 1e9
+
 MAX_LENGTH = 1024
 
 
@@ -49,6 +51,12 @@ def main():
         token=constants.HF_TOKEN,
         repo_type="dataset",
         exist_ok=True,
+    )
+    hf.upload_folder(
+        repo_id=f"{constants.HF_ID}/{SAVE_REPO}",
+        repo_type="dataset",
+        folder_path=os.path.join(SAVE_PATH, "test"),
+        path_in_repo="test",
     )
     hf.upload_folder(
         repo_id=f"{constants.HF_ID}/{SAVE_REPO}",

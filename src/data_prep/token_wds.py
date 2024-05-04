@@ -75,8 +75,9 @@ def create_token_wds(
     path,
     dataset,
     tokenizer,
-    val_size,
     train_size,
+    val_size,
+    test_size,
     max_length
 ):
     token_dataset = dataset.map(TokenizerMap(tokenizer, max_length))
@@ -84,10 +85,18 @@ def create_token_wds(
 
     with TMPManager(TMP_DIR):
         _extract_data(
+            os.path.join(path, "test"),
+            token_iterator,
+            test_size,
+            desc="test"
+        )
+
+    with TMPManager(TMP_DIR):
+        _extract_data(
             os.path.join(path, "val"),
             token_iterator,
             val_size,
-            desc="Val Split"
+            desc="val"
         )
 
     with TMPManager(TMP_DIR):
@@ -95,7 +104,7 @@ def create_token_wds(
             os.path.join(path, "train"),
             token_iterator,
             train_size,
-            desc="Train Split"
+            desc="train"
         )
 
 

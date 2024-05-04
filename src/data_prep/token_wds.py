@@ -57,6 +57,8 @@ class TokenizerMap:
     
     def __call__(self, d):
 
+        print(d["text"])
+        
         # batch encode text
         input_ids = self.tokenizer(
             d["text"],
@@ -71,10 +73,8 @@ class TokenizerMap:
         
         # convert to list
         out = []
-        print(input_ids.shape)
         for curr in input_ids:
             out.append(curr[curr != self.tokenizer.pad_token_id])
-        print(len(out))
 
         return {"input_ids": out}
 

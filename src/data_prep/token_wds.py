@@ -57,9 +57,10 @@ class TokenizerMap:
     
     def __call__(self, d):
 
+        # batch encode text
         input_ids = self.tokenizer(
             d["text"],
-            padding=False,
+            padding=True,
             truncation=True,
             max_length=self.max_length,
             return_tensors="np"
@@ -68,7 +69,12 @@ class TokenizerMap:
         assert np.max(input_ids) < 2**16, f"Input IDs are too large for uint16: {np.max(input_ids)} > {(2**16)-1}"
         input_ids = input_ids.astype(np.uint16)
         
-        return {"input_ids": input_ids}
+        # convert to list
+        out = []
+        for curr in input_ids:
+            out.append(curr[curr != self.tokenizer.pad_token_id])
+
+        return {"input_ids": out}
 
 
 def create_token_wds(
@@ -80,7 +86,7 @@ def create_token_wds(
     test_size,
     max_length
 ):
-    token_dataset = dataset.map(TokenizerMap(tokenizer, max_length))
+    token_dataset = dataset.map(TokenizerMap(tokenizer, max_length), batched=True)
     token_iterator = iter(token_dataset)
 
     with TMPManager(TMP_DIR):
@@ -117,6 +123,7 @@ def _extract_data(path, token_iterator, target_size, desc=None):
         while curr_size < target_size:
             try:
                 input_ids = next(token_iterator)["input_ids"]
+                print(len(input_ids))
             except StopIteration:
                 break
 

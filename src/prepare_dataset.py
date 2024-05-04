@@ -18,9 +18,9 @@ DATA_SUBSET = "CC-MAIN-2024-10"
 SAVE_PATH = "/home/aklein4/data/fw-50b"
 SAVE_REPO = 'fw-50b'
 
-TRAIN_SIZE = 5e10
-VAL_SIZE = 1e9
-TEST_SIZE = 1e9
+TRAIN_SIZE = # 5e10
+VAL_SIZE = # 1e9
+TEST_SIZE = # 1e9
 
 MAX_LENGTH = 1024
 
@@ -28,6 +28,7 @@ MAX_LENGTH = 1024
 def main():
     
     tokenizer = AutoTokenizer.from_pretrained(TOKENIZER_URL)
+    tokenizer.add_special_tokens({"pad_token": "[PAD]"})
 
     dataset = datasets.load_dataset(
         DATA_URL,
@@ -49,7 +50,6 @@ def main():
     hf.create_repo(
         f"{constants.HF_ID}/{SAVE_REPO}",
         private=True,
-        token=constants.HF_TOKEN,
         repo_type="dataset",
         exist_ok=True,
     )

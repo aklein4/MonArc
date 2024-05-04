@@ -8,4 +8,4 @@ LOCAL_DATA_PATH = "./local_data"
 
 # huggingface login id
 HF_ID = "aklein4"
-HF_TOKEN = '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'
+HF_TOKEN = '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'

@@ -12,6 +12,8 @@ TMP_DIR = "WDS_TMP"
 MAX_SHARD_COUNT = 1e18
 MAX_SHARD_SIZE = 1e9
 
+MIN_INTERVAL = 300
+
 
 class TMPManager:
     def __init__(self, path):
@@ -116,7 +118,7 @@ def create_token_wds(
 
 def _extract_data(path, token_iterator, target_size, desc=None):
 
-    with tqdm(total=target_size, desc=f"{desc} Tokens") as pbar:
+    with tqdm(total=target_size, desc=f"{desc} Tokens", mininterval=MIN_INTERVAL) as pbar:
 
         curr_size = 0
         curr_ind = 0
@@ -136,7 +138,7 @@ def _extract_data(path, token_iterator, target_size, desc=None):
     os.makedirs(path, exist_ok=True)
     with BetterShardWriter(path, maxcount=MAX_SHARD_COUNT, maxsize=MAX_SHARD_SIZE) as sink:
         
-        for f in tqdm(os.listdir(TMP_DIR), desc=f"{desc} Shards"):
+        for f in tqdm(os.listdir(TMP_DIR), desc=f"{desc} Shards", mininterval=MIN_INTERVAL):
             with open(os.path.join(TMP_DIR, f), "rb") as stream:
 
                 input_ids = np.frombuffer(stream.read(), dtype=np.uint16)

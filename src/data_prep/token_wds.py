@@ -4,6 +4,8 @@ import numpy as np
 import shutil
 from tqdm import tqdm
 
+from multiprocessing import Process, Queue
+
 import webdataset as wds
 
 
@@ -40,29 +42,56 @@ class BetterShardWriter(wds.ShardWriter):
         self.size = 0
 
 
+def _tokenizer_mp(
+    tokenizer,
+    max_length,
+    text,
+    queue,
+):
+    input_ids = tokenizer(
+        text,
+        padding=True,
+        truncation=True,
+        max_length=max_length,
+        return_tensors="np"
+    ).input_ids
+
+    # assert np.max(input_ids) < 2**16, f"Input IDs are too large for uint16: {np.max(input_ids)} > {(2**16)-1}"
+    input_ids = input_ids.astype(np.uint16)
+
+    # convert to list
+    for curr in input_ids:
+        queue.put(curr[curr != tokenizer.pad_token_id])
+
 class TokenizerMap:
     def __init__(self, tokenizer, max_length):
         self.tokenizer = tokenizer
         self.max_length = max_length
     
     def __call__(self, text):
+        chunk = len(text) // TOKEN_PROCESSES
+
+        ps = []
+        queue = Queue()
+        for i in range(TOKEN_PROCESSES):
+            p = Process(
+                target=_tokenizer_mp,
+                args=(
+                    self.tokenizer,
+                    self.max_length,
+                    text[i*chunk:(i+1)*chunk],
+                    queue
+                )
+            )
+            ps.append(p)
+            p.start()
+
+        for p in ps:
+            p.join()
         
-        # batch encode text
-        input_ids = self.tokenizer(
-            text,
-            padding=True,
-            truncation=True,
-            max_length=self.max_length,
-            return_tensors="np"
-        ).input_ids
-        
-        assert np.max(input_ids) < 2**16, f"Input IDs are too large for uint16: {np.max(input_ids)} > {(2**16)-1}"
-        input_ids = input_ids.astype(np.uint16)
-        
-        # convert to list
         out = []
-        for curr in input_ids:
-            out.append(curr[curr != self.tokenizer.pad_token_id])
+        while not queue.empty():
+            out.append(queue.get())
 
         return {"input_ids": out}
 
@@ -79,10 +108,8 @@ def create_token_wds(
     token_dataset = dataset.map(
         TokenizerMap(tokenizer, max_length),
         input_columns="text",
-        keep_in_memory=True,
         batched=True,
         batch_size=TOKEN_BATCH_SIZE,
-        # num_proc=TOKEN_PROCESSES,
     )
     token_iterator = iter(token_dataset)
 

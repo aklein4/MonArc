@@ -7,26 +7,11 @@ from tqdm import tqdm
 import webdataset as wds
 
 
-TMP_DIR = "WDS_TMP"
+MAX_FILES_IN_SHARD = 1e12
+MAX_SHARD_SIZE = 3e9
 
-MAX_SHARD_COUNT = 1e18
-MAX_SHARD_SIZE = 1e9
-
-MIN_INTERVAL = 300
-
-
-class TMPManager:
-    def __init__(self, path):
-        self.path = path
-    
-    def __enter__(self):
-        if os.path.exists(self.path):
-            shutil.rmtree(self.path)
-        os.makedirs(self.path, exist_ok=False)
-        return self
-
-    def __exit__(self, exc_type, exc_value, traceback):
-        shutil.rmtree(self.path)
+MIN_INTERVAL = 1
+TOKEN_BATCH_SIZE = 1000
 
 
 class BetterShardWriter(wds.ShardWriter):
@@ -37,7 +22,7 @@ class BetterShardWriter(wds.ShardWriter):
     def next_stream(self):
         """Close the current stream and move to the next."""
         self.finish()
-        self.fname = os.path.join(self.path, f"{self.shard:09d}.tar")
+        self.fname = os.path.join(self.path, f"{self.shard:012d}.tar")
         if self.verbose:
             print(
                 "# writing",
@@ -88,63 +73,57 @@ def create_token_wds(
     test_size,
     max_length
 ):
-    token_dataset = dataset.map(TokenizerMap(tokenizer, max_length), batched=True)
+    token_dataset = dataset.map(
+        TokenizerMap(tokenizer, max_length),
+        batched=True,
+        batch_size=TOKEN_BATCH_SIZE,
+    )
     token_iterator = iter(token_dataset)
 
-    with TMPManager(TMP_DIR):
-        _extract_data(
-            os.path.join(path, "test"),
-            token_iterator,
-            test_size,
-            desc="test"
-        )
+    _extract_data(
+        os.path.join(path, "test"),
+        token_iterator,
+        test_size,
+        desc="test"
+    )
 
-    with TMPManager(TMP_DIR):
-        _extract_data(
-            os.path.join(path, "val"),
-            token_iterator,
-            val_size,
-            desc="val"
-        )
+    _extract_data(
+        os.path.join(path, "val"),
+        token_iterator,
+        val_size,
+        desc="val"
+    )
 
-    with TMPManager(TMP_DIR):
-        _extract_data(
-            os.path.join(path, "train"),
-            token_iterator,
-            train_size,
-            desc="train"
-        )
+    _extract_data(
+        os.path.join(path, "train"),
+        token_iterator,
+        train_size,
+        desc="train"
+    )
 
 
-def _extract_data(path, token_iterator, target_size, desc=None):
+def _extract_data(path, token_iterator, target_size, desc=""):
+    os.makedirs(path, exist_ok=False)
 
-    with tqdm(total=target_size, desc=f"{desc} Tokens", mininterval=MIN_INTERVAL) as pbar:
+    with BetterShardWriter(path, maxsize=MAX_SHARD_SIZE, maxcount=MAX_FILES_IN_SHARD) as sink:
+        with tqdm(total=target_size, desc=f"TOKENIZING {desc.upper()}", mininterval=MIN_INTERVAL) as pbar:
 
-        curr_size = 0
-        curr_ind = 0
-        while curr_size < target_size:
-            try:
-                input_ids = next(token_iterator)["input_ids"]
-            except StopIteration:
-                break
-
-            np.save(os.path.join(TMP_DIR, f"{desc}_{curr_ind:012d}.pt"), input_ids)
-
-            n = input_ids.shape[0]
-            curr_size += n
-            pbar.update(n)
-            curr_ind += 1
-    
-    os.makedirs(path, exist_ok=True)
-    with BetterShardWriter(path, maxcount=MAX_SHARD_COUNT, maxsize=MAX_SHARD_SIZE) as sink:
-        
-        for f in tqdm(os.listdir(TMP_DIR), desc=f"{desc} Shards", mininterval=MIN_INTERVAL):
-            with open(os.path.join(TMP_DIR, f), "rb") as stream:
-
-                input_ids = np.frombuffer(stream.read(), dtype=np.uint16)
+            curr_size = 0
+            curr_ind = 0
+            while curr_size < target_size:
+                try:
+                    input_ids = next(token_iterator)["input_ids"]
+                except StopIteration:
+                    break
 
                 sample = {
-                    "__key__": f.split(".")[0],
-                    "input_ids.npy": input_ids
+                    "__key__": f"{curr_ind:012d}",
+                    "input_ids.npy": input_ids,
                 }
                 sink.write(sample)
+
+                curr_ind += 1
+                n = input_ids.shape[0]
+                curr_size += n
+                pbar.update(n)
+                

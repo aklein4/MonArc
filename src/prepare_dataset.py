@@ -3,7 +3,7 @@
 import os
 
 import datasets
-from transformers import AutoTokenizer
+from transformers import GPT2TokenizerFast
 import huggingface_hub as hf
 
 import utils.constants as constants
@@ -27,7 +27,7 @@ MAX_LENGTH = 1024
 
 def main():
     
-    tokenizer = AutoTokenizer.from_pretrained(TOKENIZER_URL)
+    tokenizer = GPT2TokenizerFast.from_pretrained(TOKENIZER_URL)
     tokenizer.add_special_tokens({"pad_token": "[PAD]"})
 
     dataset = datasets.load_dataset(

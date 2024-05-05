@@ -11,7 +11,7 @@ MAX_FILES_IN_SHARD = 1e12
 MAX_SHARD_SIZE = 3e9
 
 MIN_INTERVAL = 1
-TOKEN_BATCH_SIZE = 1000
+TOKEN_BATCH_SIZE = 10000
 
 
 class BetterShardWriter(wds.ShardWriter):

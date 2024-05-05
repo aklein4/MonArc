@@ -45,11 +45,11 @@ class TokenizerMap:
         self.tokenizer = tokenizer
         self.max_length = max_length
     
-    def __call__(self, d):
+    def __call__(self, text):
         
         # batch encode text
         input_ids = self.tokenizer(
-            d["text"],
+            text,
             padding=True,
             truncation=True,
             max_length=self.max_length,
@@ -78,9 +78,11 @@ def create_token_wds(
 ):
     token_dataset = dataset.map(
         TokenizerMap(tokenizer, max_length),
+        input_columns="text",
+        keep_in_memory=True,
         batched=True,
         batch_size=TOKEN_BATCH_SIZE,
-        num_proc=TOKEN_PROCESSES,
+        # num_proc=TOKEN_PROCESSES,
     )
     token_iterator = iter(token_dataset)
 

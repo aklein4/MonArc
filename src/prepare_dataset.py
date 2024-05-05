@@ -37,6 +37,8 @@ def main():
         split="train"
     )
 
+    check = dataset.map()
+
     create_token_wds(
         SAVE_PATH,
         dataset,

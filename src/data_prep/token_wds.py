@@ -10,8 +10,11 @@ import webdataset as wds
 MAX_FILES_IN_SHARD = 1e12
 MAX_SHARD_SIZE = 3e9
 
-MIN_INTERVAL = 1
 TOKEN_BATCH_SIZE = 10000
+TOKEN_PROCESSES = 4
+
+MIN_INTERVAL = 1
+
 
 
 class BetterShardWriter(wds.ShardWriter):
@@ -77,6 +80,7 @@ def create_token_wds(
         TokenizerMap(tokenizer, max_length),
         batched=True,
         batch_size=TOKEN_BATCH_SIZE,
+        num_proc=TOKEN_PROCESSES,
     )
     token_iterator = iter(token_dataset)
 

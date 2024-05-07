@@ -54,9 +54,9 @@ def get_data_files(name):
     return data_files
 
 
-def get_wds_loader(name, split, tokenizer, parallel, bs):
+def get_wds_loader(name, split, tokenizer, max_length, parallel, bs):
     dataset = datasets.load_dataset("webdataset", data_files=get_data_files(name), split=split, streaming=True)
-    collator = Collator(tokenizer)
+    collator = Collator(tokenizer, max_length)
     loader = torch.utils.data.DataLoader(
         dataset,
         batch_size=bs,

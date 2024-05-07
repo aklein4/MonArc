@@ -64,7 +64,7 @@ def _mp_fn(index):
     model = AnnelidLMModel(config).to(constants.XLA_DEVICE)
 
     print("Loading data...")
-    loader = get_wds_loader(DATA_NAME, "train", tokenizer, parallel=True, bs=BS)
+    loader = get_wds_loader(DATA_NAME, "train", tokenizer, MODEL_CONFIG["max_position_embeddings"], parallel=True, bs=BS)
 
     print("Train!")
     trainer = XLATrainer(

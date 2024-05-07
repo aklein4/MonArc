@@ -48,13 +48,14 @@ class XLATrainer:
         self.model.train()
 
         optimizer = syncfree.AdamW(self.model.parameters(), lr=self.lr*xm.xrt_world_size())
-        
+        caster = autocast('TPU')
+
         tracker = xm.RateTracker()
         for x in self.loader:
 
             optimizer.zero_grad()
 
-            with autocast('TPU'):
+            with caster:
                 logits = self.model(x)
                 loss = self._loss(logits, x)
 

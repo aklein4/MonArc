@@ -118,6 +118,7 @@ def _extract_data(path, token_iterator, target_size, desc=""):
                     break
 
                 sample = {
+                    "__key__": f"{curr_ind:012d}",
                     "input_ids.npy": input_ids,
                 }
                 sink.write(sample)

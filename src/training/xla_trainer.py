@@ -51,15 +51,15 @@ class XLATrainer:
         optimizer = syncfree.AdamW(self.model.parameters(), lr=self.lr*xm.xrt_world_size())
         
         tracker = xm.RateTracker()
-        x = torch.zeros(self.bs, 8).long().to(self.model.device)
-        for _ in range(self.num_steps):
+        for x in self.loader:
 
             optimizer.zero_grad()
 
-            with autocast():
-                logits = self.model(x)
-                loss = self._loss(logits, x)
+            # with autocast():
+            logits = self.model(x)
+            loss = self._loss(logits, x)
 
+            loss.backward()
             xm.optimizer_step(optimizer, barrier=False)
 
             tracker.add(self.bs)

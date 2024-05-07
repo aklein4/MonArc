@@ -18,7 +18,7 @@ class Collator:
         self.tokenizer = tokenizer
 
     
-    def _load_data(data):
+    def _load_data(self, data):
         stream = io.BytesIO(data)
         arr = np.lib.format.read_array(stream)
         return torch.from_numpy(arr.astype(np.uint64))

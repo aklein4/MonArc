@@ -10,7 +10,7 @@ from transformers import AutoTokenizer
 # from annelid.modeling_annelid import AnnelidLMModel
 # from training.xla_trainer import XLATrainer
 
-import utils.constants as constants
+# import utils.constants as constants
 
 
 def _mp_fn(index):

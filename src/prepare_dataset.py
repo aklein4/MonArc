@@ -15,7 +15,7 @@ TOKENIZER_URL = "openai-community/gpt2"
 DATA_URL = 'HuggingFaceFW/fineweb'
 DATA_SUBSET = "CC-MAIN-2024-10"
 
-SAVE_PATH = "/home/aklein4/data/fw-10b"
+SAVE_PATH = "fw-10b" # "/home/aklein4/data/fw-10b"
 SAVE_REPO = 'fw-10b'
 
 TRAIN_SIZE = 1e10

@@ -51,6 +51,7 @@ class XLATrainer:
 
         tracker = xm.RateTracker()
         for x in self.loader:
+            x = x[:, :128]
 
             with autocast(constants.XLA_DEVICE):
                 logits = self.model(x)

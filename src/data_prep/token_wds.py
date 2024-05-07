@@ -47,7 +47,7 @@ class TokenizerMap:
         
         # batch encode text
         input_ids = self.tokenizer(
-            d["text"],
+            [t[:20*self.max_length] for t in d["text"]],
             padding=True,
             truncation=True,
             max_length=self.max_length,

@@ -47,7 +47,7 @@ class XLATrainer:
             p.requires_grad = True
         self.model.train()
 
-        optimizer = syncfree.AdamW(self.model.parameters(), lr=self.lr)
+        optimizer = torch.optim.AdamW(self.model.parameters(), lr=self.lr)
 
         tracker = xm.RateTracker()
         for x in self.loader:

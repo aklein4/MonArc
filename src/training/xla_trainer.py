@@ -2,9 +2,8 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
-from torch_xla.amp import autocast
 import torch_xla.core.xla_model as xm
-from torch_xla.amp import syncfree
+from torch_xla.amp import syncfree, autocast
 
 import numpy as np
 from tqdm.notebook import tqdm
@@ -55,7 +54,7 @@ class XLATrainer:
 
             optimizer.zero_grad()
 
-            with autocast('xla'):
+            with autocast('TPU'):
                 logits = self.model(x)
                 loss = self._loss(logits, x)
 

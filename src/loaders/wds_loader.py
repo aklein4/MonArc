@@ -14,8 +14,9 @@ import utils.constants as constants
 
 
 class Collator:
-    def __init__(self, tokenizer):
+    def __init__(self, tokenizer, max_length):
         self.tokenizer = tokenizer
+        self.max_length = max_length
 
     
     def _load_data(self, data):
@@ -27,12 +28,23 @@ class Collator:
     def __call__(self, data):
         input_ids = [x['input_ids.npy'] for x in data]
         input_ids = [self._load_data(x) for x in input_ids]
-
-        return torch.nn.utils.rnn.pad_sequence(
+        
+        out = torch.nn.utils.rnn.pad_sequence(
             input_ids,
             batch_first=True,
             padding_value=self.tokenizer.pad_token_id
         )
+
+        if out.shape[1] < self.max_length:
+            out = F.pad(
+                out,
+                (0, self.max_length - out.shape[1]),
+                value=self.tokenizer.pad_token_id
+            )
+        elif out.shape[1] > self.max_length:
+            out = out[:, :self.max_length]
+        
+        return out
     
 
 def get_data_files(name):

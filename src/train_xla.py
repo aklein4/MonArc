@@ -52,7 +52,7 @@ def _mp_fn(index):
         "segment_size": 32,
         "use_segment_embeds": True,
 
-        "_attn_implementation": "flash_attention_2",
+        "_attn_implementation": "sdpa",
     }
     
     print("Loading tokenizer...")

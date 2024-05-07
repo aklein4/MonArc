@@ -2,7 +2,7 @@
 import os
 import numpy as np
 import shutil
-from tqdm.notebook import tqdm
+from tqdm import tqdm
 
 import webdataset as wds
 
@@ -12,7 +12,7 @@ MAX_SHARD_SIZE = 3e9
 
 TOKEN_BATCH_SIZE = 10000
 
-MIN_INTERVAL = 1
+MIN_INTERVAL = 300
 
 
 class BetterShardWriter(wds.ShardWriter):

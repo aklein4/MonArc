@@ -23,7 +23,7 @@ class BetterShardWriter(wds.ShardWriter):
     def next_stream(self):
         """Close the current stream and move to the next."""
         self.finish()
-        self.fname = os.path.join(self.path, f"{self.shard:012d}.tar")
+        self.fname = os.path.join(self.path, f"{self.shard:012d}.tar.gz")
         if self.verbose:
             print(
                 "# writing",
@@ -118,7 +118,6 @@ def _extract_data(path, token_iterator, target_size, desc=""):
                     break
 
                 sample = {
-                    "__key__": f"{curr_ind:012d}",
                     "input_ids.npy": input_ids,
                 }
                 sink.write(sample)

@@ -54,7 +54,7 @@ class XLATrainer:
 
             optimizer.zero_grad()
 
-            with torch.amp.autocast('xla'):
+            with torch.autocast('xla'):
                 logits = self.model(x)
                 loss = self._loss(logits, x)
 

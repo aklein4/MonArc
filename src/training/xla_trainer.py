@@ -3,7 +3,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 
 import torch_xla.core.xla_model as xm
-from torch_xla.amp import syncfree
+from torch_xla.amp import autocast, syncfree
 
 import numpy as np
 from tqdm.notebook import tqdm
@@ -54,10 +54,7 @@ class XLATrainer:
 
             optimizer.zero_grad()
 
-            with torch.autocast(
-                'xla',
-                dtype=torch.bfloat16
-            ):
+            with autocast(constants.XLA_DEVICE):
                 logits = self.model(x)
                 loss = self._loss(logits, x)
 

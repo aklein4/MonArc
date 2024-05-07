@@ -60,7 +60,7 @@ class XLATrainer:
                 loss = self._loss(logits, x)
 
             loss.backward()
-            xm.optimizer_step(optimizer, barrier=False)
+            xm.optimizer_step(optimizer, barrier=True)
 
             tracker.add(self.bs)
             xm.add_step_closure(

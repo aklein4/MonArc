@@ -50,9 +50,9 @@ def _mp_fn(index):
         "is_prefix_lm": False,
         "is_quasi_lm": False,
         "segment_size": 32,
-        "use_segment_embeds": False,
+        "use_segment_embeds": True,
 
-        "_attn_implementation": "eager",
+        "_attn_implementation": "flash_attention_2",
     }
     
     print("Loading tokenizer...")

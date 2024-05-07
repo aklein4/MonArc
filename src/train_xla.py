@@ -50,7 +50,7 @@ def _mp_fn(index):
         "is_prefix_lm": False,
         "is_quasi_lm": False,
         "segment_size": 32,
-        "use_segment_embeds": True,
+        "use_segment_embeds": False,
 
         "_attn_implementation": "sdpa",
     }

@@ -3,7 +3,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 
 import torch_xla.core.xla_model as xm
-from torch_xla.amp import syncfree, autocast
+from torch_xla.amp import syncfree
 
 import numpy as np
 from tqdm.notebook import tqdm
@@ -47,14 +47,14 @@ class XLATrainer:
             p.requires_grad = True
         self.model.train()
 
-        optimizer = syncfree.AdamW(self.model.parameters(), lr=self.lr*xm.xrt_world_size())
+        optimizer = syncfree.AdamW(self.model.parameters(), lr=self.lr)
 
         tracker = xm.RateTracker()
         for x in self.loader:
 
             optimizer.zero_grad()
 
-            with torch.amp.autocast(
+            with torch.autocast(
                 'xla',
                 dtype=torch.bfloat16
             ):

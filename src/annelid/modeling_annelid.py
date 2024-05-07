@@ -200,6 +200,8 @@ class AnnelidModel(AnnelidPreTrainedModel):
     ):
         batch_size, seq_length = input_ids.shape
 
+        return None
+
         # standard positions
         pos = torch.arange(seq_length, dtype=input_ids.dtype, device=input_ids.device).unsqueeze(0)
 
@@ -233,26 +235,14 @@ class AnnelidModel(AnnelidPreTrainedModel):
 
         for decoder_layer in self.layers:
 
-            if self.gradient_checkpointing and self.training:
-                layer_outputs = self._gradient_checkpointing_func(
-                    decoder_layer.__call__,
-                    hidden_states,
-                    mask,
-                    pos,
-                    None,
-                    False,
-                )
-            else:
-                layer_outputs = decoder_layer(
-                    hidden_states=hidden_states,
-                    attention_mask=mask,
-                    position_ids=pos,
-                    past_key_value=None,
-                    output_attentions=False,
-                    use_cache=False,
-                )
-
-            hidden_states = layer_outputs[0]
+            hidden_states = decoder_layer(
+                hidden_states=hidden_states,
+                attention_mask=mask,
+                position_ids=pos,
+                past_key_value=None,
+                output_attentions=False,
+                use_cache=False,
+            )[0]
 
         # if quasi, remove encoding portion
         if self.is_quasi_lm:

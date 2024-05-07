@@ -55,12 +55,11 @@ class XLATrainer:
 
             optimizer.zero_grad()
 
-            # with autocast():
-            logits = self.model(x)
-            loss = self._loss(logits, x)
+            with autocast():
+                logits = self.model(x)
+                loss = self._loss(logits, x)
 
             loss.backward()
             xm.optimizer_step(optimizer, barrier=True)
 
             tracker.add(self.bs)
-            print("Rate:", tracker.rate(), "Global Rate:", tracker.global_rate(), "Step:", tracker._partial_count, "Global Step:", tracker._count)

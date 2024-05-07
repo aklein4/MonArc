@@ -2,7 +2,7 @@
 import os
 import numpy as np
 import shutil
-from tqdm import tqdm
+from tqdm.notebook import tqdm
 
 import webdataset as wds
 

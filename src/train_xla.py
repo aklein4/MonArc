@@ -1,6 +1,8 @@
 import torch
 import torch_xla.distributed.xla_multiprocessing as xmp
 
+import os
+
 from transformers import AutoTokenizer
 
 from loaders.wds_loader import get_wds_loader
@@ -75,4 +77,5 @@ def _mp_fn(index):
 
 
 if __name__ == '__main__':
+  os.environ["XRT_TPU_CONFIG"]="localservice;0;localhost:51011"
   xmp.spawn(_mp_fn)

@@ -1,7 +1,9 @@
 import torch
+import torch_xla.core.xla_model as xm
 
 # best device
 DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+XLA_DEVICE = xm.xla_device()
 
 # local data path
 LOCAL_DATA_PATH = "./local_data"

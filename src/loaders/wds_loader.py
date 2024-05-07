@@ -25,7 +25,7 @@ class Collator:
 
 
     def __call__(self, data):
-        input_ids = [x['input_ids'] for x in data]
+        input_ids = [x['input_ids.npy'] for x in data]
         input_ids = [self._load_data(x) for x in input_ids]
 
         return torch.nn.utils.rnn.pad_sequence(

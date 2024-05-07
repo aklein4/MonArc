@@ -61,7 +61,7 @@ def _mp_fn(index):
 
     print("Loading model...")
     config = AnnelidConfig(**MODEL_CONFIG)
-    model = AnnelidLMModel(config).to(torch.bfloat16).to(constants.XLA_DEVICE)
+    model = AnnelidLMModel(config).to(constants.XLA_DEVICE)
 
     print("Loading data...")
     loader = get_wds_loader(DATA_NAME, "train", tokenizer, parallel=True, bs=BS)

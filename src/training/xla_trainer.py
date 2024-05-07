@@ -55,9 +55,9 @@ class XLATrainer:
 
             optimizer.zero_grad()
 
-            # with autocast():
-            logits = self.model(x)
-            loss = self._loss(logits, x)
+            with autocast():
+                logits = self.model(x)
+                loss = self._loss(logits, x)
 
             loss.backward()
             xm.optimizer_step(optimizer, barrier=False)

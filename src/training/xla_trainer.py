@@ -51,8 +51,7 @@ class XLATrainer:
         optimizer = syncfree.AdamW(self.model.parameters(), lr=self.lr*xm.xrt_world_size())
         
         tracker = xm.RateTracker()
-        x = torch.zeros((self.bs, 1024), dtype=torch.long).to(constants.XLA_DEVICE)
-        for _ in range(self.num_steps):
+        for x in self.loader:
 
             optimizer.zero_grad()
 
@@ -64,4 +63,5 @@ class XLATrainer:
             xm.optimizer_step(optimizer, barrier=False)
 
             tracker.add(self.bs)
+            print(tracker.rate(), tracker.global_rate(), tracker.total_time(), tracker.global_time())
             

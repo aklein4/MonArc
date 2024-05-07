@@ -14,6 +14,8 @@ import utils.constants as constants
 
 
 def _mp_fn(index):
+    constants._init_xla()
+
     TOKENIZER_URL = "openai-community/gpt2"
 
     DATA_NAME = 'fw-4b'

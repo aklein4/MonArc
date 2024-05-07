@@ -57,6 +57,9 @@ def _mp_fn(index):
     tokenizer = AutoTokenizer.from_pretrained(TOKENIZER_URL)
     tokenizer.add_special_tokens({"pad_token": "[PAD]"})
 
+    print("done!")
+    return
+
     print("Loading model...")
     config = AnnelidConfig(**MODEL_CONFIG)
     model = AnnelidLMModel(config).to(constants.XLA_DEVICE)

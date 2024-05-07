@@ -21,7 +21,7 @@ class Collator:
     def _load_data(self, data):
         stream = io.BytesIO(data)
         arr = np.lib.format.read_array(stream)
-        return torch.from_numpy(arr.astype(np.uint64))
+        return torch.from_numpy(arr.astype(np.int64))
 
 
     def __call__(self, data):

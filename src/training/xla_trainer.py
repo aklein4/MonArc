@@ -47,12 +47,10 @@ class XLATrainer:
             p.requires_grad = True
         self.model.train()
 
-        optimizer = torch.optim.AdamW(self.model.parameters(), lr=self.lr)
+        optimizer = syncfree.AdamW(self.model.parameters(), lr=self.lr)
 
         tracker = xm.RateTracker()
         for x in self.loader:
-
-            optimizer.zero_grad()
 
             with autocast(constants.XLA_DEVICE):
                 logits = self.model(x)
@@ -60,6 +58,7 @@ class XLATrainer:
 
             loss.backward()
             xm.optimizer_step(optimizer, barrier=True)
+            optimizer.zero_grad(True)
 
             tracker.add(self.bs)
-            print("Rate:", tracker.rate())
+            print("next!")

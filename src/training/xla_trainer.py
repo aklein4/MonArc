@@ -63,8 +63,5 @@ class XLATrainer:
             xm.optimizer_step(optimizer, barrier=False)
 
             tracker.add(self.bs)
-            xm.add_step_closure(
-                lambda v: print(f"Loss: {v.item()}"),
-                args=(loss,)
-            )
+            print(tracker.rate())
             

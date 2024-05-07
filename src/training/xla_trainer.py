@@ -67,4 +67,6 @@ class XLATrainer:
                 lambda v: print(f"Loss: {v.item()}"),
                 args=(loss,)
             )
+
+            print('step!')
             

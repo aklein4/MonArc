@@ -55,7 +55,7 @@ class XLATrainer:
 
             optimizer.zero_grad()
 
-            with autocast(xm.xla_device()):
+            with autocast(device=xm.xla_device()):
                 logits = self.model(x)
                 loss = self._loss(logits, x)
 

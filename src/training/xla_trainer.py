@@ -63,4 +63,4 @@ class XLATrainer:
             xm.optimizer_step(optimizer, barrier=False)
 
             tracker.add(self.bs)
-            
+            print("Rate:", tracker.rate(), "Global Rate:", tracker.global_rate(), "Step:", tracker.steps(), "Global Step:", tracker.global_steps())

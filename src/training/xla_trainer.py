@@ -51,15 +51,12 @@ class XLATrainer:
 
         tracker = xm.RateTracker()
         for x in self.loader:
-            # xm.mark_step()
 
             optimizer.zero_grad()
 
             # with autocast(constants.XLA_DEVICE):
             logits = self.model(x, self.bs, 1024)
             loss = logits[:, :, 0].mean() # self._loss(logits, x)
-
-            tes = torch.zeros(3, 4, device=constants.XLA_DEVICE)
 
             loss.backward()
             xm.optimizer_step(optimizer)

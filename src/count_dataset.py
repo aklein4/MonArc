@@ -22,7 +22,7 @@ def collate(
     data
 ):
     input_ids = [x['input_ids.npy'] for x in data]
-    return [load_data(x).size() for x in input_ids]
+    return [load_data(x).size for x in input_ids]
     
 
 def get_data_files(

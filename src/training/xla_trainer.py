@@ -42,13 +42,6 @@ class XLATrainer(BaseXLATrainer):
         # get optimizer
         optimizer = syncfree.AdamW(model.parameters(), lr=self.lr)
 
-        self.save_checkpoint(
-            {
-                'model': (model, True),
-                'tokenizer': (tokenizer, False)
-            }
-        )
-
         # loop
         token_tracker = xm.RateTracker()
         step_tracker = xm.RateTracker()

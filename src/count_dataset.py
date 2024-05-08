@@ -29,10 +29,9 @@ def get_data_files(
     name: str
 ) -> Dict[str, str]:
     data_files = {}
-    for split in ["train"]:
+    for split in ["train", "val", "test"]:
 
-        data_files[split] = f"https://huggingface.co/datasets/{constants.HF_ID}/{name}/resolve/main/{split}/000000000033.tar.gz"
-
+        data_files[split] = f"https://huggingface.co/datasets/{constants.HF_ID}/{name}/resolve/main/{split}/*"
     
     return data_files
 
@@ -48,7 +47,7 @@ def main():
     # wrap in loader with collator
     loader = torch.utils.data.DataLoader(
         dataset,
-        batch_size=64,
+        batch_size=256,
         collate_fn=collate,
     )
 

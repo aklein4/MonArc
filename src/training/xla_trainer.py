@@ -65,6 +65,7 @@ class XLATrainer:
                     loss = self._loss(logits, x[step])
 
                 loss.backward()
+                xm.mark_step()
 
             xm.optimizer_step(optimizer)
             

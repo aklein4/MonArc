@@ -55,7 +55,7 @@ class XLATrainer:
             optimizer.zero_grad()
 
             # with autocast(constants.XLA_DEVICE):
-            logits = self.model(x)
+            logits = self.model(x, self.bs, 1024)
             loss = logits[:, :, 0].mean() # self._loss(logits, x)
 
             loss.backward()

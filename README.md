@@ -8,7 +8,7 @@ quasi-causal language models
 
 2. `python -m pip install pip --upgrade`
 
-3. `pip install torch~=2.3.0 torch_xla[tpu]~=2.3.0 torchvision -f https://storage.googleapis.com/libtpu-releases/index.html`
+3. `pip install torch~=2.3.0 torch_xla[tpu]~=2.3.0 -f https://storage.googleapis.com/libtpu-releases/index.html`
 
 4. `pip install transformers datasets webdataset matplotlib`
 

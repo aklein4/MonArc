@@ -3,7 +3,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 
 import torch_xla.core.xla_model as xm
-from torch_xla.amp import autocast
+from torch_xla.amp import autocast, syncfree
 
 import numpy as np
 from tqdm.notebook import tqdm
@@ -40,7 +40,7 @@ class XLATrainer(BaseXLATrainer):
         model.train()
 
         # get optimizer
-        optimizer = torch.optim.AdamW(model.parameters(), lr=self.lr)
+        optimizer = syncfree.AdamW(model.parameters(), lr=self.lr)
 
         # loop
         tracker = xm.RateTracker()
@@ -69,14 +69,14 @@ class XLATrainer(BaseXLATrainer):
                 xm.mark_step()
 
                 # save loss
-                loss_accum = loss.item()
+                loss_accum = loss_accum + loss.detach()
 
             # perform a single optimizer step
             xm.optimizer_step(optimizer)
             optimizer.zero_grad()
             
             # log
-            log_loss = xm.mesh_reduce("loss_reduce", loss_accum, np.sum)
+            log_loss = xm.mesh_reduce("loss_reduce", loss_accum.item(), np.sum)
             self.log["loss"].append(log_loss)
             tracker.add(self.bs * x.shape[1])
 

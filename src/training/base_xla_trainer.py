@@ -27,7 +27,8 @@ class BaseXLATrainer:
     ):
         self.save_name = save_name
         self.save_repo = f"{constants.HF_ID}/{save_name}"
-        
+        self.config = config
+
         # TODO: some kind of lock?
         if constants.XLA_MAIN():
             hf.create_repo(
@@ -54,7 +55,7 @@ class BaseXLATrainer:
         # save hyperparams as csv
         with open(self._hyper_file, 'w') as outfile:
             yaml.dump(
-                {k: str(getattr(self, k)) for k in self._hyperparams},
+                self.config,
                 outfile,
                 default_flow_style=False
             )
@@ -89,12 +90,12 @@ class BaseXLATrainer:
         api = hf.HfApi()
 
         for file in [self._hyper_file, self._log_file, self._progress_file]:
-                api.upload_file(
-                        path_or_fileobj=file,
-                        path_in_repo=str(file).split("/")[-1],
-                        repo_id=self.save_repo,
-                        repo_type="model"
-                )
+            api.upload_file(
+                path_or_fileobj=file,
+                path_in_repo=str(file).split("/")[-1],
+                repo_id=self.save_repo,
+                repo_type="model"
+            )
 
 
     @torch.no_grad()
@@ -110,8 +111,8 @@ class BaseXLATrainer:
 
         for name, model in models.items():
             model.save_pretrained(
-                    os.path.join(constants.LOCAL_DATA_PATH, name),
-                    push_to_hub=False,
+                os.path.join(constants.LOCAL_DATA_PATH, name),
+                push_to_hub=False,
             )
 
             api.upload_folder(

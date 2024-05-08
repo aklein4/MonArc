@@ -27,27 +27,27 @@ MAX_LENGTH = 1024
 
 def main():
     
-    tokenizer = GPT2TokenizerFast.from_pretrained(TOKENIZER_URL)
-    tokenizer.add_special_tokens({"pad_token": "[PAD]"})
+    # tokenizer = GPT2TokenizerFast.from_pretrained(TOKENIZER_URL)
+    # tokenizer.add_special_tokens({"pad_token": "[PAD]"})
 
-    dataset = datasets.load_dataset(
-        DATA_URL,
-        name=DATA_SUBSET,
-        streaming=True,
-        split="train"
-    )
+    # dataset = datasets.load_dataset(
+    #     DATA_URL,
+    #     name=DATA_SUBSET,
+    #     streaming=True,
+    #     split="train"
+    # )
 
-    check = dataset.map()
+    # check = dataset.map()
 
-    create_token_wds(
-        SAVE_PATH,
-        dataset,
-        tokenizer,
-        TRAIN_SIZE,
-        VAL_SIZE,
-        TEST_SIZE,
-        MAX_LENGTH
-    )
+    # create_token_wds(
+    #     SAVE_PATH,
+    #     dataset,
+    #     tokenizer,
+    #     TRAIN_SIZE,
+    #     VAL_SIZE,
+    #     TEST_SIZE,
+    #     MAX_LENGTH
+    # )
 
     hf.create_repo(
         f"{constants.HF_ID}/{SAVE_REPO}",

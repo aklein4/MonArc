@@ -68,7 +68,7 @@ class XLATrainer:
                 loss = F.mse_loss(out, y)
 
             loss.backward()
-            xm.optimizer_step(optimizer, barrier=True)
+            xm.optimizer_step(optimizer)
             
             tracker.add(self.bs)
             print(f"Rate: {tracker.rate():.3f}")

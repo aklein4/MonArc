@@ -6,11 +6,13 @@ import torch_xla.distributed.xla_multiprocessing as xmp
 
 from loaders.wds_loader import get_wds_loader
 from transformers import AutoTokenizer
+import utils.constants as constants
 
 import os
 
 
 def _mp_fn(index):
+    constants._init_xla()
     
     tokenizer = AutoTokenizer.from_pretrained("openai-community/gpt2")
     loader = get_wds_loader("fw-4b", "train", tokenizer, 1024, True, 1)

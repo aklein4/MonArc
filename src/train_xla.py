@@ -18,7 +18,7 @@ from utils.config_utils import load_model_config, load_train_config
 
 
 def _mp_fn(index, args):
-    args = DotDict(args)
+    args = DotDict().from_dict(args)
 
     torch.set_default_dtype(torch.float32)
     
@@ -68,4 +68,8 @@ if __name__ == '__main__':
     args.add_argument("--dataset", type=str, required=True)
     args.parse_args()
 
-    xmp.spawn(_mp_fn, args=(dict(vars(args)),))
+    d = {}
+    for k, v in vars(args).items():
+        d[k] = v
+
+    xmp.spawn(_mp_fn, args=(d),)

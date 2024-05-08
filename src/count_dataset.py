@@ -56,7 +56,7 @@ def main():
     for x in loader:
         for c in x:
             total += c
-            pbar.update(1)
+            pbar.update(c)
 
     print(f"Total Tokens: {total}")
 

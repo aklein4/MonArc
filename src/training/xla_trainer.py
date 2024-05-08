@@ -23,6 +23,7 @@ class XLATrainer:
         loader,
         lr,
         bs,
+        accum_steps,
         num_steps
     ):
         self.model = model
@@ -30,6 +31,7 @@ class XLATrainer:
         self.loader = loader
         self.lr = lr
         self.bs = bs
+        self.accum_steps = accum_steps
         self.num_steps = num_steps
 
 
@@ -51,14 +53,18 @@ class XLATrainer:
 
         tracker = xm.RateTracker()
         for x in self.loader:
+            x = torch.split(x, x.shape[0]//self.accum_steps, dim=0)
 
             optimizer.zero_grad()
 
-            with autocast(constants.XLA_DEVICE()):
-                logits = self.model(x)
-                loss = self._loss(logits, x)
+            for step in range(self.accum_steps):
 
-            loss.backward()
+                with autocast(constants.XLA_DEVICE()):
+                    logits = self.model(x[step])
+                    loss = self._loss(logits, x[step])
+
+                loss.backward()
+                
             xm.optimizer_step(optimizer)
             
             tracker.add(self.bs)

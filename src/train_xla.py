@@ -22,6 +22,7 @@ def _mp_fn(index):
 
     LR = 1e-4
     BS = 8
+    ACCUM_STEPS = 512//(8*BS)
 
     MODEL_CONFIG = {
         "model_type": "annelid",
@@ -63,7 +64,7 @@ def _mp_fn(index):
     model = AnnelidLMModel(config).to(constants.XLA_DEVICE())
 
     print("Loading data...")
-    loader = get_wds_loader(DATA_NAME, "train", tokenizer, MODEL_CONFIG["max_position_embeddings"], parallel=True, bs=BS)
+    loader = get_wds_loader(DATA_NAME, "train", tokenizer, MODEL_CONFIG["max_position_embeddings"], parallel=True, bs=BS*ACCUM_STEPS)
 
     print("Train!")
     trainer = XLATrainer(
@@ -72,6 +73,7 @@ def _mp_fn(index):
         loader,
         lr=LR,
         bs=BS,
+        accum_steps=ACCUM_STEPS,
         num_steps=1000
     )
     trainer.train()

@@ -131,9 +131,9 @@ def get_wds_loader(
 
     # prepare batch sizes
     total_mini_bs = mini_bs * constants.NUM_XLA_DEVICES()
-    if total_mini_bs % bs != 0:
-        raise ValueError(f"Total mini batch size {total_mini_bs} must be divisible by batch size {bs}")
-    sample_size = bs // total_mini_bs
+    if bs % total_mini_bs != 0:
+        raise ValueError(f"Batch size {bs} not divisible by total mini batch size {total_mini_bs}")
+    sample_size = mini_bs * (bs // total_mini_bs)
 
     # get streaming dataset
     dataset = datasets.load_dataset(

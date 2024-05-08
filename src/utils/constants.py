@@ -1,5 +1,8 @@
 import torch
-import torch_xla.core.xla_model as xm
+try:
+    import torch_xla.core.xla_model as xm
+except ImportError:
+    print("Warning: torch_xla not found")
 
 # best device
 DEVICE = "cpu" # torch.device("cuda" if torch.cuda.is_available() else "cpu")

@@ -12,6 +12,7 @@ import os
 
 
 def _mp_fn(index):
+    torch.set_default_dtype(torch.float32)
     constants._init_xla()
     
     tokenizer = AutoTokenizer.from_pretrained("openai-community/gpt2")
@@ -20,6 +21,11 @@ def _mp_fn(index):
     loader = get_wds_loader("fw-4b", "train", tokenizer, 1024, True, 1)
 
     model = torch.nn.Embedding(100000, 2).to(xm.xla_device())
+
+    for p in model.parameters():
+      p.requires_grad = True
+    model.train()
+
     optimizer = syncfree.AdamW(model.parameters(), lr=1e-4)
 
     for x in loader:

@@ -53,7 +53,8 @@ class XLATrainer:
 
         tracker = xm.RateTracker()
         for x in self.loader:
-            x = torch.split(x, x.shape[0]//self.accum_steps, dim=0)
+            n_x = x.shape[0]
+            x = torch.split(x, n_x//self.accum_steps, dim=0)
 
             optimizer.zero_grad()
 
@@ -64,8 +65,8 @@ class XLATrainer:
                     loss = self._loss(logits, x[step])
 
                 loss.backward()
-                
+
             xm.optimizer_step(optimizer)
             
-            tracker.add(self.bs)
+            tracker.add(n_x)
             print(f"Rate: {tracker.rate()}")

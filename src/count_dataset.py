@@ -31,7 +31,7 @@ def get_data_files(
     data_files = {}
     for split in ["train", "val", "test"]:
 
-        data_files[split] = f"https://huggingface.co/datasets/{constants.HF_ID}/{name}/resolve/main/{split}/000000000033.tar.gz
+        data_files[split] = f"https://huggingface.co/datasets/{constants.HF_ID}/{name}/resolve/main/{split}/000000000033.tar.gz"
 "
     
     return data_files

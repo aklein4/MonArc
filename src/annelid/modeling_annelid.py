@@ -94,7 +94,7 @@ class AnnelidModel(AnnelidPreTrainedModel):
         self.gradient_checkpointing = False
 
         # Initialize weights and apply final processing
-        self.post_init()
+        # self.post_init()
 
 
     def get_input_embeddings(self):
@@ -285,7 +285,7 @@ class AnnelidLMModel(AnnelidPreTrainedModel):
         self.lm_head = nn.Linear(config.hidden_size, config.vocab_size, bias=False)
 
         # Initialize weights and apply final processing
-        self.post_init()
+        # self.post_init()
         
 
     # Ignore copy

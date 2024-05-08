@@ -5,20 +5,15 @@ import torch.nn as nn
 import torch.nn.functional as F
 
 from transformers.modeling_utils import PreTrainedModel
-from transformers.models.stablelm.modeling_stablelm import StableLmDecoderLayer, StableLmAttention
+from transformers.models.stablelm.modeling_stablelm import StableLmDecoderLayer
 
 from annelid.configuration_annelid import AnnelidConfig
-
-
-# def _attn_forward(self, hidden_states, *args, **kwargs):
-#     return (hidden_states, None, None)
-# StableLmAttention.forward = _attn_forward
 
 
 class AnnelidPreTrainedModel(PreTrainedModel):
     config_class = AnnelidConfig
     base_model_prefix = "model"
-    supports_gradient_checkpointing = False
+    supports_gradient_checkpointing = True
     _no_split_modules = ["StableLmDecoderLayer"]
     _skip_keys_device_placement = "past_key_values"
     _supports_flash_attn_2 = True
@@ -62,17 +57,19 @@ class AnnelidModel(AnnelidPreTrainedModel):
         self.use_segment_embeds = config.use_segment_embeds
 
         # Standard weights
-        self.embed_tokens = nn.Embedding(config.vocab_size, config.hidden_size)
-        # self.layers = nn.ModuleList(
-        #     [StableLmDecoderLayer(config, layer_idx) for layer_idx in range(config.num_hidden_layers)]
-        # )
+        self.embed_tokens = nn.Embedding(config.vocab_size, config.hidden_size, padding_idx=self.padding_idx)
+        self.layers = nn.ModuleList(
+            [StableLmDecoderLayer(config, layer_idx) for layer_idx in range(config.num_hidden_layers)]
+        )
         self.norm = nn.LayerNorm(config.hidden_size, eps=config.layer_norm_eps)
 
-        # extra parameters for prefix/quasi LM
+        # segment params
         self.segment_embeds = None
-        self.prefix_embeds = None
         if self.use_segment_embeds:
             self.segment_embeds = nn.Embedding(self.segment_size, config.hidden_size)
+        
+        # prefix params
+        self.prefix_embeds = None
         if self.is_prefix_lm or self.is_quasi_lm:
             self.prefix_embeds = nn.Embedding(2, config.hidden_size)
 
@@ -84,28 +81,20 @@ class AnnelidModel(AnnelidPreTrainedModel):
         self.post_init()
 
 
-    def get_input_embeddings(self):
-        return self.embed_tokens
-
-    def set_input_embeddings(self, value):
-        self.embed_tokens = value
-
-
     def _get_tokens(
         self,
         input_ids: torch.LongTensor,
-        seq_length: int,
         prefix_length: Optional[torch.LongTensor]=None,
     ):
+        batch_size, seq_length = input_ids.shape
 
         # # double if this is a quasi LM
-        # if self.is_quasi_lm:
-        #     input_ids = torch.cat([input_ids, input_ids], dim=1)
-        #     seq_length *= 2
+        if self.is_quasi_lm:
+            input_ids = torch.cat([input_ids, input_ids], dim=1)
+            seq_length *= 2
 
         # get the id tokens
-        tokens = self.embed_tokens(input_ids * 0)
-        return tokens
+        tokens = self.embed_tokens(input_ids)
 
         # add segment embeddings
         if self.use_segment_embeds:
@@ -118,7 +107,7 @@ class AnnelidModel(AnnelidPreTrainedModel):
         # prefix embedddings
         if self.is_prefix_lm:
             ar = torch.arange(seq_length, device=input_ids.device, dtype=input_ids.dtype).unsqueeze(0)
-            prefix_ids = (ar < prefix_length).to(input_ids.dtype)
+            prefix_ids = (ar < prefix_length.unsqueeze(-1)).to(input_ids.dtype)
             prefix_embs = self.prefix_embeds(prefix_ids)
 
             tokens = tokens + prefix_embs
@@ -126,7 +115,7 @@ class AnnelidModel(AnnelidPreTrainedModel):
         # quasi embeddings
         if self.is_quasi_lm:
             quasi_ids = torch.zeros_like(input_ids)
-            quasi_ids[:, :seq_length//2].fill_(1)
+            quasi_ids[:, :seq_length//2] = 1
             quasi_embs = self.prefix_embeds(quasi_ids)
 
             tokens = tokens + quasi_embs
@@ -137,10 +126,9 @@ class AnnelidModel(AnnelidPreTrainedModel):
     def _get_mask(
         self,
         input_ids: torch.LongTensor,
-        batch_size: int,
-        seq_length: int,
         prefix_length: Optional[torch.LongTensor]=None
     ):
+        batch_size, seq_length = input_ids.shape
     
         # prefix lm is bidirectional for prompt
         if self.is_prefix_lm:
@@ -204,8 +192,8 @@ class AnnelidModel(AnnelidPreTrainedModel):
     def get_position_ids(
         self,
         input_ids: torch.LongTensor,
-        seq_length: int
     ):
+        batch_size, seq_length = input_ids.shape
         
         # standard positions
         pos = torch.arange(seq_length, dtype=input_ids.dtype, device=input_ids.device).unsqueeze(0)
@@ -221,35 +209,44 @@ class AnnelidModel(AnnelidPreTrainedModel):
     def forward(
         self,
         input_ids: torch.LongTensor,
-        batch_size: int,
-        seq_length: int,
         prefix_length: Optional[torch.LongTensor]=None
     ) -> torch.Tensor:
+        batch_size, seq_length = input_ids.shape
 
         # error checking
-        # if not self.is_prefix_lm:
-        #     assert prefix_length is None, "Prefix length only used for prefix LM"
-        # else:
-        #     assert prefix_length is not None, "Prefix length required for prefix LM"
-        #     assert isinstance(prefix_length, torch.Tensor), "Prefix length must be a tensor"
-        #     assert tuple(prefix_length.shape) == (batch_size,), "Prefix length must have shape (batch_size,)"
+        if not self.is_prefix_lm:
+            assert prefix_length is None, "Prefix length only used for prefix LM"
+        else:
+            assert prefix_length is not None, "Prefix length required for prefix LM"
+            assert isinstance(prefix_length, torch.Tensor), "Prefix length must be a tensor"
+            assert tuple(prefix_length.shape) == (batch_size,), "Prefix length must have shape (batch_size,)"
 
         # get inputs
-        hidden_states = self._get_tokens(input_ids, seq_length, prefix_length)
-        return hidden_states
-        mask = self._get_mask(input_ids, batch_size, seq_length, prefix_length)
-        pos = self.get_position_ids(input_ids, seq_length)
+        hidden_states = self._get_tokens(input_ids, prefix_length)
+        mask = self._get_mask(input_ids, prefix_length)
+        pos = self.get_position_ids(input_ids)
 
         for decoder_layer in self.layers:
 
-            hidden_states = decoder_layer(
-                hidden_states=hidden_states,
-                attention_mask=mask,
-                position_ids=pos,
-                past_key_value=None,
-                output_attentions=False,
-                use_cache=False,
-            )[0]
+            if self.gradient_checkpointing and self.training:
+                hidden_states = self._gradient_checkpointing_func(
+                    decoder_layer.__call__,
+                    hidden_states,
+                    attention_mask=mask,
+                    position_ids=pos,
+                    past_key_values=None,
+                    output_attentions=False,
+                )[0]
+
+            else:
+                hidden_states = decoder_layer(
+                    hidden_states=hidden_states,
+                    attention_mask=mask,
+                    position_ids=pos,
+                    past_key_value=None,
+                    output_attentions=False,
+                    use_cache=False,
+                )[0]
 
         # if quasi, remove encoding portion
         if self.is_quasi_lm:
@@ -279,18 +276,13 @@ class AnnelidLMModel(AnnelidPreTrainedModel):
     def forward(
         self,
         input_ids: torch.LongTensor,
-        batch_size: int,
-        seq_length: int,
         prefix_length: Optional[torch.LongTensor]=None,
     ) -> torch.Tensor:
 
         out = self.model(
             input_ids=input_ids,
-            batch_size=batch_size,
-            seq_length=seq_length,
             prefix_length=prefix_length
         )
-        return out
 
         logits = self.lm_head(out)
         logits = F.log_softmax(logits, dim=-1)

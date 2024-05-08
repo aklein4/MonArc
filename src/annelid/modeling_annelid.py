@@ -234,6 +234,7 @@ class AnnelidModel(AnnelidPreTrainedModel):
 
         # get inputs
         hidden_states = self._get_tokens(input_ids, prefix_length)
+        return hidden_states
         mask = self._get_mask(input_ids, prefix_length)
         pos = self.get_position_ids(input_ids)
 

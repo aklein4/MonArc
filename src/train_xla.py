@@ -34,14 +34,14 @@ def _mp_fn(index):
         "bos_token_id": 50256,
         "eos_token_id": 50256,
         "hidden_act": "silu",
-        "hidden_size": 768,
+        "hidden_size": 256,
         "initializer_range": 0.02,
-        "intermediate_size": 768*3,
+        "intermediate_size": 256*3,
         "max_position_embeddings": 1024,
         "layer_norm_eps": 1e-05,
-        "num_attention_heads": 12,
-        "num_hidden_layers": 12,
-        "num_key_value_heads": 12,
+        "num_attention_heads": 4,
+        "num_hidden_layers": 4,
+        "num_key_value_heads": 4,
         "partial_rotary_factor": 0.25,
         "rope_theta": 10000,
         "tie_word_embeddings": False,
@@ -61,8 +61,8 @@ def _mp_fn(index):
     tokenizer.add_special_tokens({"pad_token": "[PAD]"})
 
     print("Loading model...")
-    # config = AnnelidConfig(**MODEL_CONFIG)
-    # model = AnnelidLMModel(config).to(constants.XLA_DEVICE)
+    config = AnnelidConfig(**MODEL_CONFIG)
+    model = AnnelidLMModel(config).to(constants.XLA_DEVICE)
     model = None
 
     print("Loading data...")

@@ -43,13 +43,6 @@ class XLATrainer:
 
     def train(self):
 
-        self.model = nn.Sequential(
-            nn.Embedding(50258, 128),
-            nn.ReLU(),
-            nn.Linear(128, 128),
-        ).to(constants.XLA_DEVICE)
-        y = torch.zeros((self.bs, 1024, 128)).to(constants.XLA_DEVICE)
-
         for p in self.model.parameters():
             p.requires_grad = True
         self.model.train()
@@ -58,15 +51,12 @@ class XLATrainer:
 
         tracker = xm.RateTracker()
         for x in self.loader:
-            print(x.shape)
 
             optimizer.zero_grad()
 
             with autocast(constants.XLA_DEVICE):
-                # logits = self.model(x)
-                # loss = self._loss(logits, x)
-                out = self.model(x)
-                loss = F.mse_loss(out, y)
+                logits = self.model(x)
+                loss = self._loss(logits, x)
 
             loss.backward()
             xm.optimizer_step(optimizer)

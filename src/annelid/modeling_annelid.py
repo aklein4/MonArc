@@ -25,29 +25,16 @@ class AnnelidPreTrainedModel(PreTrainedModel):
     _supports_cache_class = True
     _supports_sdpa = True
 
-    @torch.no_grad()
     def _init_weights(self, module):
-        """ Care must be taken to initialize out of place for XLA compatibility """
-        return
-
         std = self.config.initializer_range
-
         if isinstance(module, nn.Linear):
-            og = module.weight.data
-            module.weight.data = torch.randn(
-                og.shape,
-                dtype=og.dtype, device=og.device
-            ) * std
-
+            module.weight.data.normal_(mean=0.0, std=std)
             if module.bias is not None:
-                module.bias.data = module.bias.data * 0
-
+                module.bias.data.zero_()
         elif isinstance(module, nn.Embedding):
-            og = module.weight.data
-            module.weight.data = torch.randn(
-                og.shape,
-                dtype=og.dtype, device=og.device
-            ) * std
+            module.weight.data.normal_(mean=0.0, std=std)
+            if module.padding_idx is not None:
+                module.weight.data[module.padding_idx].zero_()
 
 
 class AnnelidModel(AnnelidPreTrainedModel):
@@ -94,7 +81,7 @@ class AnnelidModel(AnnelidPreTrainedModel):
         self.gradient_checkpointing = False
 
         # Initialize weights and apply final processing
-        # self.post_init()
+        self.post_init()
 
 
     def get_input_embeddings(self):
@@ -285,7 +272,7 @@ class AnnelidLMModel(AnnelidPreTrainedModel):
         self.lm_head = nn.Linear(config.hidden_size, config.vocab_size, bias=False)
 
         # Initialize weights and apply final processing
-        # self.post_init()
+        self.post_init()
         
 
     # Ignore copy

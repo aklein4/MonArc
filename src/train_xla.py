@@ -15,7 +15,7 @@ import utils.constants as constants
 
 
 def _mp_fn(index):
-    torch.set_default_dtype(torch.bfloat16)
+    torch.set_default_dtype(torch.float32)
 
     TOKENIZER_URL = "openai-community/gpt2"
     DATA_NAME = 'fw-4b'
@@ -44,7 +44,7 @@ def _mp_fn(index):
         "rope_theta": 10000,
         "tie_word_embeddings": False,
 
-        "vocab_size": 60000, # 50258, # with padding token
+        "vocab_size": 50258, # with padding token
 
         "is_prefix_lm": False,
         "is_quasi_lm": False,

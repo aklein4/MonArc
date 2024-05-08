@@ -308,8 +308,7 @@ class AnnelidLMModel(AnnelidPreTrainedModel):
         #     input_ids=input_ids,
         #     prefix_length=prefix_length
         # )
-        out = input_ids.float()
-        return out
+        out = torch.zeros(1, 1024, self.vocab_size).to(input_ids.device)
 
         logits = self.lm_head(out)
         logits = F.log_softmax(logits, dim=-1)

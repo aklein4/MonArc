@@ -207,6 +207,9 @@ class AnnelidModel(AnnelidPreTrainedModel):
                 ],
                 dim=1
             )
+
+            # cannot broadcast to batch size
+            mask = mask.expand(batch_size, -1, -1)
         
         # use standard mask for standard LM
         else:

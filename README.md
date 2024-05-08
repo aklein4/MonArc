@@ -12,8 +12,10 @@ quasi-causal language models
 
 4. `export PATH="/home/USER/.local/bin:$PATH"` (make sure to replace USER)
 
-4. `pip install transformers datasets webdataset matplotlib`
+5. `pip install transformers datasets webdataset matplotlib`
 
-5. `export PJRT_DEVICE=TPU`
+6. `export PJRT_DEVICE=TPU`
 
-6. `git clone https://github.com/aklein4/QLM.git`
+7. `huggingface-cli login`
+
+8. `git clone https://github.com/aklein4/QLM.git`

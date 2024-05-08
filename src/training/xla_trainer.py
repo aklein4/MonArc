@@ -50,8 +50,8 @@ class XLATrainer:
         optimizer = syncfree.AdamW(self.model.parameters(), lr=self.lr)
 
         tracker = xm.RateTracker()
-        for x in self.loader:
-            x = x.to(constants.XLA_DEVICE)
+        for _ in range(100000):
+            x = torch.zeros(self.bs, 1024).long().to(constants.XLA_DEVICE)
 
             optimizer.zero_grad()
 

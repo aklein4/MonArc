@@ -95,7 +95,7 @@ class AnnelidModel(AnnelidPreTrainedModel):
         input_ids: torch.LongTensor,
         prefix_length: Optional[torch.LongTensor]=None
     ):
-        # batch_size, seq_length = input_ids.size()
+        batch_size, seq_length = input_ids.shape
 
         # double if this is a quasi LM
         if self.is_quasi_lm:
@@ -104,7 +104,6 @@ class AnnelidModel(AnnelidPreTrainedModel):
 
         # get the id tokens
         tokens = self.embed_tokens(input_ids)
-        return tokens
 
         # add segment embeddings
         if self.use_segment_embeds:

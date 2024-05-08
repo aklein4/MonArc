@@ -10,9 +10,9 @@ from transformers.models.stablelm.modeling_stablelm import StableLmDecoderLayer,
 from annelid.configuration_annelid import AnnelidConfig
 
 
-def _attn_forward(self, hidden_states, *args, **kwargs):
-    return (hidden_states, None, None)
-StableLmAttention.forward = _attn_forward
+# def _attn_forward(self, hidden_states, *args, **kwargs):
+#     return (hidden_states, None, None)
+# StableLmAttention.forward = _attn_forward
 
 
 class AnnelidPreTrainedModel(PreTrainedModel):

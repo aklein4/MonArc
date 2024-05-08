@@ -23,14 +23,13 @@ class TestModel(nn.Module):
 
 def _mp_fn(index):
     torch.set_default_dtype(torch.float32)
-    constants._init_xla()
 
     tokenizer = AutoTokenizer.from_pretrained("openai-community/gpt2")
     tokenizer.add_special_tokens({"pad_token": "[PAD]"})
 
     loader = get_wds_loader("fw-4b", "train", tokenizer, 1024, True, 1)
 
-    model = TestModel().to(constants.XLA_DEVICE)
+    model = TestModel().to(xm.xla_device())
 
     for p in model.parameters():
       p.requires_grad = True

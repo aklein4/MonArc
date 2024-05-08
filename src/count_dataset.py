@@ -59,3 +59,7 @@ def main():
             pbar.update(1)
 
     print(f"Total Tokens: {total}")
+
+
+if __name__ == '__main__':
+    main()

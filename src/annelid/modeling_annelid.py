@@ -61,7 +61,7 @@ class AnnelidModel(AnnelidPreTrainedModel):
         self.use_segment_embeds = config.use_segment_embeds
 
         # Standard weights
-        self.embed_tokens = nn.Embedding(config.vocab_size, config.hidden_size, self.padding_idx)
+        self.embed_tokens = nn.Embedding(config.vocab_size, config.hidden_size)
         self.layers = nn.ModuleList(
             [StableLmDecoderLayer(config, layer_idx) for layer_idx in range(config.num_hidden_layers)]
         )

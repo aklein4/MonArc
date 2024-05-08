@@ -63,6 +63,7 @@ class AnnelidModel(AnnelidPreTrainedModel):
         # error checking
         assert not (config.is_prefix_lm and config.is_quasi_lm), "Cannot be both prefix and quasi language model!"
         if config.is_prefix_lm or config.is_quasi_lm:
+            print(config._attn_implementation)
             assert config._attn_implementation == 'sdpa', "Prefix and quasi language models only support sdpa attention (require custom attention masks)"
 
         # Standard weights

@@ -1,4 +1,5 @@
 import torch
+import torch.nn as nn
 
 from torch_xla.amp import autocast, syncfree
 import torch_xla.core.xla_model as xm
@@ -12,6 +13,15 @@ from annelid.configuration_annelid import AnnelidConfig
 from annelid.modeling_annelid import AnnelidLMModel
 
 import os
+
+
+class TestModel(nn.Module):
+    def __init__(self):
+        super().__init__()
+        self.emb = nn.Embedding(60000, 128)
+    
+    def forward(self, x):
+        return self.emb(x)
 
 
 def _mp_fn(index):
@@ -55,7 +65,8 @@ def _mp_fn(index):
     loader = get_wds_loader("fw-4b", "train", tokenizer, 1024, True, 1)
 
     config = AnnelidConfig(**MODEL_CONFIG)
-    model = AnnelidLMModel(config).to(constants.XLA_DEVICE)
+    # model = AnnelidLMModel(config).to(constants.XLA_DEVICE)
+    model = TestModel().to(constants.XLA_DEVICE)
 
     for p in model.parameters():
       p.requires_grad = True

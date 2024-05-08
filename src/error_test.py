@@ -26,12 +26,11 @@ def _mp_fn(index):
 
       optimizer.zero_grad()
 
-      a, b = x.shape
-      print(a, b)
       loss = model(x).mean()
 
       loss.backward()
       xm.optimizer_step(optimizer)
+      print("Next!")
 
 
 if __name__ == '__main__':

@@ -44,11 +44,11 @@ class XLATrainer:
     def train(self):
 
         self.model = nn.Sequential(
-            nn.Linear(128, 128),
+            nn.Embedding(50258, 128),
             nn.ReLU(),
             nn.Linear(128, 128),
         ).to(constants.XLA_DEVICE)
-        y = torch.zeros(self.bs, 128).to(constants.XLA_DEVICE)
+        y = torch.zeros((self.bs, 1024)).to(constants.XLA_DEVICE)
 
         for p in self.model.parameters():
             p.requires_grad = True
@@ -64,7 +64,7 @@ class XLATrainer:
             with autocast(constants.XLA_DEVICE):
                 # logits = self.model(x)
                 # loss = self._loss(logits, x)
-                out = self.model(y)
+                out = self.model(x)
                 loss = F.mse_loss(out, y)
 
             loss.backward()

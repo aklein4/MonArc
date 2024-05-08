@@ -300,11 +300,15 @@ class AnnelidLMModel(AnnelidPreTrainedModel):
     def forward(
         self,
         input_ids: torch.LongTensor,
+        batch_size: int,
+        seq_length: int,
         prefix_length: Optional[torch.LongTensor]=None,
     ) -> torch.Tensor:
 
         out = self.model(
             input_ids=input_ids,
+            batch_size=batch_size,
+            seq_length=seq_length,
             prefix_length=prefix_length
         )
 

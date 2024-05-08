@@ -81,19 +81,23 @@ class XLATrainer(BaseXLATrainer):
             tracker.add(self.bs * x.shape[1])
 
             # print update
-            msg = [f"Step {len(self.log['loss'])}", f"Loss = {log_loss:.4f}", f"{tracker.rate():.2f} tokens/s"]
+            msg = [f"Step {len(self.log['loss'])}", f"Loss = {log_loss:.4f}", f"{round(3600*tracker.rate()):_} tokens/h"]
             xm.master_print("{: >20} {: >20} {: >20}".format(*msg))
             
             # save
             if len(self.log["loss"]) % self.save_interval == 0:
                 self.save()
             if len(self.log["loss"]) % self.checkpoint_interval == 0:
+                model = model.cpu()
                 self.save_checkpoint(
                     {
                         'model': model,
                         'tokenizer': tokenizer
                     }
                 )
+                model = model.to(constants.XLA_DEVICE())
         
         self.save()
+        model = model.cpu()
         self.save_checkpoint()
+        model = model.to(constants.XLA_DEVICE())

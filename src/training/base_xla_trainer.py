@@ -34,7 +34,8 @@ class BaseXLATrainer:
                 save_name, private=True, exist_ok=True
             )
             os.makedirs(constants.LOCAL_DATA_PATH, exist_ok=True)
-        
+            print("Created repo and local data path.")
+
         # apply hyperparams
         for k in config:
             setattr(self, k, config[k])
@@ -48,6 +49,7 @@ class BaseXLATrainer:
     def save(self):
         if not constants.XLA_MAIN():
             return
+        print("Saving...")
 
         # save hyperparams as csv
         with open(self._hyper_file, 'w') as outfile:
@@ -76,6 +78,7 @@ class BaseXLATrainer:
         plt.close()
 
         self.upload()
+        print("Saved.")
 
 
     @torch.no_grad()
@@ -101,7 +104,8 @@ class BaseXLATrainer:
     ):
         if not constants.XLA_MAIN():
             return
-        
+        print("Saving checkpoint...")
+
         api = hf.HfApi()
 
         for name, model in models.items():
@@ -116,3 +120,5 @@ class BaseXLATrainer:
                 path_in_repo=name,
                 repo_type="model"
             )
+        
+        print("Saved checkpoint.")

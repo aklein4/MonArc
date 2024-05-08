@@ -5,9 +5,14 @@ import torch.nn as nn
 import torch.nn.functional as F
 
 from transformers.modeling_utils import PreTrainedModel
-from transformers.models.stablelm.modeling_stablelm import StableLmDecoderLayer
+from transformers.models.stablelm.modeling_stablelm import StableLmDecoderLayer, StableLmAttention
 
 from annelid.configuration_annelid import AnnelidConfig
+
+
+def _attn_forward(x, *args, **kwargs):
+    return x
+StableLmAttention.forward = _attn_forward
 
 
 class AnnelidPreTrainedModel(PreTrainedModel):

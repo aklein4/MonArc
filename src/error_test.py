@@ -42,7 +42,7 @@ def _mp_fn(index):
 
       optimizer.zero_grad()
 
-      print(torch.max(x), torch.min(x))
+      print(x.dtype, x.device)
       loss = model(x).mean()
 
       loss.backward()

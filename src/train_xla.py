@@ -15,7 +15,7 @@ import utils.constants as constants
 
 
 def _mp_fn(index):
-    torch.set_default_dtype(torch.float32)
+    torch.set_default_dtype(torch.bfloat16)
 
     constants._init_xla()
 

@@ -57,7 +57,7 @@ class AnnelidModel(AnnelidPreTrainedModel):
         self.use_segment_embeds = config.use_segment_embeds
 
         # Standard weights
-        self.embed_tokens = nn.Embedding(config.vocab_size, config.hidden_size, padding_idx=self.padding_idx)
+        self.embed_tokens = nn.Embedding(config.vocab_size, config.hidden_size, self.padding_idx)
         self.layers = nn.ModuleList(
             [StableLmDecoderLayer(config, layer_idx) for layer_idx in range(config.num_hidden_layers)]
         )
@@ -88,7 +88,7 @@ class AnnelidModel(AnnelidPreTrainedModel):
     ):
         batch_size, seq_length = input_ids.shape
 
-        # # double if this is a quasi LM
+        # double if this is a quasi LM
         if self.is_quasi_lm:
             input_ids = torch.cat([input_ids, input_ids], dim=1)
             seq_length *= 2
@@ -272,7 +272,6 @@ class AnnelidLMModel(AnnelidPreTrainedModel):
         self.post_init()
         
 
-    # Ignore copy
     def forward(
         self,
         input_ids: torch.LongTensor,

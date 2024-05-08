@@ -20,6 +20,7 @@ class AnnelidPreTrainedModel(PreTrainedModel):
     _supports_cache_class = True
     _supports_sdpa = True
 
+    @torch.no_grad()
     def _init_weights(self, module):
         std = self.config.initializer_range
         if isinstance(module, nn.Linear):

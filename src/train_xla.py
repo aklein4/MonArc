@@ -22,7 +22,7 @@ def _mp_fn(index):
     TOKENIZER_URL = "openai-community/gpt2"
     DATA_NAME = 'fw-4b'
 
-    LR = 1e-3
+    LR = 1e-4
     BS = 1
 
     MODEL_CONFIG = {

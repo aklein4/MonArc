@@ -104,6 +104,7 @@ class AnnelidModel(AnnelidPreTrainedModel):
 
         # get the id tokens
         tokens = self.embed_tokens(input_ids)
+        return tokens
 
         # add segment embeddings
         if self.use_segment_embeds:
@@ -306,13 +307,12 @@ class AnnelidLMModel(AnnelidPreTrainedModel):
         prefix_length: Optional[torch.LongTensor]=None,
     ) -> torch.Tensor:
 
-        # out = self.model(
-        #     input_ids=input_ids,
-        #     batch_size=batch_size,
-        #     seq_length=seq_length,
-        #     prefix_length=prefix_length
-        # )
-        out = torch.zeros(batch_size, seq_length, self.config.hidden_size, device=input_ids.device)
+        out = self.model(
+            input_ids=input_ids,
+            batch_size=batch_size,
+            seq_length=seq_length,
+            prefix_length=prefix_length
+        )
 
         logits = self.lm_head(out)
         logits = F.log_softmax(logits, dim=-1)

@@ -62,4 +62,4 @@ class XLATrainer:
             xm.optimizer_step(optimizer, barrier=True)
             
             tracker.add(self.bs)
-            xm.master_print(f"Rate: {tracker.rate():.3f}")
+            print(f"Rate: {tracker.rate():.3f}")

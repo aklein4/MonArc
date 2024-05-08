@@ -95,7 +95,7 @@ class AnnelidModel(AnnelidPreTrainedModel):
         input_ids: torch.LongTensor,
         prefix_length: Optional[torch.LongTensor]=None
     ):
-        batch_size, seq_length = input_ids.size()
+        seq_length = input_ids.size(1)
 
         # double if this is a quasi LM
         if self.is_quasi_lm:

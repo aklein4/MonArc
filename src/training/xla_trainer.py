@@ -16,15 +16,41 @@ import utils.constants as constants
 
 class XLATrainer(BaseXLATrainer):
 
-    _metrics = ["loss"]
+    _metrics = ["loss", "acc", "pcorr"]
 
 
     def _loss(self, logits, x, tokenizer):
+        x, logits = x[:, 1:], logits[:, :-1]
+
         return F.cross_entropy(
-            logits[:, :-1].contiguous().view(-1, logits.shape[-1]),
-            x[:, 1:].contiguous().view(-1),
+            logits.contiguous().view(-1, logits.shape[-1]),
+            x.contiguous().view(-1),
             ignore_index=tokenizer.pad_token_id
         )
+    
+
+    def _acc(self, logits, x, tokenizer):
+        x, logits = x[:, 1:], logits[:, :-1]
+
+        corr = (
+            logits.argmax(-1) == x and 
+            x != tokenizer.pad_token_id
+        ).float().sum()
+        return corr / (x != tokenizer.pad_token_id).float().sum()
+
+
+    def _pcorr(self, logits, x, tokenizer):
+        x = x[:, 1:].contiguous().view(-1)
+        logits = logits[:, :-1].contiguous().view(-1, logits.shape[-1])
+
+        logp = F.cross_entropy(
+            logits, x
+            reduce='none'
+        )
+        p = torch.exp(-logp)
+
+        p[x == tokenizer.pad_token_id] = 0.0
+        return p / (x != tokenizer.pad_token_id).float().sum()
 
 
     def train(

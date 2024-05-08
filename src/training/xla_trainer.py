@@ -52,13 +52,14 @@ class XLATrainer:
         tracker = xm.RateTracker()
         for x in self.loader:
 
-            with autocast(constants.XLA_DEVICE):
-                logits = self.model(x)
-                loss = self._loss(logits, x)
+            optimizer.zero_grad()
+
+            # with autocast(constants.XLA_DEVICE):
+            logits = self.model(x)
+            loss = self._loss(logits, x)
 
             loss.backward()
             xm.optimizer_step(optimizer)
-            optimizer.zero_grad(True)
-
+            
             tracker.add(self.bs)
-            print("next!")
+            xm.master_print(f"Rate: {tracker.rate():.3f}")

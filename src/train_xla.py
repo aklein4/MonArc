@@ -15,10 +15,11 @@ import utils.constants as constants
 
 
 def _mp_fn(index):
+    torch.set_default_dtype(torch.float32)
+
     constants._init_xla()
 
     TOKENIZER_URL = "openai-community/gpt2"
-
     DATA_NAME = 'fw-4b'
 
     LR = 1e-3
@@ -79,5 +80,6 @@ def _mp_fn(index):
 
 
 if __name__ == '__main__':
-  os.environ["XRT_TPU_CONFIG"]="localservice;0;localhost:51011"
+  os.environ["XRT_TPU_CONFIG"] = "localservice;0;localhost:51011"
+  
   xmp.spawn(_mp_fn)

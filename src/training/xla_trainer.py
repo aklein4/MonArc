@@ -51,6 +51,7 @@ class XLATrainer:
 
         tracker = xm.RateTracker()
         for x in self.loader:
+            x = x.to(constants.XLA_DEVICE)
 
             optimizer.zero_grad()
 

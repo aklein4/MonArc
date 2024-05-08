@@ -27,12 +27,12 @@ def _mp_fn(index):
       optimizer.zero_grad()
 
       x = torch.zeros(1, 2, 3, device=xm.xla_device())
-      print(x.shape)
 
       loss = model(x).mean()
 
       loss.backward()
       xm.optimizer_step(optimizer)
+      print("next")
 
 
 if __name__ == '__main__':

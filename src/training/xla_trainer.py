@@ -44,7 +44,7 @@ class XLATrainer(BaseXLATrainer):
         logits = logits[:, :-1].contiguous().view(-1, logits.shape[-1])
 
         logp = F.cross_entropy(
-            logits, x
+            logits, x,
             reduce='none'
         )
         p = torch.exp(-logp)

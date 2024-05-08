@@ -13,10 +13,13 @@ from annelid.modeling_annelid import AnnelidLMModel
 from training.xla_trainer import XLATrainer
 
 import utils.constants as constants
+from utils.data_utils import DotDict
 from utils.config_utils import load_model_config, load_train_config
 
 
 def _mp_fn(index, args):
+    args = DotDict(args)
+
     torch.set_default_dtype(torch.float32)
     
     print("Loading tokenizer...")
@@ -65,4 +68,4 @@ if __name__ == '__main__':
     args.add_argument("--dataset", type=str, required=True)
     args.parse_args()
 
-    xmp.spawn(_mp_fn, args=(args,))
+    xmp.spawn(_mp_fn, args=(vars(args),))

@@ -2,11 +2,11 @@
 Setup a TPU VM to use the repo.
  - MUST RUN WITH dot (.) command to set the environment variables in the current shell.
 
-Example:
-    . setup.sh <Huggingface token>
-
 Arguments:
     $1: Huggingface token
+
+Example:
+    . setup.sh <Huggingface token>
 '
 
 # upgrade pip to get higher torch_xla version

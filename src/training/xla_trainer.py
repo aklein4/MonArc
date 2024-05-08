@@ -115,18 +115,18 @@ class XLATrainer(BaseXLATrainer):
             # save
             if len(self.log["loss"]) % self.save_interval == 0:
                 self.save()
-            # if len(self.log["loss"]) % self.checkpoint_interval == 0:
-            #     self.save_checkpoint(
-            #         {
-            #             'model': (model, True),
-            #             'tokenizer': (tokenizer, False)
-            #         }
-            #     )
+            if len(self.log["loss"]) % self.checkpoint_interval == 0:
+                self.save_checkpoint(
+                    {
+                        'model': (model, True),
+                        'tokenizer': (tokenizer, False)
+                    }
+                )
         
         self.save()
-        # self.save_checkpoint(
-        #     {
-        #         'model': (model, True),
-        #         'tokenizer': (tokenizer, False)
-        #     }
-        # )
+        self.save_checkpoint(
+            {
+                'model': (model, True),
+                'tokenizer': (tokenizer, False)
+            }
+        )

@@ -1,5 +1,7 @@
 import torch
 
+import torch_xla.core.xla_model as xm
+
 import os
 import yaml
 import numpy as np
@@ -112,18 +114,19 @@ class BaseXLATrainer:
         for name, tup in models.items():
             model, on_device = tup
 
+            path = os.path.join(constants.LOCAL_DATA_PATH, name)
+
             if on_device:
-                model.to("cpu")
-            model.save_pretrained(
-                os.path.join(constants.LOCAL_DATA_PATH, name),
-                push_to_hub=False,
-            )
-            if on_device:
-                model.to(constants.XLA_DEVICE())
+                os.makedirs(path, exist_ok=True)
+                model.config.save_pretrained(path, push_to_hub=False)
+                xm.save(model.state_dict(), os.path.join(path, "state_dict.pt"))
+
+            else:
+                model.save_pretrained(path, push_to_hub=False)
 
             api.upload_folder(
                 repo_id=self.save_repo,
-                folder_path=os.path.join(constants.LOCAL_DATA_PATH, name),
+                folder_path=path,
                 path_in_repo=name,
                 repo_type="model"
             )

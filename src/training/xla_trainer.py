@@ -60,7 +60,6 @@ class XLATrainer:
             loss = logits[:, :, 0].mean() # self._loss(logits, x)
 
             tes = torch.zeros(3, 4, device=constants.XLA_DEVICE)
-            a, b = tes
 
             loss.backward()
             xm.optimizer_step(optimizer)

@@ -26,7 +26,7 @@ def _mp_fn(index):
 
       optimizer.zero_grad()
 
-      print(x.shape)
+      a, b = x.shape
       loss = model(x).mean()
 
       loss.backward()

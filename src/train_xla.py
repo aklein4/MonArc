@@ -21,7 +21,7 @@ def _mp_fn(index):
     DATA_NAME = 'fw-4b'
 
     LR = 1e-4
-    BS = 1
+    BS = 8
 
     MODEL_CONFIG = {
         "model_type": "annelid",

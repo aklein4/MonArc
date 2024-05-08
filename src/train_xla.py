@@ -53,7 +53,7 @@ def _mp_fn(index):
         "segment_size": 32,
         "use_segment_embeds": False,
 
-        "_attn_implementation": "sdpa",
+        "_attn_implementation": "eager",
     }
     
     print("Loading tokenizer...")

@@ -95,7 +95,7 @@ class AnnelidModel(AnnelidPreTrainedModel):
         input_ids: torch.LongTensor,
         prefix_length: Optional[torch.LongTensor]=None
     ):
-        batch_size, seq_length = input_ids.size()
+        # batch_size, seq_length = input_ids.size()
 
         # double if this is a quasi LM
         if self.is_quasi_lm:
@@ -137,7 +137,7 @@ class AnnelidModel(AnnelidPreTrainedModel):
         input_ids: torch.LongTensor,
         prefix_length: Optional[torch.LongTensor]=None
     ):
-        batch_size, seq_length = input_ids.shape
+        # batch_size, seq_length = input_ids.shape
     
         # prefix lm is bidirectional for prompt
         if self.is_prefix_lm:
@@ -202,7 +202,7 @@ class AnnelidModel(AnnelidPreTrainedModel):
         self,
         input_ids: torch.LongTensor
     ):
-        batch_size, seq_length = input_ids.shape
+        # batch_size, seq_length = input_ids.shape
 
         return None
 
@@ -222,7 +222,7 @@ class AnnelidModel(AnnelidPreTrainedModel):
         input_ids: torch.LongTensor,
         prefix_length: Optional[torch.LongTensor]=None
     ) -> torch.Tensor:
-        batch_size, seq_length = input_ids.shape
+        # batch_size, seq_length = input_ids.shape
 
         # error checking
         if not self.is_prefix_lm:

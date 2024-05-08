@@ -35,8 +35,8 @@ class XLATrainer:
 
     def _loss(self, logits, x):
         return F.cross_entropy(
-            logits[:, :-1].reshape(-1, logits.shape[-1]),
-            x[:, 1:].reshape(-1),
+            logits[:, :-1].contiguous().view(-1, logits.shape[-1]),
+            x[:, 1:].contiguous().view(-1),
             ignore_index=self.tokenizer.pad_token_id
         )
 
@@ -62,4 +62,4 @@ class XLATrainer:
             xm.optimizer_step(optimizer)
             
             tracker.add(self.bs)
-            xm.master_print(f"Rate: {tracker.rate()}")
+            print(f"Rate: {tracker.rate()}")

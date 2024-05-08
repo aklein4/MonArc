@@ -51,7 +51,6 @@ class XLATrainer:
 
         tracker = xm.RateTracker()
         for _ in range(100000):
-            x = torch.zeros(self.bs, 1024).long().to(constants.XLA_DEVICE)
 
             optimizer.zero_grad()
 

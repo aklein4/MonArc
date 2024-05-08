@@ -27,6 +27,8 @@ class AnnelidPreTrainedModel(PreTrainedModel):
 
     @torch.no_grad()
     def _init_weights(self, module):
+        """ Care must be taken to initialize out of place for XLA compatibility """
+
         std = self.config.initializer_range
 
         if isinstance(module, nn.Linear):
@@ -35,7 +37,7 @@ class AnnelidPreTrainedModel(PreTrainedModel):
                 og.shape,
                 dtype=og.dtype, device=og.device
             ) * std
-            
+
             if module.bias is not None:
                 module.bias.data = module.bias.data * 0
 

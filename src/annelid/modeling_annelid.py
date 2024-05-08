@@ -24,11 +24,11 @@ class AnnelidPreTrainedModel(PreTrainedModel):
     def _init_weights(self, module):
         std = self.config.initializer_range
         if isinstance(module, nn.Linear):
-            module.weight.normal_(mean=0.0, std=std)
+            module.weight.data = torch.randn_like(module.weight.data) * std
             if module.bias is not None:
-                module.bias.zero_()
+                module.bias.data = torch.zeros_like(module.bias.data)
         elif isinstance(module, nn.Embedding):
-            module.weight.normal_(mean=0.0, std=std)
+            module.weight.data = torch.randn_like(module.weight.data) * std
 
 
 class AnnelidModel(AnnelidPreTrainedModel):

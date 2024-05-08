@@ -302,6 +302,7 @@ class AnnelidLMModel(AnnelidPreTrainedModel):
             seq_length=seq_length,
             prefix_length=prefix_length
         )
+        return out
 
         logits = self.lm_head(out)
         logits = F.log_softmax(logits, dim=-1)

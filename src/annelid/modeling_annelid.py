@@ -93,9 +93,9 @@ class AnnelidModel(AnnelidPreTrainedModel):
     def _get_tokens(
         self,
         input_ids: torch.LongTensor,
-        prefix_length: Optional[torch.LongTensor]=None
+        seq_length: int,
+        prefix_length: Optional[torch.LongTensor]=None,
     ):
-        seq_length = input_ids.size(1)
 
         # double if this is a quasi LM
         if self.is_quasi_lm:
@@ -135,9 +135,10 @@ class AnnelidModel(AnnelidPreTrainedModel):
     def _get_mask(
         self,
         input_ids: torch.LongTensor,
+        batch_size: int,
+        seq_length: int,
         prefix_length: Optional[torch.LongTensor]=None
     ):
-        # batch_size, seq_length = input_ids.shape
     
         # prefix lm is bidirectional for prompt
         if self.is_prefix_lm:
@@ -200,12 +201,10 @@ class AnnelidModel(AnnelidPreTrainedModel):
 
     def get_position_ids(
         self,
-        input_ids: torch.LongTensor
+        input_ids: torch.LongTensor,
+        seq_length: int
     ):
-        # batch_size, seq_length = input_ids.shape
-
-        return None
-
+        
         # standard positions
         pos = torch.arange(seq_length, dtype=input_ids.dtype, device=input_ids.device).unsqueeze(0)
 
@@ -220,9 +219,10 @@ class AnnelidModel(AnnelidPreTrainedModel):
     def forward(
         self,
         input_ids: torch.LongTensor,
+        batch_size: int,
+        seq_length: int,
         prefix_length: Optional[torch.LongTensor]=None
     ) -> torch.Tensor:
-        # batch_size, seq_length = input_ids.shape
 
         # error checking
         if not self.is_prefix_lm:
@@ -233,10 +233,9 @@ class AnnelidModel(AnnelidPreTrainedModel):
             assert tuple(prefix_length.shape) == (batch_size,), "Prefix length must have shape (batch_size,)"
 
         # get inputs
-        hidden_states = self._get_tokens(input_ids, prefix_length)
-        return hidden_states
-        mask = self._get_mask(input_ids, prefix_length)
-        pos = self.get_position_ids(input_ids)
+        hidden_states = self._get_tokens(input_ids, seq_length, prefix_length)
+        mask = self._get_mask(input_ids, batch_size, seq_length, prefix_length)
+        pos = self.get_position_ids(input_ids, seq_length)
 
         for decoder_layer in self.layers:
 

@@ -27,6 +27,7 @@ class AnnelidPreTrainedModel(PreTrainedModel):
 
     @torch.no_grad()
     def _init_weights(self, module):
+        return
         std = self.config.initializer_range
         if isinstance(module, nn.Linear):
             module.weight.data = torch.randn_like(module.weight.data) * std

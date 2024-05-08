@@ -18,6 +18,7 @@ from utils.config_utils import load_model_config, load_train_config
 
 
 def _mp_fn(index, args):
+    print(args)
     args = DotDict().from_dict(args)
 
     torch.set_default_dtype(torch.float32)

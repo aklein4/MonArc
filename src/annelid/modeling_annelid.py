@@ -11,7 +11,7 @@ from annelid.configuration_annelid import AnnelidConfig
 
 
 def _attn_forward(x, *args, **kwargs):
-    return x
+    return (x, )
 StableLmAttention.forward = _attn_forward
 
 

@@ -27,14 +27,24 @@ class AnnelidPreTrainedModel(PreTrainedModel):
 
     @torch.no_grad()
     def _init_weights(self, module):
-        return
         std = self.config.initializer_range
+
         if isinstance(module, nn.Linear):
-            module.weight.data = torch.randn_like(module.weight.data) * std
+            og = module.weight.data
+            module.weight.data = torch.randn(
+                og.shape,
+                dtype=og.dtype, device=og.device
+            ) * std
+            
             if module.bias is not None:
-                module.bias.data = torch.zeros_like(module.bias.data)
+                module.bias.data = module.bias.data * 0
+
         elif isinstance(module, nn.Embedding):
-            module.weight.data = torch.randn_like(module.weight.data) * std
+            og = module.weight.data
+            module.weight.data = torch.randn(
+                og.shape,
+                dtype=og.dtype, device=og.device
+            ) * std
 
 
 class AnnelidModel(AnnelidPreTrainedModel):

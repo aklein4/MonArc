@@ -110,10 +110,10 @@ class AnnelidModel(AnnelidPreTrainedModel):
         prefix_length: Optional[torch.LongTensor]=None,
     ):
 
-        # double if this is a quasi LM
-        if self.is_quasi_lm:
-            input_ids = torch.cat([input_ids, input_ids], dim=1)
-            seq_length *= 2
+        # # double if this is a quasi LM
+        # if self.is_quasi_lm:
+        #     input_ids = torch.cat([input_ids, input_ids], dim=1)
+        #     seq_length *= 2
 
         # get the id tokens
         tokens = self.embed_tokens(input_ids * 0)
@@ -239,12 +239,12 @@ class AnnelidModel(AnnelidPreTrainedModel):
     ) -> torch.Tensor:
 
         # error checking
-        if not self.is_prefix_lm:
-            assert prefix_length is None, "Prefix length only used for prefix LM"
-        else:
-            assert prefix_length is not None, "Prefix length required for prefix LM"
-            assert isinstance(prefix_length, torch.Tensor), "Prefix length must be a tensor"
-            assert tuple(prefix_length.shape) == (batch_size,), "Prefix length must have shape (batch_size,)"
+        # if not self.is_prefix_lm:
+        #     assert prefix_length is None, "Prefix length only used for prefix LM"
+        # else:
+        #     assert prefix_length is not None, "Prefix length required for prefix LM"
+        #     assert isinstance(prefix_length, torch.Tensor), "Prefix length must be a tensor"
+        #     assert tuple(prefix_length.shape) == (batch_size,), "Prefix length must have shape (batch_size,)"
 
         # get inputs
         hidden_states = self._get_tokens(input_ids, seq_length, prefix_length)

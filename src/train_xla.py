@@ -70,7 +70,7 @@ if __name__ == '__main__':
 
     d = {}
     for k, v in vars(args).items():
-        if isinstance(v, str, int, float, bool):
+        if isinstance(v, (str, int, float, bool)):
             d[k] = v
 
     xmp.spawn(_mp_fn, args=(d,))

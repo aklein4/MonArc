@@ -304,11 +304,10 @@ class AnnelidLMModel(AnnelidPreTrainedModel):
         prefix_length: Optional[torch.LongTensor]=None,
     ) -> torch.Tensor:
 
-        # out = self.model(
-        #     input_ids=input_ids,
-        #     prefix_length=prefix_length
-        # )
-        out = torch.zeros(1, 1024, self.lm_head.in_features).to(input_ids.device)
+        out = self.model(
+            input_ids=input_ids,
+            prefix_length=prefix_length
+        )
 
         logits = self.lm_head(out)
         logits = F.log_softmax(logits, dim=-1)

@@ -15,6 +15,8 @@ def _mp_fn(index):
     constants._init_xla()
     
     tokenizer = AutoTokenizer.from_pretrained("openai-community/gpt2")
+    tokenizer.add_special_tokens({"pad_token": "[PAD]"})
+
     loader = get_wds_loader("fw-4b", "train", tokenizer, 1024, True, 1)
 
     model = torch.nn.Embedding(100000, 2).to(xm.xla_device())

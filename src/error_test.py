@@ -41,12 +41,10 @@ def _mp_fn(index):
 
       optimizer.zero_grad()
 
-      print(x.dtype, x.device)
       loss = model(x).mean()
 
       loss.backward()
       xm.optimizer_step(optimizer)
-      print("Next!")
 
 
 if __name__ == '__main__':

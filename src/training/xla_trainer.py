@@ -58,6 +58,7 @@ class XLATrainer:
             logits = self.model(x, self.bs, 1024)
             loss = logits[:, :, 0].mean() # self._loss(logits, x)
 
+            a = torch.zeros(1, 4, 2, device=constants.XLA_DEVICE)
             print(x.shape)
 
             loss.backward()

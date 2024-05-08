@@ -11,6 +11,8 @@ from annelid.configuration_annelid import AnnelidConfig
 
 
 class AnnelidPreTrainedModel(PreTrainedModel):
+
+    # all StableLM/renamed
     config_class = AnnelidConfig
     base_model_prefix = "model"
     supports_gradient_checkpointing = True
@@ -20,6 +22,7 @@ class AnnelidPreTrainedModel(PreTrainedModel):
     _supports_cache_class = True
     _supports_sdpa = True
 
+    # from StableLM
     def _init_weights(self, module):
         std = self.config.initializer_range
         if isinstance(module, nn.Linear):
@@ -33,28 +36,34 @@ class AnnelidPreTrainedModel(PreTrainedModel):
 
 
 class AnnelidModel(AnnelidPreTrainedModel):
-    """
-    Transformer decoder consisting of *config.num_hidden_layers* layers. Each layer is a [`StableLmDecoderLayer`]
-
-    Args:
-        config: AnnelidConfig
-    """
 
     def __init__(self, config: AnnelidConfig):
+        """
+        StableLM-based language model.
+        Supports:
+        - Causal Decoder Model
+        - Prefix Language Model
+        - Quasi-Causal Language Model
+
+        Args:
+            config: AnnelidConfig
+        """
         super().__init__(config)
+
+        # vocab info
         self.padding_idx = config.pad_token_id
         self.vocab_size = config.vocab_size
+
+        # custom config info
+        self.is_prefix_lm = config.is_prefix_lm
+        self.is_quasi_lm = config.is_quasi_lm
+        self.segment_size = config.segment_size
+        self.use_segment_embeds = config.use_segment_embeds
 
         # error checking
         assert not (config.is_prefix_lm and config.is_quasi_lm), "Cannot be both prefix and quasi language model!"
         if config.is_prefix_lm or config.is_quasi_lm:
             assert config._attn_implementation == 'sdpa', "Prefix and quasi language models only support sdpa attention (require custom attention masks)"
-
-        # save custom config info
-        self.is_prefix_lm = config.is_prefix_lm
-        self.is_quasi_lm = config.is_quasi_lm
-        self.segment_size = config.segment_size
-        self.use_segment_embeds = config.use_segment_embeds
 
         # Standard weights
         self.embed_tokens = nn.Embedding(config.vocab_size, config.hidden_size, self.padding_idx)
@@ -85,7 +94,18 @@ class AnnelidModel(AnnelidPreTrainedModel):
         self,
         input_ids: torch.LongTensor,
         prefix_length: Optional[torch.LongTensor]=None,
-    ):
+    ) -> torch.Tensor:
+        """ Get the tokens that serve as transformer inputs.
+         - Convert input_ids
+         - Apply segment/prefix embeddings
+
+        Args:
+            input_ids (torch.LongTensor): Input token ids [bs, seq_length]
+            prefix_length (Optional[torch.LongTensor], optional): Prefix lengths [bs]. Defaults to None.
+
+        Returns:
+            torch.Tensor: inputs to transformer [bs, seq_length, hidden_size]
+        """
         batch_size, seq_length = input_ids.shape
 
         # double if this is a quasi LM
@@ -127,18 +147,29 @@ class AnnelidModel(AnnelidPreTrainedModel):
         self,
         input_ids: torch.LongTensor,
         prefix_length: Optional[torch.LongTensor]=None
-    ):
+    ) -> torch.BoolTensor:
+        """ Get the attention mask for the transformer.
+         - Handles prefix, quasi, and standard LMs
+         - Computations are done on device
+         
+        Args:
+            input_ids (torch.LongTensor): Input token ids [bs, seq_length]
+            prefix_length (Optional[torch.LongTensor], optional): Prefix lengths [bs]. Defaults to None.
+
+        Returns:
+            torch.BoolTensor: sdpa attention mask [bs|1, 1, seq_length, seq_length]
+        """
         batch_size, seq_length = input_ids.shape
     
         # prefix lm is bidirectional for prompt
         if self.is_prefix_lm:
 
             # get standard mask
-            mask = torch.ones(batch_size, seq_length, seq_length, dtype=torch.bool)
+            mask = torch.ones(batch_size, seq_length, seq_length, dtype=torch.bool, device=input_ids.device)
             mask = torch.triu(mask, diagonal=1)
 
             # apply prefix
-            ar = torch.arange(seq_length, dtype=torch.long)
+            ar = torch.arange(seq_length, dtype=torch.long, device=input_ids.device)
             p = torch.maximum(ar[:, None], ar[None, :]).unsqueeze(0)
             mask = torch.where(p < prefix_length[:, None, None], torch.zeros_like(mask), mask)
         
@@ -149,22 +180,22 @@ class AnnelidModel(AnnelidPreTrainedModel):
             n_segments = seq_length // self.segment_size
 
             # self attending segments
-            nw = torch.ones(batch_size, n_segments, n_segments, dtype=torch.bool)
+            nw = torch.ones(1, n_segments, n_segments, dtype=torch.bool, device=input_ids.device)
             nw = torch.triu(nw, diagonal=1)
             nw = torch.repeat_interleave(nw, self.segment_size, dim=1)
             nw = torch.repeat_interleave(nw, self.segment_size, dim=2)
 
             # segments for cross attention
-            sw = torch.ones(batch_size, n_segments, n_segments, dtype=torch.bool)
+            sw = torch.ones(1, n_segments, n_segments, dtype=torch.bool, device=input_ids.device)
             sw = torch.triu(sw, diagonal=0)
             sw = torch.repeat_interleave(sw, self.segment_size, dim=1)
             sw = torch.repeat_interleave(sw, self.segment_size, dim=2)
 
             # empty
-            ne = torch.ones(batch_size, seq_length, seq_length, dtype=torch.bool)
+            ne = torch.ones(1, seq_length, seq_length, dtype=torch.bool, device=input_ids.device)
 
             # auto regressive within segments
-            se = torch.ones(batch_size, seq_length, seq_length, dtype=torch.bool)
+            se = torch.ones(1, seq_length, seq_length, dtype=torch.bool, device=input_ids.device)
             se = torch.triu(se, diagonal=1)
             se = torch.logical_xor(se, ~sw)
 
@@ -181,10 +212,15 @@ class AnnelidModel(AnnelidPreTrainedModel):
         else:
             mask = None
         
+        # final processing
         if mask is not None:
-            mask = ~mask # flip for sdpa attention
-            mask = mask.unsqueeze(1) # head dim
-            mask = mask.to(input_ids.device)
+
+            # sdpa uses True = NOT masked
+            # https://pytorch.org/docs/stable/generated/torch.nn.functional.scaled_dot_product_attention.html
+            mask = ~mask
+
+            # head dim
+            mask = mask.unsqueeze(1)
 
         return mask
 
@@ -192,7 +228,16 @@ class AnnelidModel(AnnelidPreTrainedModel):
     def get_position_ids(
         self,
         input_ids: torch.LongTensor,
-    ):
+    ) -> torch.LongTensor:
+        """ Get the position ids for the transformer.
+         - quasi repeats the sequence
+
+        Args:
+            input_ids (torch.LongTensor): input token ids [bs, seq_length]
+
+        Returns:
+            torch.LongTensor: position ids [1, seq_length]
+        """
         batch_size, seq_length = input_ids.shape
         
         # standard positions
@@ -202,7 +247,6 @@ class AnnelidModel(AnnelidPreTrainedModel):
         if self.is_quasi_lm:
             return torch.cat([pos, pos], dim=1)
 
-        # otherwise return the standard positions
         return pos
 
 
@@ -211,9 +255,21 @@ class AnnelidModel(AnnelidPreTrainedModel):
         input_ids: torch.LongTensor,
         prefix_length: Optional[torch.LongTensor]=None
     ) -> torch.Tensor:
+        """ Forward pass of the LM
+         - handles attention masking internally
+
+        TODO: detect padding in prefix of prefix LM
+
+        Args:
+            input_ids (torch.LongTensor): token input ids [bs, seq_length]
+            prefix_length (Optional[torch.LongTensor], optional): Prefix lengths [bs]. Defaults to None.
+
+        Returns:
+            torch.Tensor: final hidden states [bs, seq_length, hidden_size]
+        """
         batch_size, seq_length = input_ids.shape
 
-        # error checking
+        # prefix error checking
         if not self.is_prefix_lm:
             assert prefix_length is None, "Prefix length only used for prefix LM"
         else:
@@ -226,6 +282,7 @@ class AnnelidModel(AnnelidPreTrainedModel):
         mask = self._get_mask(input_ids, prefix_length)
         pos = self.get_position_ids(input_ids)
 
+        # run transformer
         for decoder_layer in self.layers:
 
             if self.gradient_checkpointing and self.training:
@@ -252,19 +309,27 @@ class AnnelidModel(AnnelidPreTrainedModel):
         if self.is_quasi_lm:
             hidden_states = hidden_states[:, -seq_length:]
 
+        # final processing
         hidden_states = self.norm(hidden_states)
 
         return hidden_states
 
 
-# Copied from transformers.models.persimmon.modeling_persimmon.PersimmonForCausalLM with PERSIMMON->STABLELM,Persimmon->StableLm
 class AnnelidLMModel(AnnelidPreTrainedModel):
-    _tied_weights_keys = ["lm_head.weight"]
+    _tied_weights_keys = ["lm_head.weight"] # needed?
 
-    # Copied from transformers.models.llama.modeling_llama.LlamaForCausalLM.__init__ with LLAMA->STABLELM,Llama->StableLm
-    def __init__(self, config):
+    def __init__(self, config: AnnelidConfig):
+        """ Annelid model with a linear head for language modeling.
+
+        Args:
+            config (AnnelidConfig): Annelid configuration
+        """
         super().__init__(config)
+
+        # transformer
         self.model = AnnelidModel(config)
+
+        # lm modeling
         self.vocab_size = config.vocab_size
         self.lm_head = nn.Linear(config.hidden_size, config.vocab_size, bias=False)
 
@@ -277,12 +342,24 @@ class AnnelidLMModel(AnnelidPreTrainedModel):
         input_ids: torch.LongTensor,
         prefix_length: Optional[torch.LongTensor]=None,
     ) -> torch.Tensor:
+        """ Forward pass of the LM with a linear head.
+         - returns log softmaxed logits
 
+        Args:
+            input_ids (torch.LongTensor): input token ids [bs, seq_length]
+            prefix_length (Optional[torch.LongTensor], optional): Prefix lengths [bs]. Defaults to None.
+
+        Returns:
+            torch.Tensor: log-softmaxed logits [bs, seq_length, vocab_size]
+        """
+
+        # final hidden states
         out = self.model(
             input_ids=input_ids,
             prefix_length=prefix_length
         )
 
+        # vocab logits
         logits = self.lm_head(out)
         logits = F.log_softmax(logits, dim=-1)
 

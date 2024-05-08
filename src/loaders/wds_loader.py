@@ -1,69 +1,157 @@
+from typing import List, Dict
+
 import torch
-import torch.nn as nn
 import torch.nn.functional as F
 
-import torch_xla.core.xla_model as xm
 import torch_xla.distributed.parallel_loader as pl
-
-import datasets
 
 import io
 import numpy as np
+import datasets
 
 import utils.constants as constants
 
 
-class Collator:
-    def __init__(self, tokenizer, max_length):
-        self.tokenizer = tokenizer
-        self.max_length = max_length
+class WDSCollator:
+    def __init__(
+        self,
+        pad_token_id: int,
+        seq_length: int
+    ):
+        """ A collator for WebDataset data.
+         - always returns a tensor of shape (bs, seq_length)
+
+        Args:
+            pad_token_id (int): _description_
+            seq_length (int): _description_
+        """
+        self.pad_token_id = pad_token_id
+        self.seq_length = seq_length
 
     
-    def _load_data(self, data):
+    def _load_data(
+        self,
+        data: bytes
+    ) -> torch.LongTensor:
+        """ Convert the data from a byte stream to a tensor.
+         - see npy_loads() in https://github.com/webdataset/webdataset/blob/main/webdataset/autodecode.py
+
+        Args:
+            data (bytes): bytes representing a saved numpy array
+
+        Returns:
+            torch.LongTensor: the data as a long tensor
+        """
         stream = io.BytesIO(data)
         arr = np.lib.format.read_array(stream)
         return torch.from_numpy(arr.astype(np.int64)).long()
 
 
-    def __call__(self, data):
+    def __call__(
+        self,
+        data: List[Dict[str, bytes]]
+    ) -> torch.LongTensor:
+        """ Collate the data from a list of webddaataset entries
+        into a single input_ids LongTensor of shape (bs, seq_length).
+         - see data_prep.token_wds._extract_data() for entry format
+
+        Args:
+            data (List[Dict[str, bytes]]): list of webdataset entries
+
+        Returns:
+            torch.LongTensor: input_ids long tensor of shape (bs, seq_length)
+        """
+
+        # get list tensors
         input_ids = [x['input_ids.npy'] for x in data]
         input_ids = [self._load_data(x) for x in input_ids]
         
+        # pad into single tensor
         out = torch.nn.utils.rnn.pad_sequence(
             input_ids,
             batch_first=True,
-            padding_value=self.tokenizer.pad_token_id
+            padding_value=self.pad_token_id
         )
 
-        if out.shape[1] < self.max_length:
+        # apply seq_length constraint
+        if out.shape[1] < self.seq_length:
             out = F.pad(
                 out,
-                (0, self.max_length - out.shape[1]),
-                value=self.tokenizer.pad_token_id
+                (0, self.seq_length - out.shape[1]),
+                value=self.pad_token_id
             )
-        elif out.shape[1] > self.max_length:
-            out = out[:, :self.max_length]
+        elif out.shape[1] > self.seq_length:
+            out = out[:, :self.seq_length]
         
         return out
     
 
-def get_data_files(name):
+def _get_data_files(
+    name: str
+) -> Dict[str, str]:
+    """ Get datafile urls for the given dataset name.
+     - see example at https://huggingface.co/docs/hub/en/datasets-webdataset 
+     - see data_prep.token_wds for repo layout
+     
+    Args:
+        name (str): name of the repo to load
+
+    Returns:
+        Dict[str, str]: dict of splits and their urls
+    """
     data_files = {}
     for split in ["train", "val", "test"]:
+
         data_files[split] = f"https://huggingface.co/datasets/{constants.HF_ID}/{name}/resolve/main/{split}/*"
+    
     return data_files
 
 
-def get_wds_loader(name, split, tokenizer, max_length, parallel, bs):
-    dataset = datasets.load_dataset("webdataset", data_files=get_data_files(name), split=split, streaming=True)
-    collator = Collator(tokenizer, max_length)
+def get_wds_loader(
+    name: str,
+    split: str,
+    pad_token_id: int,
+    seq_length: int,
+    bs: int,
+    mini_bs: int,
+):
+    """ Get an xla token dataloader for the given wds dataset split.
+
+    Args:
+        name (str): Name of the repo to load
+        split (str): split in ["train", "val", "test"]
+        pad_token_id (int): pad token for collator
+        max_length (int): fixed sequence length
+        bs (int): batch size
+        mini_bs (int): mini batch size
+
+    Returns:
+        pl.ParallelLoader: xla dataloader
+    """
+
+    # prepare batch sizes
+    total_mini_bs = mini_bs * constants.NUM_XLA_DEVICES()
+    if total_mini_bs % bs != 0:
+        raise ValueError(f"Total mini batch size {total_mini_bs} must be divisible by batch size {bs}")
+    sample_size = bs // total_mini_bs
+
+    # get streaming dataset
+    dataset = datasets.load_dataset(
+        "webdataset",
+        data_files=_get_data_files(name),
+        split=split, streaming=True
+    )
+
+    # wrap in loader with collator
+    collator = WDSCollator(pad_token_id, seq_length)
     loader = torch.utils.data.DataLoader(
         dataset,
-        batch_size=bs,
+        batch_size=sample_size,
         collate_fn=collator,
     )
 
-    wrapper_type = pl.MpDeviceLoader if parallel else pl.ParallelLoader
+    # wrap with xla loader
+    wrapper_type = pl.MpDeviceLoader if constants.NUM_XLA_DEVICES() > 1 else pl.ParallelLoader
     xm_loader = wrapper_type(loader, device=constants.XLA_DEVICE())
 
     return xm_loader

@@ -79,6 +79,8 @@ class AnnelidConfig(PretrainedConfig):
             The id of the `BOS` token in the vocabulary.
         eos_token_id (int, *optional*, defaults to 0):
             The id of the `EOS` token in the vocabulary.
+        pad_token_id (int, *optional*, defaults to None):
+            The id of the `PAD` token in the vocabulary.
         is_prefix_lm (`bool`, *optional*, defaults to `False`):
             Whether the model is used as a prefix language model.
         is_quasi_lm (`bool`, *optional*, defaults to `False`):
@@ -116,6 +118,7 @@ class AnnelidConfig(PretrainedConfig):
         partial_rotary_factor=0.25,
         bos_token_id=0,
         eos_token_id=0,
+        pad_token_id=None,
         is_prefix_lm=False,
         is_quasi_lm=False,
         segment_size=1,
@@ -153,6 +156,7 @@ class AnnelidConfig(PretrainedConfig):
         super().__init__(
             bos_token_id=bos_token_id,
             eos_token_id=eos_token_id,
+            pad_token_id=pad_token_id,
             tie_word_embeddings=tie_word_embeddings,
             **kwargs,
         )

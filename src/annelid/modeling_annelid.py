@@ -103,7 +103,7 @@ class AnnelidModel(AnnelidPreTrainedModel):
             seq_length *= 2
 
         # get the id tokens
-        tokens = self.embed_tokens(torch.zeros_like(input_ids))
+        tokens = self.embed_tokens(input_ids * 0)
         return tokens
 
         # add segment embeddings

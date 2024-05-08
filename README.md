@@ -10,7 +10,7 @@ quasi-causal language models
 
 3. `pip install torch~=2.3.0 torch_xla[tpu]~=2.3.0 -f https://storage.googleapis.com/libtpu-releases/index.html`
 
-4. `export PATH="/home/USER/.local/bin:$PATH"` (make sure to replace USER)
+4. `export PATH="/home/$USER/.local/bin:$PATH"` (make sure to replace USER)
 
 5. `pip install transformers datasets webdataset matplotlib`
 

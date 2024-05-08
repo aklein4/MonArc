@@ -60,7 +60,7 @@ class XLATrainer:
                 loss = logits[:, :, 0].mean() # self._loss(logits, x)
 
             loss.backward()
-            xm.optimizer_step(optimizer)
+            xm.optimizer_step(optimizer, barrier=True)
             
             tracker.add(self.bs)
             print(f"Rate: {tracker.rate():.3f}")

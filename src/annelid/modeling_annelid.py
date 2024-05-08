@@ -28,6 +28,7 @@ class AnnelidPreTrainedModel(PreTrainedModel):
     @torch.no_grad()
     def _init_weights(self, module):
         """ Care must be taken to initialize out of place for XLA compatibility """
+        return
 
         std = self.config.initializer_range
 

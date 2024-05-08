@@ -84,7 +84,7 @@ class XLATrainer(BaseXLATrainer):
 
             # print update
             msg = [f"Step {len(self.log['loss'])}", f"Loss = {log_loss:.4f}", f"{step_tracker.rate():.2f} steps/s", f"{round(3600*token_tracker.rate()):_} tokens/h"]
-            xm.master_print("{: >20} {: >20} {: >20} {: >20}".format(*msg))
+            xm.master_print("{: >15} {: >20} {: >20} {: >25}".format(*msg))
             
             # save
             if len(self.log["loss"]) % self.save_interval == 0:

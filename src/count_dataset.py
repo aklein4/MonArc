@@ -13,7 +13,7 @@ import utils.constants as constants
 NAME = "fw-50b"
 
 
-def load_data(self, data):
+def load_data(data):
     stream = io.BytesIO(data)
     return np.lib.format.read_array(stream)
 

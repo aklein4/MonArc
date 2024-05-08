@@ -67,7 +67,7 @@ if __name__ == '__main__':
     args.add_argument("--model_config", type=str, required=True)
     args.add_argument("--train_config", type=str, required=True)
     args.add_argument("--dataset", type=str, required=True)
-    args.parse_args()
+    args = args.parse_args()
 
     d = {}
     for k, v in vars(args).items():

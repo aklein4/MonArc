@@ -221,7 +221,7 @@ class AnnelidModel(AnnelidPreTrainedModel):
             # eager uses attn bias
             # https://github.com/huggingface/transformers/blob/v4.40.2/src/transformers/models/stablelm/modeling_stablelm.py#L290
             mask = torch.masked_fill(torch.zeros_like(mask).float(), mask, float('-inf'))
-        
+
         elif self._attn_implementation == 'sdpa':
             # sdpa uses True = NOT masked
             # https://pytorch.org/docs/stable/generated/torch.nn.functional.scaled_dot_product_attention.html
@@ -235,6 +235,7 @@ class AnnelidModel(AnnelidPreTrainedModel):
             # head dim
             mask = mask.unsqueeze(1)
 
+        print(mask[0, 0])
         return mask
 
 

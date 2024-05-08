@@ -72,4 +72,4 @@ if __name__ == '__main__':
     for k, v in vars(args).items():
         d[k] = v
 
-    xmp.spawn(_mp_fn, args=(d),)
+    xmp.spawn(_mp_fn, args=(d,))

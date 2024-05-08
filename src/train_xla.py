@@ -61,8 +61,9 @@ def _mp_fn(index):
     tokenizer.add_special_tokens({"pad_token": "[PAD]"})
 
     print("Loading model...")
-    config = AnnelidConfig(**MODEL_CONFIG)
-    model = AnnelidLMModel(config).to(constants.XLA_DEVICE)
+    # config = AnnelidConfig(**MODEL_CONFIG)
+    # model = AnnelidLMModel(config).to(constants.XLA_DEVICE)
+    model = None
 
     print("Loading data...")
     loader = get_wds_loader(DATA_NAME, "train", tokenizer, MODEL_CONFIG["max_position_embeddings"], parallel=True, bs=BS)

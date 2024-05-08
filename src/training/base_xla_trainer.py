@@ -109,11 +109,17 @@ class BaseXLATrainer:
 
         api = hf.HfApi()
 
-        for name, model in models.items():
+        for name, tup in models.items():
+            model, on_device = tup
+
+            if on_device:
+                model.to("cpu")
             model.save_pretrained(
                 os.path.join(constants.LOCAL_DATA_PATH, name),
                 push_to_hub=False,
             )
+            if on_device:
+                model.to(constants.XLA_DEVICE())
 
             api.upload_folder(
                 repo_id=self.save_repo,

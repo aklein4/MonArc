@@ -42,6 +42,13 @@ class XLATrainer(BaseXLATrainer):
         # get optimizer
         optimizer = syncfree.AdamW(model.parameters(), lr=self.lr)
 
+        self.save_checkpoint(
+            {
+                'model': (model, True),
+                'tokenizer': (tokenizer, False)
+            }
+        )
+
         # loop
         tracker = xm.RateTracker()
         for x in loader:
@@ -88,16 +95,17 @@ class XLATrainer(BaseXLATrainer):
             if len(self.log["loss"]) % self.save_interval == 0:
                 self.save()
             if len(self.log["loss"]) % self.checkpoint_interval == 0:
-                model = model.cpu()
                 self.save_checkpoint(
                     {
-                        'model': model,
-                        'tokenizer': tokenizer
+                        'model': (model, True),
+                        'tokenizer': (tokenizer, False)
                     }
                 )
-                model = model.to(constants.XLA_DEVICE())
         
         self.save()
-        model = model.cpu()
-        self.save_checkpoint()
-        model = model.to(constants.XLA_DEVICE())
+        self.save_checkpoint(
+            {
+                'model': (model, True),
+                'tokenizer': (tokenizer, False)
+            }
+        )

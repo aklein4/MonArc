@@ -21,7 +21,7 @@ def _mp_fn(index):
     DATA_NAME = 'fw-4b'
 
     LR = 1e-4
-    BS = 32
+    BS = 16
     ACCUM_STEPS = 512//(8*BS)
 
     MODEL_CONFIG = {

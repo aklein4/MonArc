@@ -29,7 +29,7 @@ def get_data_files(
     name: str
 ) -> Dict[str, str]:
     data_files = {}
-    for split in ["train", "val", "test"]:
+    for split in ["train"]:
 
         data_files[split] = f"https://huggingface.co/datasets/{constants.HF_ID}/{name}/resolve/main/{split}/000000000033.tar.gz"
 

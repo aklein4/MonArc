@@ -47,7 +47,7 @@ def main():
     # wrap in loader with collator
     loader = torch.utils.data.DataLoader(
         dataset,
-        batch_size=1,
+        batch_size=64,
         collate_fn=collate,
     )
 

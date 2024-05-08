@@ -48,7 +48,7 @@ class XLATrainer:
             nn.ReLU(),
             nn.Linear(128, 128),
         ).to(constants.XLA_DEVICE)
-        y = torch.zeros((self.bs, 1024)).to(constants.XLA_DEVICE)
+        y = torch.zeros((self.bs, 1024, 128)).to(constants.XLA_DEVICE)
 
         for p in self.model.parameters():
             p.requires_grad = True

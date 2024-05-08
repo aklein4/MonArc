@@ -3,6 +3,7 @@ import torch_xla.core.xla_model as xm
 import torch_xla.distributed.xla_multiprocessing as xmp
 
 import os
+import argparse
 
 from transformers import AutoTokenizer
 
@@ -12,74 +13,56 @@ from annelid.modeling_annelid import AnnelidLMModel
 from training.xla_trainer import XLATrainer
 
 import utils.constants as constants
+from utils.config_utils import load_model_config, load_train_config
 
 
-def _mp_fn(index):
+def _mp_fn(index, args):
     torch.set_default_dtype(torch.float32)
-
-    TOKENIZER_URL = "openai-community/gpt2"
-    DATA_NAME = 'fw-4b'
-
-    LR = 1e-4
-    BS = 8
-    ACCUM_STEPS = 512//(8*BS)
-
-    MODEL_CONFIG = {
-        "model_type": "annelid",
-        "architectures": [
-            "AnnelidLMModel"
-        ],
-
-        "bos_token_id": 50256,
-        "eos_token_id": 50256,
-        "hidden_act": "silu",
-        "hidden_size": 768,
-        "initializer_range": 0.02,
-        "intermediate_size": 768*3,
-        "max_position_embeddings": 1024,
-        "layer_norm_eps": 1e-05,
-        "num_attention_heads": 12,
-        "num_hidden_layers": 12,
-        "num_key_value_heads": 12,
-        "partial_rotary_factor": 0.25,
-        "rope_theta": 10000,
-        "tie_word_embeddings": False,
-
-        "vocab_size": 50258, # with padding token
-
-        "is_prefix_lm": False,
-        "is_quasi_lm": False,
-        "segment_size": 32,
-        "use_segment_embeds": False,
-
-        "_attn_implementation": "sdpa",
-    }
     
     print("Loading tokenizer...")
-    tokenizer = AutoTokenizer.from_pretrained(TOKENIZER_URL)
+    tokenizer = AutoTokenizer.from_pretrained(constants.GPT2_TOKENIZER)
     tokenizer.add_special_tokens({"pad_token": "[PAD]"})
 
+    print("Loading configs...")
+    model_config = load_model_config(args.model_config, tokenizer)
+    train_config = load_train_config(args.train_config)
+
+    seq_length = model_config["max_position_embeddings"]
+
     print("Loading model...")
-    config = AnnelidConfig(**MODEL_CONFIG)
-    model = AnnelidLMModel(config).to(constants.XLA_DEVICE())
+    annelid_config = AnnelidConfig(**model_config)
+    model = AnnelidLMModel(annelid_config).to(constants.XLA_DEVICE())
 
     print("Loading data...")
-    loader = get_wds_loader(DATA_NAME, "train", tokenizer, MODEL_CONFIG["max_position_embeddings"], parallel=True, bs=BS*ACCUM_STEPS)
+    loader = get_wds_loader(
+        args.dataset,
+        "train",
+        tokenizer.pad_token_id,
+        seq_length,
+        train_config["bs"],
+        train_config["mini_bs"]
+    )
 
     print("Train!")
     trainer = XLATrainer(
+        args.save_name,
+        train_config
+    )
+    trainer.train(
         model,
         tokenizer,
-        loader,
-        lr=LR,
-        bs=BS,
-        accum_steps=ACCUM_STEPS,
-        num_steps=1000
+        loader
     )
-    trainer.train()
 
 
 if __name__ == '__main__':
-  os.environ["XRT_TPU_CONFIG"] = "localservice;0;localhost:51011"
+    os.environ["XRT_TPU_CONFIG"] = "localservice;0;localhost:51011"
   
-  xmp.spawn(_mp_fn)
+    args = argparse.ArgumentParser()
+    args.add_argument("--save_name", type=str, required=True)
+    args.add_argument("--model_config", type=str, required=True)
+    args.add_argument("--train_config", type=str, required=True)
+    args.add_argument("--dataset", type=str, required=True)
+    args.parse_args()
+
+    xmp.spawn(_mp_fn, args=(args,))

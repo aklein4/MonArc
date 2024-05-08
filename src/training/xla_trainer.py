@@ -3,71 +3,95 @@ import torch.nn as nn
 import torch.nn.functional as F
 
 import torch_xla.core.xla_model as xm
-from torch_xla.amp import autocast, syncfree
+from torch_xla.amp import autocast
 
 import numpy as np
 from tqdm.notebook import tqdm
 
-from training.base_trainer import BaseTrainer
+from training.base_xla_trainer import BaseXLATrainer
 
 from utils.data_utils import DotDict
 import utils.constants as constants
 
 
-class XLATrainer:
+class XLATrainer(BaseXLATrainer):
 
-    def __init__(
-        self,
-        model,
-        tokenizer,
-        loader,
-        lr,
-        bs,
-        accum_steps,
-        num_steps
-    ):
-        self.model = model
-        self.tokenizer = tokenizer
-        self.loader = loader
-        self.lr = lr
-        self.bs = bs
-        self.accum_steps = accum_steps
-        self.num_steps = num_steps
+    _metrics = ["loss"]
 
 
-    def _loss(self, logits, x):
+    def _loss(self, logits, x, tokenizer):
         return F.cross_entropy(
             logits[:, :-1].contiguous().view(-1, logits.shape[-1]),
             x[:, 1:].contiguous().view(-1),
-            ignore_index=self.tokenizer.pad_token_id
+            ignore_index=tokenizer.pad_token_id
         )
 
 
-    def train(self):
+    def train(
+        self,
+        model,
+        tokenizer,
+        loader
+    ):
 
-        for p in self.model.parameters():
+        # init model
+        for p in model.parameters():
             p.requires_grad = True
-        self.model.train()
+        model.train()
 
-        optimizer = syncfree.AdamW(self.model.parameters(), lr=self.lr)
+        # get optimizer
+        optimizer = torch.optim.AdamW(model.parameters(), lr=self.lr)
 
+        # loop
         tracker = xm.RateTracker()
-        for x in self.loader:
+        for x in loader:
+
+            # prepare x for accum
             n_x = x.shape[0]
-            x = torch.split(x, n_x//self.accum_steps, dim=0)
+            if n_x % self.mini_bs != 0:
+                print(f"Warning: sample size {n_x} not divisible by mini batch size {self.mini_bs}")
+            x = torch.split(x, self.mini_bs, dim=0)
 
-            optimizer.zero_grad()
-
-            for step in range(self.accum_steps):
+            # accumulate gradients
+            loss_accum = 0.0
+            for mini_x in x:
 
                 with autocast(constants.XLA_DEVICE()):
-                    logits = self.model(x[step])
-                    loss = self._loss(logits, x[step])
+                    logits = model(mini_x)
+                    loss = self._loss(logits, mini_x, tokenizer)
 
+                # scale loss to the sample size
+                loss = loss / len(x)
+                loss = loss / constants.NUM_XLA_DEVICES()
+
+                # mark step to save gradients
                 loss.backward()
                 xm.mark_step()
 
+                # save loss
+                loss_accum += loss.item()
+
+            # perform a single optimizer step
             xm.optimizer_step(optimizer)
+            optimizer.zero_grad()
             
-            tracker.add(n_x)
-            print(f"Rate: {tracker.rate()}")
+            # log
+            log_loss = xm.mesh_reduce("loss_reduce", loss_accum, np.sum)
+            self.log["loss"].append(log_loss)
+            tracker.add(self.bs)
+
+            xm.master_print(f"Step {len(self.log['loss'])}: Loss = {log_loss:.4f} | {tracker.rate():.2f} samples/s")
+                
+            if len(self.log["loss"]) % self.save_interval == 0:
+                self.save()
+            if len(self.log["loss"]) % self.checkpoint_interval == 0:
+                self.save_checkpoint(
+                    {
+                        'model': model,
+                        'tokenizer': tokenizer
+                    }
+                )
+        
+        self.save()
+        self.save_checkpoint()
+        

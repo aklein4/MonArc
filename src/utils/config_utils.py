@@ -21,7 +21,7 @@ def load_model_config(
     """
     
     # get base config
-    path = os.path.join(constants.CONFIG_PATH, f"{name}.yaml")
+    path = os.path.join(constants.MODEL_CONFIG_PATH, f"{name}.yaml")
     with open(path, "r") as f:
         config = yaml.load(f)
 
@@ -32,5 +32,24 @@ def load_model_config(
 
     # get vocab size
     config["vocab_size"] = len(tokenizer)
+
+    return config
+
+
+def load_train_config(
+    name: str,
+) -> Dict[str, Any]:
+    """ Get a training configuration from a file.
+
+    Args:
+        name (str): name of the config to load
+
+    Returns:
+        Dict[str, Any]: dictionary containing the training configuration
+    """
+    path = os.path.join(constants.TRAIN_CONFIG_PATH, f"{name}.yaml")
+    
+    with open(path, "r") as f:
+        config = yaml.load(f)
 
     return config

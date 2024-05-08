@@ -12,7 +12,7 @@ import utils.constants as constants
 from utils.data_utils import DotDict
 
 
-class BaseTrainer:
+class BaseXLATrainer:
 
     _hyper_file = os.path.join(constants.LOCAL_DATA_PATH, "hyperparams.yml")
     _log_file = os.path.join(constants.LOCAL_DATA_PATH, "log.csv")
@@ -27,22 +27,17 @@ class BaseTrainer:
     ):
         self.save_name = save_name
         self.save_repo = f"{constants.HF_ID}/{save_name}"
-        hf.create_repo(
-            save_name, private=True, exist_ok=True
-        )
-        os.makedirs(constants.LOCAL_DATA_PATH, exist_ok=True)
-
-        try:
-            h = self._hyperparams
-        except:
-            raise NotImplementedError("Please define _hyperparams in your trainer!")
-        try:
-                m = self._metrics
-        except:
-            raise NotImplementedError("Please define _metrics in your trainer!")
         
-        for k in h:
-            setattr(self, k, kwargs[k])
+        # TODO: some kind of lock?
+        if constants.XLA_MAIN():
+            hf.create_repo(
+                save_name, private=True, exist_ok=True
+            )
+            os.makedirs(constants.LOCAL_DATA_PATH, exist_ok=True)
+        
+        # apply hyperparams
+        for k in config:
+            setattr(self, k, config[k])
 
         self.log = DotDict()
         for m in self._metrics:
@@ -51,6 +46,8 @@ class BaseTrainer:
 
     @torch.no_grad()
     def save(self):
+        if not constants.XLA_MAIN():
+            return
 
         # save hyperparams as csv
         with open(self._hyper_file, 'w') as outfile:
@@ -83,6 +80,9 @@ class BaseTrainer:
 
     @torch.no_grad()
     def upload(self):
+        if not constants.XLA_MAIN():
+            return
+
         api = hf.HfApi()
 
         for file in [self._hyper_file, self._log_file, self._progress_file]:
@@ -99,6 +99,9 @@ class BaseTrainer:
         self,
         models
     ):
+        if not constants.XLA_MAIN():
+            return
+        
         api = hf.HfApi()
 
         for name, model in models.items():
@@ -108,8 +111,8 @@ class BaseTrainer:
             )
 
             api.upload_folder(
-                    repo_id=self.save_repo,
-                    folder_path=os.path.join(constants.LOCAL_DATA_PATH, name),
-                    path_in_repo=name,
-                    repo_type="model"
+                repo_id=self.save_repo,
+                folder_path=os.path.join(constants.LOCAL_DATA_PATH, name),
+                path_in_repo=name,
+                repo_type="model"
             )

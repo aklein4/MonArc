@@ -78,6 +78,7 @@ def _mp_fn(index):
 
       optimizer.zero_grad()
 
+      print(torch.max(x), torch.min(x))
       loss = model(x).mean()
 
       loss.backward()

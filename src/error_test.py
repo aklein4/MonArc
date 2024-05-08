@@ -78,7 +78,7 @@ def _mp_fn(index):
 
       optimizer.zero_grad()
 
-      loss = model(x, 1, 1024).mean()
+      loss = model(x).mean()
 
       loss.backward()
       xm.optimizer_step(optimizer)

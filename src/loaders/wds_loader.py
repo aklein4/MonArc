@@ -64,6 +64,6 @@ def get_wds_loader(name, split, tokenizer, max_length, parallel, bs):
     )
 
     wrapper_type = pl.MpDeviceLoader if parallel else pl.ParallelLoader
-    xm_loader = wrapper_type(loader, device=xm.xla_device())
+    xm_loader = wrapper_type(loader, device=constants.XLA_DEVICE())
 
     return xm_loader

@@ -4,5 +4,5 @@ lr: 0.0006
 bs: 512
 mini_bs: 8
 
-save_interval: 8
+save_interval: 500
 checkpoint_interval: 8

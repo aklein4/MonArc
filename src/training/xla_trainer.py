@@ -50,7 +50,8 @@ class XLATrainer(BaseXLATrainer):
         )
 
         # loop
-        tracker = xm.RateTracker()
+        token_tracker = xm.RateTracker()
+        step_tracker = xm.RateTracker()
         for x in loader:
 
             # prepare x for accum
@@ -85,27 +86,28 @@ class XLATrainer(BaseXLATrainer):
             # log
             log_loss = xm.mesh_reduce("loss_reduce", loss_accum.item(), np.sum)
             self.log["loss"].append(log_loss)
-            tracker.add(self.bs * x.shape[1])
+            token_tracker.add(self.bs * x.shape[1])
+            step_tracker.add(1)
 
             # print update
-            msg = [f"Step {len(self.log['loss'])}", f"Loss = {log_loss:.4f}", f"{round(3600*tracker.rate()):_} tokens/h"]
-            xm.master_print("{: >20} {: >20} {: >20}".format(*msg))
+            msg = [f"Step {len(self.log['loss'])}", f"Loss = {log_loss:.4f}", f"{step_tracker.rate():.2f} steps/s", f"{round(3600*token_tracker.rate()):_} tokens/h"]
+            xm.master_print("{: >20} {: >20} {: >20} {: >20}".format(*msg))
             
             # save
             if len(self.log["loss"]) % self.save_interval == 0:
                 self.save()
-            if len(self.log["loss"]) % self.checkpoint_interval == 0:
-                self.save_checkpoint(
-                    {
-                        'model': (model, True),
-                        'tokenizer': (tokenizer, False)
-                    }
-                )
+            # if len(self.log["loss"]) % self.checkpoint_interval == 0:
+            #     self.save_checkpoint(
+            #         {
+            #             'model': (model, True),
+            #             'tokenizer': (tokenizer, False)
+            #         }
+            #     )
         
         self.save()
-        self.save_checkpoint(
-            {
-                'model': (model, True),
-                'tokenizer': (tokenizer, False)
-            }
-        )
+        # self.save_checkpoint(
+        #     {
+        #         'model': (model, True),
+        #         'tokenizer': (tokenizer, False)
+        #     }
+        # )

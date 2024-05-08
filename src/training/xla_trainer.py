@@ -58,7 +58,7 @@ class XLATrainer:
             logits = self.model(x, self.bs, 1024)
             loss = logits[:, :, 0].mean() # self._loss(logits, x)
 
-            a, b = x.shape
+            # a, b = x.shape
 
             loss.backward()
             xm.optimizer_step(optimizer)

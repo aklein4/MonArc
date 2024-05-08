@@ -18,7 +18,7 @@ from annelid.configuration_annelid import AnnelidConfig
 class AnnelidPreTrainedModel(PreTrainedModel):
     config_class = AnnelidConfig
     base_model_prefix = "model"
-    supports_gradient_checkpointing = True
+    supports_gradient_checkpointing = False
     _no_split_modules = ["StableLmDecoderLayer"]
     _skip_keys_device_placement = "past_key_values"
     _supports_flash_attn_2 = True
@@ -274,6 +274,7 @@ class AnnelidModel(AnnelidPreTrainedModel):
 
 # Copied from transformers.models.persimmon.modeling_persimmon.PersimmonForCausalLM with PERSIMMON->STABLELM,Persimmon->StableLm
 class AnnelidLMModel(AnnelidPreTrainedModel):
+    _tied_weights_keys = ["lm_head.weight"]
 
     # Copied from transformers.models.llama.modeling_llama.LlamaForCausalLM.__init__ with LLAMA->STABLELM,Llama->StableLm
     def __init__(self, config):
@@ -284,7 +285,7 @@ class AnnelidLMModel(AnnelidPreTrainedModel):
 
         # Initialize weights and apply final processing
         self.post_init()
-
+        
 
     # Ignore copy
     def forward(

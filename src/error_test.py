@@ -23,6 +23,7 @@ class TestModel(nn.Module):
 
 def _mp_fn(index):
     torch.set_default_dtype(torch.float32)
+    constants._init_xla()
 
     tokenizer = AutoTokenizer.from_pretrained("openai-community/gpt2")
     tokenizer.add_special_tokens({"pad_token": "[PAD]"})

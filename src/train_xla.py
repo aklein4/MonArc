@@ -27,6 +27,7 @@ def _mp_fn(index, args):
     dist.init_process_group('xla', init_method='xla://')
 
     print(f"XLA Master: {constants.XLA_MAIN()}, XLA World Size: {constants.NUM_XLA_DEVICES()}, XLA Rank: {xm.get_ordinal()}, Dist Rank: {dist.get_rank()}, Dist world size: {dist.get_world_size()}")
+    exit()
 
     print("Loading tokenizer...")
     tokenizer = AutoTokenizer.from_pretrained(constants.GPT2_TOKENIZER)

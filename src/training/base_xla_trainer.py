@@ -24,7 +24,7 @@ class BaseXLATrainer:
         self.name = name
         self.config = config
 
-        save_name = f"{project}={name}"
+        save_name = f"{project}_{name}"
         self.save_repo = f"{constants.HF_ID}/{save_name}"
 
         if constants.XLA_MAIN():

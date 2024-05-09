@@ -4,10 +4,10 @@ Setup a TPU VM to use the repo.
 
 Arguments:
     $1: Huggingface token
-    $2: Wandb token
+    $2: wandb token
 
 Example:
-    . setup_vm.sh <Huggingface token> <wandb token>
+    . setup_vm.sh <HF_TOKEN> <WANDB_TOKEN>
 '
 
 # upgrade pip to get higher torch_xla version

@@ -85,15 +85,6 @@ class XLATrainer(BaseXLATrainer):
             total_iters=self.warmup_steps
         )
 
-        # test
-        self.save_checkpoint(
-            {
-                'model': (model, True),
-                'optimizer': (optimizer, True),
-                'tokenizer': (tokenizer, False)
-            }
-        )
-
         # loop
         curr_step = 0
         token_tracker = xm.RateTracker()
@@ -109,7 +100,7 @@ class XLATrainer(BaseXLATrainer):
             x_split = torch.split(x, self.mini_bs, dim=0)
 
             # accumulate gradients
-            results_accum = DotDict().from_dict({k: 0.0 for k in self._metrics})
+            results_accum = DotDict()
             for mini_x in x_split:
 
                 with autocast(constants.XLA_DEVICE()):
@@ -117,7 +108,7 @@ class XLATrainer(BaseXLATrainer):
                     results = self.all_results(logits, mini_x, tokenizer)
 
                     # scale for additive reduction
-                    for k in self._metrics:
+                    for k in results.keys():
                         results[k] = results[k] / len(x_split)
                         results[k] = results[k] / constants.NUM_XLA_DEVICES()
 
@@ -126,8 +117,12 @@ class XLATrainer(BaseXLATrainer):
                 xm.mark_step()
 
                 # save results
-                for k in self._metrics:
-                    results_accum[k] = results_accum[k] + results[k].detach()
+                for k, v in results.items():
+                    if k in results_accum:
+                        results_accum[k] = results_accum[k] + v.detach()
+                    else:
+                        results_accum[k] = v.detach()
+                        
 
             # perform a single optimizer step
             xm.optimizer_step(optimizer)

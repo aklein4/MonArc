@@ -8,4 +8,4 @@ quasi-causal language models
 
 2. `git clone https://github.com/aklein4/QLM.git`
 
-3. `cd ~/QLM && . setup_vm.sh <HF_TOKEN>`
+3. `cd ~/QLM && . setup_vm.sh <HF_TOKEN> <WANDB_TOKEN>`

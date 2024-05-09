@@ -26,9 +26,9 @@ def _mp_fn(index, args):
     torch.set_default_dtype(torch.float32)
     dist.init_process_group('xla', init_method='xla://')
 
-    print(f"XLA Master: {constants.XLA_MAIN()}, XLA World Size: {constants.NUM_XLA_DEVICES()}, XLA Rank: {xm.get_ordinal()}, Dist Rank: {dist.get_rank()}, Dist world size: {dist.get_world_size()}")
+    print(f"XLA Ordinal: {xm.get_ordinal()}, XLA Local Ordinal: {xm.get_local_ordinal()}, XLA Master: {xm.is_master_ordinal(local=False)}, XLA Local Master: {xm.is_master_ordinal(local=True)}, XLA World Size: {xm.xrt_world_size()} Dist Rank: {dist.get_rank()}, Dist World Size: {dist.get_world_size()}")
     import time
-    time.sleep(120)
+    time.sleep(60)
     exit()
 
     print("Loading tokenizer...")

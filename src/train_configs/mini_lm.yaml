@@ -1,8 +1,14 @@
 
 lr: 0.0006
-
 bs: 512
 mini_bs: 8
 
+beta1: 0.9
+beta2: 0.95
+eps: 0.00000001
+weight_decay: 0.1
+
+warmup_steps: 500
+
 save_interval: 500
-checkpoint_interval: 500
+checkpoint_interval: 1000

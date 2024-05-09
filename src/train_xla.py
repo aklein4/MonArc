@@ -17,6 +17,7 @@ from training.xla_trainer import XLATrainer
 import utils.constants as constants
 from utils.data_utils import DotDict
 from utils.config_utils import load_model_config, load_train_config
+from utils.logging_utils import log_print
 
 
 def _mp_fn(index, args):
@@ -24,29 +25,28 @@ def _mp_fn(index, args):
 
     # setup
     torch.set_default_dtype(torch.float32)
-    dist.init_process_group('xla', init_method='xla://')
+    dist.init_process_group('xla', init_method='xla://') # needed?
+    print(
+        f"XLA Master: {xm.is_master_ordinal(local=False)}, XLA Ordinal: {xm.get_ordinal()}, XLA Local Master: {xm.is_master_ordinal(local=True)}, XLA Local Ordinal: {xm.get_local_ordinal()}, XLA World Size: {xm.xrt_world_size()}, Dist Rank: {dist.get_rank()}, Dist World Size: {dist.get_world_size()}",
+        flush=True
+    )
 
-    print(f"XLA Ordinal: {xm.get_ordinal()}, XLA Local Ordinal: {xm.get_local_ordinal()}, XLA Master: {xm.is_master_ordinal(local=False)}, XLA Local Master: {xm.is_master_ordinal(local=True)}, XLA World Size: {xm.xrt_world_size()} Dist Rank: {dist.get_rank()}, Dist World Size: {dist.get_world_size()}")
-    import time
-    time.sleep(60)
-    exit()
-
-    print("Loading tokenizer...")
+    log_print("Loading tokenizer...")
     tokenizer = AutoTokenizer.from_pretrained(constants.GPT2_TOKENIZER)
     tokenizer.add_special_tokens({"pad_token": "[PAD]"})
 
-    print("Loading configs...")
+    log_print("Loading configs...")
     model_config = load_model_config(args.model_config, tokenizer)
     train_config = load_train_config(args.train_config)
 
     seq_length = model_config["max_position_embeddings"]
 
-    print("Loading model...")
+    log_print("Loading model...")
     annelid_config = AnnelidConfig(**model_config)
     model = AnnelidLMModel(annelid_config).to(constants.XLA_DEVICE())
     xm.broadcast_master_param(model)
 
-    print("Loading data...")
+    log_print("Loading data...")
     loader = get_wds_loader(
         args.dataset,
         "train",
@@ -56,7 +56,7 @@ def _mp_fn(index, args):
         train_config["mini_bs"]
     )
 
-    print("Train!")
+    log_print("Train!")
     trainer = XLATrainer(
         args.save_name,
         train_config

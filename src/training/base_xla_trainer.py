@@ -12,6 +12,7 @@ import huggingface_hub as hf
 
 import utils.constants as constants
 from utils.data_utils import DotDict
+from utils.logging_utils import LogSection
 
 
 class BaseXLATrainer:
@@ -31,13 +32,12 @@ class BaseXLATrainer:
         self.save_repo = f"{constants.HF_ID}/{save_name}"
         self.config = config
 
-        # TODO: some kind of lock?
         if constants.XLA_MAIN():
-            hf.create_repo(
-                save_name, private=True, exist_ok=True
-            )
-            os.makedirs(constants.LOCAL_DATA_PATH, exist_ok=True)
-            print("Created repo and local data path.")
+            with LogSection("Dir and Repo Creation"):
+                hf.create_repo(
+                    save_name, private=True, exist_ok=True
+                )
+                os.makedirs(constants.LOCAL_DATA_PATH, exist_ok=True)
 
         # apply hyperparams
         for k in config:
@@ -52,36 +52,35 @@ class BaseXLATrainer:
     def save(self):
         if not constants.XLA_MAIN():
             return
-        print("Saving...")
+        with LogSection("Saving"):
 
-        # save hyperparams as csv
-        with open(self._hyper_file, 'w') as outfile:
-            yaml.dump(
-                self.config,
-                outfile,
-                default_flow_style=False
-            )
+            # save hyperparams as csv
+            with open(self._hyper_file, 'w') as outfile:
+                yaml.dump(
+                    self.config,
+                    outfile,
+                    default_flow_style=False
+                )
 
-        df = pd.DataFrame(self.log.to_dict())
-        df.to_csv(self._log_file)
+            df = pd.DataFrame(self.log.to_dict())
+            df.to_csv(self._log_file)
 
-        # plot metrics
-        fig, ax = plt.subplots(1, len(self._metrics), figsize=(5*len(self._metrics), 5))
+            # plot metrics
+            fig, ax = plt.subplots(1, len(self._metrics), figsize=(5*len(self._metrics), 5))
 
-        # plot eval metrics
-        for i, metric in enumerate(self._metrics):
-            out_ax = ax[i] if len(self._metrics) > 1 else ax
-            out_ax.plot(self.log[metric])
-            out_ax.set_title(metric.upper())
+            # plot eval metrics
+            for i, metric in enumerate(self._metrics):
+                out_ax = ax[i] if len(self._metrics) > 1 else ax
+                out_ax.plot(self.log[metric])
+                out_ax.set_title(metric.upper())
 
-        # finish plot
-        plt.suptitle(f"Training Progress ({len(self.log[self._metrics[0]])} steps)")
-        plt.tight_layout()
-        plt.savefig(self._progress_file)
-        plt.close()
+            # finish plot
+            plt.suptitle(f"Training Progress ({len(self.log[self._metrics[0]])} steps)")
+            plt.tight_layout()
+            plt.savefig(self._progress_file)
+            plt.close()
 
-        self.upload()
-        print("Saved.")
+            self.upload()
 
 
     @torch.no_grad()
@@ -107,28 +106,27 @@ class BaseXLATrainer:
     ):
         if not constants.XLA_MAIN():
             return
-        print("Saving checkpoint...")
+        with LogSection("Saving Checkpoint"):
 
-        api = hf.HfApi()
+            api = hf.HfApi()
 
-        for name, tup in models.items():
-            model, on_device = tup
+            for name, tup in models.items():
+                model, on_device = tup
 
-            path = os.path.join(constants.LOCAL_DATA_PATH, name)
+                path = os.path.join(constants.LOCAL_DATA_PATH, name)
 
-            if on_device:
-                os.makedirs(path, exist_ok=True)
-                model.config.save_pretrained(path, push_to_hub=False)
-                xm.save(model.state_dict(), os.path.join(path, "state_dict.pt"))
+                if on_device:
+                    os.makedirs(path, exist_ok=True)
+                    model.config.save_pretrained(path, push_to_hub=False)
+                    xm.save(model.state_dict(), os.path.join(path, "state_dict.pt"))
 
-            else:
-                model.save_pretrained(path, push_to_hub=False)
+                else:
+                    model.save_pretrained(path, push_to_hub=False)
 
-            api.upload_folder(
-                repo_id=self.save_repo,
-                folder_path=path,
-                path_in_repo=name,
-                repo_type="model"
-            )
-        
-        print("Saved checkpoint.")
+                api.upload_folder(
+                    repo_id=self.save_repo,
+                    folder_path=path,
+                    path_in_repo=name,
+                    repo_type="model"
+                )
+            

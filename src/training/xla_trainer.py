@@ -6,11 +6,9 @@ import torch_xla.core.xla_model as xm
 from torch_xla.amp import autocast, syncfree
 
 import numpy as np
-from tqdm.notebook import tqdm
 
 from training.base_xla_trainer import BaseXLATrainer
-
-from utils.data_utils import DotDict
+from utils.logging_utils import log_master_print
 import utils.constants as constants
 
 
@@ -66,7 +64,18 @@ class XLATrainer(BaseXLATrainer):
         model.train()
 
         # get optimizer
-        optimizer = syncfree.AdamW(model.parameters(), lr=self.lr)
+        optimizer = syncfree.AdamW(
+            model.parameters(), lr=self.lr,
+            betas=(self.beta1, self.beta2),
+            eps=self.eps,
+            weight_decay=self.weight_decay
+        )
+        lr_scheduler = torch.optim.lr_scheduler.LinearLR(
+            optimizer,
+            start_factor=1e-10,
+            end_factor=1.0,
+            total_iters=self.warmup_steps
+        )
 
         # loop
         token_tracker = xm.RateTracker()
@@ -77,6 +86,8 @@ class XLATrainer(BaseXLATrainer):
             n_x = x.shape[0]
             if n_x % self.mini_bs != 0:
                 print(f"Warning: sample size {n_x} not divisible by mini batch size {self.mini_bs}")
+            if n_x * constants.NUM_XLA_DEVICES() != self.bs:
+                print(f"Warning: sample size {n_x} with {constants.NUM_XLA_DEVICES()} devices does not match batch size {self.bs}")
             x_split = torch.split(x, self.mini_bs, dim=0)
 
             # accumulate gradients
@@ -101,6 +112,7 @@ class XLATrainer(BaseXLATrainer):
             # perform a single optimizer step
             xm.optimizer_step(optimizer)
             optimizer.zero_grad()
+            lr_scheduler.step()
             
             # log
             log_loss = xm.mesh_reduce("loss_reduce", loss_accum.item(), np.sum)
@@ -110,7 +122,7 @@ class XLATrainer(BaseXLATrainer):
 
             # print update
             msg = [f"Step {len(self.log['loss'])}", f"Loss = {log_loss:.4f}", f"{step_tracker.rate():.2f} steps/s", f"{round(3600*token_tracker.rate()):_} tokens/h"]
-            xm.master_print("{: >15} {: >20} {: >20} {: >25}".format(*msg))
+            log_master_print("{: >15} {: >20} {: >20} {: >25}".format(*msg))
             
             # save
             if len(self.log["loss"]) % self.save_interval == 0:

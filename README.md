@@ -2,7 +2,7 @@
 quasi-causal language models
 
 
-## VM Start Instructions
+## TPU VM Setup Instructions
 
 1. Create VM with version: `tpu-ubuntu2204-base`
 

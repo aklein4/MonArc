@@ -1,4 +1,6 @@
 import torch
+
+from torch_xla import runtime as xr
 import torch_xla.core.xla_model as xm
 import torch_xla.distributed.xla_multiprocessing as xmp
 
@@ -35,6 +37,10 @@ def _mp_fn(index, args):
     print("Loading model...")
     annelid_config = AnnelidConfig(**model_config)
     model = AnnelidLMModel(annelid_config).to(constants.XLA_DEVICE())
+
+    if xr.using_pjrt():
+        print("broaddcasting master param!")
+        xm.broadcast_master_param(model)
 
     print("Loading data...")
     loader = get_wds_loader(

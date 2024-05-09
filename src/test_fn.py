@@ -1,5 +1,5 @@
 from torch_xla import runtime as xr
-import args_parse
+import argparse
 
 SUPPORTED_MODELS = [
     'alexnet', 'densenet121', 'densenet161', 'densenet169', 'densenet201',
@@ -57,7 +57,7 @@ MODEL_OPTS = {
     },
 }
 
-FLAGS = args_parse.parse_common_options(
+FLAGS = argparse.parse_common_options(
     datadir='/tmp/imagenet',
     batch_size=None,
     num_epochs=None,

@@ -22,9 +22,6 @@ export PATH="/home/$USER/.local/bin:$PATH"
 # install extras
 pip install transformers datasets webdataset wandb matplotlib
 
-# set to use TPU
-export PJRT_DEVICE=TPU
-
 # login to huggingface
 huggingface-cli login --token $1 --add-to-git-credential
 

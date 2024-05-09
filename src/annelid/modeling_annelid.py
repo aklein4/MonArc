@@ -89,6 +89,12 @@ class AnnelidModel(AnnelidPreTrainedModel):
         # Initialize weights and apply final processing
         self.post_init()
 
+        # extra embedds init to zero
+        if self.segment_embeds is not None:
+            self.segment_embeds.weight.data.zero_()
+        if self.prefix_embeds is not None:
+            self.prefix_embeds.weight.data.zero_()
+
 
     def _get_tokens(
         self,
@@ -329,7 +335,7 @@ class AnnelidModel(AnnelidPreTrainedModel):
 
 
 class AnnelidLMModel(AnnelidPreTrainedModel):
-    _tied_weights_keys = ["lm_head.weight"] # needed?
+    # _tied_weights_keys = ["lm_head.weight"] # needed?
 
     def __init__(self, config: AnnelidConfig):
         """ Annelid model with a linear head for language modeling.

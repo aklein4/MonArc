@@ -4,9 +4,10 @@ Setup a TPU VM to use the repo.
 
 Arguments:
     $1: Huggingface token
+    $2: Wandb token
 
 Example:
-    . setup_vm.sh <Huggingface token>
+    . setup_vm.sh <Huggingface token> <wandb token>
 '
 
 # upgrade pip to get higher torch_xla version
@@ -19,10 +20,13 @@ pip install torch~=2.3.0 torch_xla[tpu]~=2.3.0 -f https://storage.googleapis.com
 export PATH="/home/$USER/.local/bin:$PATH"
 
 # install extras
-pip install transformers datasets webdataset matplotlib
+pip install transformers datasets webdataset wandb matplotlib
 
 # set to use TPU
 export PJRT_DEVICE=TPU
 
 # login to huggingface
 huggingface-cli login --token $1 --add-to-git-credential
+
+# login to wandb
+python -m wandb login $2

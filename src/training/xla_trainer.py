@@ -15,9 +15,6 @@ from utils.data_utils import DotDict
 
 class XLATrainer(BaseXLATrainer):
 
-    _metrics = ["loss", "acc", "pcorr"]
-
-
     def _loss(self, logits, x, tokenizer):
         x, logits = x[:, 1:], logits[:, :-1]
 
@@ -30,26 +27,28 @@ class XLATrainer(BaseXLATrainer):
 
     def _acc(self, logits, x, tokenizer):
         x, logits = x[:, 1:], logits[:, :-1]
+        mask = x != tokenizer.pad_token_id
 
         corr = torch.logical_and(
             logits.argmax(-1) == x,
-            x != tokenizer.pad_token_id
+            mask
         ).float().sum()
-        return corr / (x != tokenizer.pad_token_id).float().sum()
+        return corr / (mask).float().sum()
 
 
     def _pcorr(self, logits, x, tokenizer):
         x = x[:, 1:].contiguous().view(-1)
         logits = logits[:, :-1].contiguous().view(-1, logits.shape[-1])
+        mask = x != tokenizer.pad_token_id
 
-        logp = F.cross_entropy(
+        logp = -F.cross_entropy(
             logits, x,
-            reduce='none'
+            reduction='none'
         )
-        p = torch.exp(-logp)
+        p = torch.exp(logp)
 
-        p = torch.masked_fill(p, x == tokenizer.pad_token_id, 0.0)
-        return p.sum() / (x != tokenizer.pad_token_id).float().sum()
+        p = torch.masked_fill(p, ~mask, 0.0)
+        return p.sum() / (mask).float().sum()
 
 
     def all_results(self, logits, x, tokenizer):
@@ -86,7 +85,17 @@ class XLATrainer(BaseXLATrainer):
             total_iters=self.warmup_steps
         )
 
+        # test
+        self.save_checkpoint(
+            {
+                'model': (model, True),
+                'optimizer': (optimizer, True),
+                'tokenizer': (tokenizer, False)
+            }
+        )
+
         # loop
+        curr_step = 0
         token_tracker = xm.RateTracker()
         step_tracker = xm.RateTracker()
         for x in loader:
@@ -126,30 +135,31 @@ class XLATrainer(BaseXLATrainer):
             lr_scheduler.step()
             
             # log
-            for k in self._metrics:
-                r = xm.mesh_reduce(f"{k}_reduce", results_accum[k].item(), np.sum)
-                self.log[k].append(r)
+            for k, v in results_accum.items():
+                r = xm.mesh_reduce(f"{k}_reduce", v.item(), np.sum)
+                self.log[k] = r
             token_tracker.add(self.bs * x.shape[1])
             step_tracker.add(1)
+            curr_step += 1
 
             # print update
             msg = [
-                f"Step {len(self.log['loss'])}",
-                f"Loss = {self.log.loss[-1]:.4f}",
-                f"Acc = {self.log.acc[-1]:.3f}",
-                f"PCorr = {self.log.pcorr[-1]:.3f}",
+                f"Step {curr_step}",
+                f"Loss = {self.log.loss:.4f}",
+                f"Acc = {self.log.acc:.3f}",
+                f"PCorr = {self.log.pcorr:.3f}",
                 f"{step_tracker.rate():.2f} steps/s",
                 f"{round(3600*token_tracker.rate()):_} tok/h"
             ]
             log_master_print("{: >15}{: >20}{: >20}{: >20}{: >20}{: >23}".format(*msg))
             
             # save
-            if len(self.log.loss) % self.save_interval == 0:
-                self.save()
-            if len(self.log.loss) % self.checkpoint_interval == 0:
+            self.log_step()
+            if curr_step % self.checkpoint_interval == 0:
                 self.save_checkpoint(
                     {
                         'model': (model, True),
+                        'optimizer': (optimizer, True),
                         'tokenizer': (tokenizer, False)
                     }
                 )
@@ -158,6 +168,7 @@ class XLATrainer(BaseXLATrainer):
         self.save_checkpoint(
             {
                 'model': (model, True),
+                'optimizer': (optimizer, True),
                 'tokenizer': (tokenizer, False)
             }
         )

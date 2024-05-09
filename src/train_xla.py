@@ -58,7 +58,8 @@ def _mp_fn(index, args):
 
     log_print("Train!")
     trainer = XLATrainer(
-        args.save_name,
+        args.project,
+        args.name,
         train_config
     )
     trainer.train(
@@ -75,7 +76,8 @@ if __name__ == '__main__':
 
     # handle arguments
     args = argparse.ArgumentParser()
-    args.add_argument("--save_name", type=str, required=True)
+    args.add_argument("--project", type=str, required=True)
+    args.add_argument("--name", type=str, required=True)
     args.add_argument("--model_config", type=str, required=True)
     args.add_argument("--train_config", type=str, required=True)
     args.add_argument("--dataset", type=str, required=True)

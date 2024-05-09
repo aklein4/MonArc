@@ -27,6 +27,8 @@ def _mp_fn(index, args):
     dist.init_process_group('xla', init_method='xla://')
 
     print(f"XLA Master: {constants.XLA_MAIN()}, XLA World Size: {constants.NUM_XLA_DEVICES()}, XLA Rank: {xm.get_ordinal()}, Dist Rank: {dist.get_rank()}, Dist world size: {dist.get_world_size()}")
+    import time
+    time.sleep(120)
     exit()
 
     print("Loading tokenizer...")

@@ -235,6 +235,7 @@ class AnnelidModel(AnnelidPreTrainedModel):
             # head dim
             mask = mask.unsqueeze(1)
 
+        print(mask)
         return mask
 
 

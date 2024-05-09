@@ -19,10 +19,13 @@ def main():
 
     print("loading model...")
     model_config = load_model_config(MODEL_CONFIG, tokenizer)
+    model_config["segment_size"] = 4
 
     annelid_config = AnnelidConfig(**model_config)
-    model = AnnelidLMModel(annelid_config).to(constants.XLA_DEVICE())
+    model = AnnelidLMModel(annelid_config)
 
+    x = torch.randint(0, 1000, (3, 16)).long()
+    model(x)
 
 
 if __name__ == '__main__':

@@ -8,6 +8,7 @@ from transformers.modeling_utils import PreTrainedModel
 from transformers.models.stablelm.modeling_stablelm import StableLmDecoderLayer
 
 from annelid.configuration_annelid import AnnelidConfig
+from utils.data_utils import DotDict
 
 
 class AnnelidPreTrainedModel(PreTrainedModel):
@@ -149,6 +150,7 @@ class AnnelidModel(AnnelidPreTrainedModel):
         return tokens
     
 
+    @torch.no_grad()
     def _get_mask(
         self,
         input_ids: torch.LongTensor,
@@ -244,6 +246,7 @@ class AnnelidModel(AnnelidPreTrainedModel):
         return mask
 
 
+    @torch.no_grad()
     def _get_position_ids(
         self,
         input_ids: torch.LongTensor,
@@ -324,14 +327,25 @@ class AnnelidModel(AnnelidPreTrainedModel):
                     use_cache=False,
                 )[0]
 
-        # if quasi, remove encoding portion
+        # get decoding states
         if self.is_quasi_lm:
-            hidden_states = hidden_states[:, -seq_length:]
+            dec_states = hidden_states[:, -seq_length:]
+        else:
+            dec_states = hidden_states
+        dec_states = self.norm(dec_states)
 
-        # final processing
-        hidden_states = self.norm(hidden_states)
+        # get encoding states
+        with torch.no_grad():
+            if self.is_quasi_lm:
+                enc_states = hidden_states[:, :seq_length]
+            else:
+                enc_states = hidden_states
+            enc_states = self.norm(enc_states).detach()
 
-        return hidden_states
+        return DotDict(
+            dec_states=dec_states,
+            enc_states=enc_states
+        )
 
 
 class AnnelidLMModel(AnnelidPreTrainedModel):
@@ -379,7 +393,15 @@ class AnnelidLMModel(AnnelidPreTrainedModel):
         )
 
         # vocab logits
-        logits = self.lm_head(out)
+        logits = self.lm_head(out.dec_states)
         logits = F.log_softmax(logits, dim=-1)
 
-        return logits
+        # encoder logits for eval
+        with torch.no_grad():
+            enc_logits = self.lm_head(out.enc_states)
+            enc_logits = F.log_softmax(enc_logits, dim=-1)
+
+        return DotDict(
+            logits=logits,
+            enc_logits=enc_logits
+        )

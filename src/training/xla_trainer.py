@@ -25,6 +25,7 @@ class XLATrainer(BaseXLATrainer):
         )
     
 
+    @torch.no_grad()
     def _acc(self, logits, x, tokenizer):
         x, logits = x[:, 1:], logits[:, :-1]
         mask = x != tokenizer.pad_token_id
@@ -36,6 +37,7 @@ class XLATrainer(BaseXLATrainer):
         return corr / (mask).float().sum()
 
 
+    @torch.no_grad()
     def _pcorr(self, logits, x, tokenizer):
         x = x[:, 1:].contiguous().view(-1)
         logits = logits[:, :-1].contiguous().view(-1, logits.shape[-1])
@@ -113,26 +115,37 @@ class XLATrainer(BaseXLATrainer):
             for mini_x in x_split:
 
                 with autocast(constants.XLA_DEVICE()):
-                    logits = model(mini_x)
-                    results = self.all_results(logits, mini_x, tokenizer)
+                    out = model(mini_x)
 
-                    # scale for additive reduction
-                    for k in results.keys():
+                    results = self.all_results(out.logits, mini_x, tokenizer)
+                    for k in results.keys(): # scale for additive reduction
                         results[k] = results[k] / len(x_split)
                         results[k] = results[k] / constants.NUM_XLA_DEVICES()
+                    
+                    with torch.no_grad():
+                        enc_results = self.all_results(out.enc_logits, mini_x, tokenizer)
+                        for k in enc_results.keys(): # scale for additive reduction
+                            enc_results[k] = enc_results[k] / len(x_split)
+                            enc_results[k] = enc_results[k] / constants.NUM_XLA_DEVICES()
 
                 # mark step to save gradients
                 results.loss.backward()
                 xm.mark_step()
 
                 # save results
-                for k, v in results.items():
-                    if k in results_accum:
-                        results_accum[k] = results_accum[k] + v.detach()
-                    else:
-                        results_accum[k] = v.detach()
-                        
-
+                with torch.no_grad():
+                    for k, v in results.items():
+                        if k in results_accum:
+                            results_accum[k] = results_accum[k] + v.detach()
+                        else:
+                            results_accum[k] = v.detach()
+                    for k, v in enc_results.items():
+                        enck = f"enc_{k}"
+                        if enck in results_accum:
+                            results_accum[enck] = results_accum[enck] + v.detach()
+                        else:
+                            results_accum[enck] = v.detach()
+                
             # perform a single optimizer step
             xm.optimizer_step(optimizer)
             optimizer.zero_grad()

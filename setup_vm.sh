@@ -1,3 +1,5 @@
+#!/bin/bash
+
 : '
 Setup a TPU VM to use the repo.
  - MUST RUN WITH dot (.) command to set the environment variables in the current shell.

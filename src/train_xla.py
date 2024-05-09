@@ -79,6 +79,7 @@ if __name__ == '__main__':
     args.add_argument("--model_config", type=str, required=True)
     args.add_argument("--train_config", type=str, required=True)
     args.add_argument("--dataset", type=str, required=True)
+    args.add_argument("--num_cores", type=int, required=True)
     args = args.parse_args()
 
     # arguments must be picklable
@@ -87,4 +88,4 @@ if __name__ == '__main__':
         if isinstance(v, (str, int, float, bool)):
             d[k] = v
 
-    xmp.spawn(_mp_fn, args=(d,))
+    xmp.spawn(_mp_fn, args=(d,), nprocs=args.num_cores)

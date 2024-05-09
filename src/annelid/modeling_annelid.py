@@ -235,11 +235,10 @@ class AnnelidModel(AnnelidPreTrainedModel):
             # head dim
             mask = mask.unsqueeze(1)
 
-        print(mask)
         return mask
 
 
-    def get_position_ids(
+    def _get_position_ids(
         self,
         input_ids: torch.LongTensor,
     ) -> torch.LongTensor:
@@ -259,7 +258,7 @@ class AnnelidModel(AnnelidPreTrainedModel):
 
         # quasi lm repeats the sequence
         if self.is_quasi_lm:
-            return torch.cat([pos, pos], dim=1)
+            pos = torch.cat([pos, pos], dim=1)
 
         return pos
 
@@ -294,7 +293,7 @@ class AnnelidModel(AnnelidPreTrainedModel):
         # get inputs
         hidden_states = self._get_tokens(input_ids, prefix_length)
         mask = self._get_mask(input_ids, prefix_length)
-        pos = self.get_position_ids(input_ids)
+        pos = self._get_position_ids(input_ids)
 
         # run transformer
         for decoder_layer in self.layers:

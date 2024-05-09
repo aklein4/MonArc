@@ -48,7 +48,7 @@ class XLATrainer(BaseXLATrainer):
         )
         p = torch.exp(-logp)
 
-        p[x == tokenizer.pad_token_id] = 0.0
+        p = torch.masked_fill(p, x == tokenizer.pad_token_id, 0.0)
         return p.sum() / (x != tokenizer.pad_token_id).float().sum()
 
 

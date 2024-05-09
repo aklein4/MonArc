@@ -19,15 +19,19 @@ def main():
 
     print("loading model...")
     model_config = load_model_config(MODEL_CONFIG, tokenizer)
-    model_config["segment_size"] = 4
+    model_config["segment_size"] = 5
 
     annelid_config = AnnelidConfig(**model_config)
     model = AnnelidLMModel(annelid_config)
 
-    x = torch.randint(0, 1000, (3, 16)).long()
+    x = torch.randint(0, 1000, (3, 20)).long()
     model(x)
 
 
 if __name__ == '__main__':
     torch.set_printoptions(threshold=10_000)
+
+    import os
+    os.environ["KMP_DUPLICATE_LIB_OK"]="TRUE"
+
     main()

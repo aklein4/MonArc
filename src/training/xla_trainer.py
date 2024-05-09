@@ -161,7 +161,7 @@ class XLATrainer(BaseXLATrainer):
                 f"{step_tracker.rate():.2f} steps/s",
                 f"{round(3600*token_tracker.rate()):_} tok/h"
             ]
-            log_master_print("{: >15}{: >20}{: >20}{: >23}".format(*msg))
+            log_master_print("{: >15}{: >20}{: >20}{: >20}{: >23}".format(*msg))
             
             # save
             self.log_step()

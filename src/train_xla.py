@@ -59,7 +59,7 @@ def _mp_fn(index, args):
 
 
 if __name__ == '__main__':
-    # os.environ["XRT_TPU_CONFIG"] = "localservice;0;localhost:51011"
+    os.environ["XRT_TPU_CONFIG"] = "localservice;0;localhost:51011"
   
     args = argparse.ArgumentParser()
     args.add_argument("--save_name", type=str, required=True)

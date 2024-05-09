@@ -9,7 +9,7 @@ except ImportError:
 
 # get the base path, first parent is utils next is src
 from pathlib import Path
-BASE_PATH = Path(__file__).absolute().parent().parent()
+BASE_PATH = "."
 
 # best device
 DEVICE = "cpu" # torch.device("cuda" if torch.cuda.is_available() else "cpu")

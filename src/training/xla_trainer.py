@@ -73,7 +73,7 @@ class XLATrainer(BaseXLATrainer):
 
         # get optimizer
         optimizer = syncfree.AdamW(
-            model.parameters(), lr=self.lr_start,
+            model.parameters(), lr=self.start_lr,
             betas=(self.beta1, self.beta2),
             eps=self.eps,
             weight_decay=self.weight_decay
@@ -87,7 +87,7 @@ class XLATrainer(BaseXLATrainer):
         cosine_scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(
             optimizer,
             self.lr_steps - self.warmup_steps,
-            self.lr_end,
+            self.end_lr,
         )
         lr_scheduler = torch.optim.lr_scheduler.SequentialLR(
             optimizer, [warmup_scheduler, cosine_scheduler],

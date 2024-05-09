@@ -32,7 +32,7 @@ def _mp_fn(index, args):
     )
 
     log_print("Loading tokenizer...")
-    tokenizer = AutoTokenizer.from_pretrained(constants.GPT2_TOKENIZER)
+    tokenizer = AutoTokenizer.from_pretrained(constants.GPT2_TOKENIZER, resume_download=None)
     tokenizer.add_special_tokens({"pad_token": "[PAD]"})
 
     log_print("Loading configs...")

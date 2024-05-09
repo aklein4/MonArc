@@ -29,4 +29,5 @@ def main():
 
 
 if __name__ == '__main__':
+    torch.set_printoptions(threshold=10_000)
     main()

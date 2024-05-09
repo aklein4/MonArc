@@ -25,4 +25,4 @@ is_quasi_lm: True
 segment_size: 32
 use_segment_embeds: True
 
-_attn_implementation: sdpa
+_attn_implementation: eager

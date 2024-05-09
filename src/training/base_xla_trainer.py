@@ -80,23 +80,24 @@ class BaseXLATrainer:
             plt.savefig(self._progress_file)
             plt.close()
 
-            self.upload()
+        self.upload()
 
 
     @torch.no_grad()
     def upload(self):
         if not constants.XLA_MAIN():
             return
+        with LogSection("Uploading"):
 
-        api = hf.HfApi()
+            api = hf.HfApi()
 
-        for file in [self._hyper_file, self._log_file, self._progress_file]:
-            api.upload_file(
-                path_or_fileobj=file,
-                path_in_repo=str(file).split("/")[-1],
-                repo_id=self.save_repo,
-                repo_type="model"
-            )
+            for file in [self._hyper_file, self._log_file, self._progress_file]:
+                api.upload_file(
+                    path_or_fileobj=file,
+                    path_in_repo=str(file).split("/")[-1],
+                    repo_id=self.save_repo,
+                    repo_type="model"
+                )
 
 
     @torch.no_grad()

@@ -10,6 +10,7 @@ import numpy as np
 from training.base_xla_trainer import BaseXLATrainer
 from utils.logging_utils import log_master_print
 import utils.constants as constants
+from utils.data_utils import DotDict
 
 
 class XLATrainer(BaseXLATrainer):
@@ -49,6 +50,14 @@ class XLATrainer(BaseXLATrainer):
 
         p[x == tokenizer.pad_token_id] = 0.0
         return p / (x != tokenizer.pad_token_id).float().sum()
+
+
+    def all_results(self, logits, x, tokenizer):
+        return DotDict(
+            loss=self._loss(logits, x, tokenizer),
+            acc=self._acc(logits, x, tokenizer),
+            pcorr=self._pcorr(logits, x, tokenizer)
+        )
 
 
     def train(
@@ -91,23 +100,25 @@ class XLATrainer(BaseXLATrainer):
             x_split = torch.split(x, self.mini_bs, dim=0)
 
             # accumulate gradients
-            loss_accum = 0.0
+            results_accum = DotDict().from_dict({k: 0.0 for k in self._metrics})
             for mini_x in x_split:
 
                 with autocast(constants.XLA_DEVICE()):
                     logits = model(mini_x)
-                    loss = self._loss(logits, mini_x, tokenizer)
+                    results = self.all_results(logits, mini_x, tokenizer)
 
-                # scale loss to the sample size
-                loss = loss / len(x_split)
-                loss = loss / constants.NUM_XLA_DEVICES()
+                    # scale for additive reduction
+                    for k in self._metrics:
+                        results[k] = results[k] / len(x_split)
+                        results[k] = results[k] / constants.NUM_XLA_DEVICES()
 
                 # mark step to save gradients
-                loss.backward()
+                results.loss.backward()
                 xm.mark_step()
 
-                # save loss
-                loss_accum = loss_accum + loss.detach()
+                # save results
+                for k in self._metrics:
+                    results_accum[k] = results_accum[k] + results[k].detach()
 
             # perform a single optimizer step
             xm.optimizer_step(optimizer)
@@ -115,19 +126,27 @@ class XLATrainer(BaseXLATrainer):
             lr_scheduler.step()
             
             # log
-            log_loss = xm.mesh_reduce("loss_reduce", loss_accum.item(), np.sum)
-            self.log["loss"].append(log_loss)
+            for k in self._metrics:
+                r = xm.mesh_reduce(f"{k}_reduce", results_accum[k].item(), np.sum)
+                self.log[k].append(r)
             token_tracker.add(self.bs * x.shape[1])
             step_tracker.add(1)
 
             # print update
-            msg = [f"Step {len(self.log['loss'])}", f"Loss = {log_loss:.4f}", f"{step_tracker.rate():.2f} steps/s", f"{round(3600*token_tracker.rate()):_} tokens/h"]
-            log_master_print("{: >15} {: >20} {: >20} {: >25}".format(*msg))
+            msg = [
+                f"Step {len(self.log['loss'])}",
+                f"Loss = {self.log.loss[-1]:.4f}",
+                f"Acc = {self.log.acc[-1]:.3f}",
+                f"PCorr = {self.log.pcorr[-1]:.3f}",
+                f"{step_tracker.rate():.2f} steps/s",
+                f"{round(3600*token_tracker.rate()):_} tok/h"
+            ]
+            log_master_print("{: >15}{: >20}{: >20}{: >20}{: >20}{: >23}".format(*msg))
             
             # save
-            if len(self.log["loss"]) % self.save_interval == 0:
+            if len(self.log.loss) % self.save_interval == 0:
                 self.save()
-            if len(self.log["loss"]) % self.checkpoint_interval == 0:
+            if len(self.log.loss) % self.checkpoint_interval == 0:
                 self.save_checkpoint(
                     {
                         'model': (model, True),

@@ -31,8 +31,8 @@ class XLATrainer(BaseXLATrainer):
     def _acc(self, logits, x, tokenizer):
         x, logits = x[:, 1:], logits[:, :-1]
 
-        corr = (
-            logits.argmax(-1) == x and 
+        corr = torch.logical_and(
+            logits.argmax(-1) == x,
             x != tokenizer.pad_token_id
         ).float().sum()
         return corr / (x != tokenizer.pad_token_id).float().sum()
@@ -49,7 +49,7 @@ class XLATrainer(BaseXLATrainer):
         p = torch.exp(-logp)
 
         p[x == tokenizer.pad_token_id] = 0.0
-        return p / (x != tokenizer.pad_token_id).float().sum()
+        return p.sum() / (x != tokenizer.pad_token_id).float().sum()
 
 
     def all_results(self, logits, x, tokenizer):

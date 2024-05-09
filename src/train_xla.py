@@ -1,6 +1,6 @@
 import torch
+import torch.distributed as dist
 
-from torch_xla import runtime as xr
 import torch_xla.core.xla_model as xm
 import torch_xla.distributed.xla_multiprocessing as xmp
 
@@ -22,8 +22,10 @@ from utils.config_utils import load_model_config, load_train_config
 def _mp_fn(index, args):
     args = DotDict().from_dict(args)
 
+    # setup
     torch.set_default_dtype(torch.float32)
-    
+    dist.init_process_group('xla', init_method='xla://')
+
     print("Loading tokenizer...")
     tokenizer = AutoTokenizer.from_pretrained(constants.GPT2_TOKENIZER)
     tokenizer.add_special_tokens({"pad_token": "[PAD]"})
@@ -37,10 +39,7 @@ def _mp_fn(index, args):
     print("Loading model...")
     annelid_config = AnnelidConfig(**model_config)
     model = AnnelidLMModel(annelid_config).to(constants.XLA_DEVICE())
-
-    if xr.using_pjrt():
-        print("broaddcasting master param!")
-        xm.broadcast_master_param(model)
+    xm.broadcast_master_param(model)
 
     print("Loading data...")
     loader = get_wds_loader(
@@ -65,8 +64,11 @@ def _mp_fn(index, args):
 
 
 if __name__ == '__main__':
-    os.environ["XRT_TPU_CONFIG"] = "localservice;0;localhost:51011"
   
+    # setup PJRT runtime
+    os.environ['PJRT_DEVICE'] = 'TPU'
+
+    # handle arguments
     args = argparse.ArgumentParser()
     args.add_argument("--save_name", type=str, required=True)
     args.add_argument("--model_config", type=str, required=True)
@@ -74,6 +76,7 @@ if __name__ == '__main__':
     args.add_argument("--dataset", type=str, required=True)
     args = args.parse_args()
 
+    # arguments must be picklable
     d = {}
     for k, v in vars(args).items():
         if isinstance(v, (str, int, float, bool)):

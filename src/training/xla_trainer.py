@@ -143,7 +143,9 @@ class XLATrainer(BaseXLATrainer):
                 self.log[k] = r
 
             # update lr
-            self.log.lr = lr_scheduler.get_lr()
+            self.log.lr = lr_scheduler.get_last_lr()[0]
+            if not isinstance(self.log.lr, float):
+                self.log.lr = 0.0
             lr_scheduler.step()
 
             # tracking

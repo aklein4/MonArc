@@ -73,16 +73,25 @@ class XLATrainer(BaseXLATrainer):
 
         # get optimizer
         optimizer = syncfree.AdamW(
-            model.parameters(), lr=self.lr,
+            model.parameters(), lr=self.lr_start,
             betas=(self.beta1, self.beta2),
             eps=self.eps,
             weight_decay=self.weight_decay
         )
-        lr_scheduler = torch.optim.lr_scheduler.LinearLR(
+        warmup_scheduler = torch.optim.lr_scheduler.LinearLR(
             optimizer,
             start_factor=1e-10,
             end_factor=1.0,
             total_iters=self.warmup_steps
+        )
+        cosine_scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(
+            optimizer,
+            self.lr_steps - self.warmup_steps,
+            self.lr_end,
+        )
+        lr_scheduler = torch.optim.lr_scheduler.SequentialLR(
+            optimizer, [warmup_scheduler, cosine_scheduler],
+            milestones=[self.warmup_steps]
         )
 
         # loop
@@ -127,12 +136,17 @@ class XLATrainer(BaseXLATrainer):
             # perform a single optimizer step
             xm.optimizer_step(optimizer)
             optimizer.zero_grad()
-            lr_scheduler.step()
             
             # log
             for k, v in results_accum.items():
                 r = xm.mesh_reduce(f"{k}_reduce", v.item(), np.sum)
                 self.log[k] = r
+
+            # update lr
+            self.log.lr = lr_scheduler.get_lr()
+            lr_scheduler.step()
+
+            # tracking
             token_tracker.add(self.bs * x.shape[1])
             step_tracker.add(1)
             curr_step += 1
@@ -140,13 +154,12 @@ class XLATrainer(BaseXLATrainer):
             # print update
             msg = [
                 f"Step {curr_step}",
+                f"LR = {self.log.lr:.2e}",
                 f"Loss = {self.log.loss:.4f}",
-                f"Acc = {self.log.acc:.3f}",
-                f"PCorr = {self.log.pcorr:.3f}",
                 f"{step_tracker.rate():.2f} steps/s",
                 f"{round(3600*token_tracker.rate()):_} tok/h"
             ]
-            log_master_print("{: >15}{: >20}{: >20}{: >20}{: >20}{: >23}".format(*msg))
+            log_master_print("{: >15}{: >20}{: >20}{: >23}".format(*msg))
             
             # save
             self.log_step()
@@ -159,7 +172,6 @@ class XLATrainer(BaseXLATrainer):
                     }
                 )
         
-        self.save()
         self.save_checkpoint(
             {
                 'model': (model, True),

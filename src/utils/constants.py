@@ -7,9 +7,12 @@ try:
 except ImportError:
     print("Warning: torch_xla not found")
 
-# get the base path, first parent is utils next is src
-from pathlib import Path
-BASE_PATH = "."
+# get the base path of src
+BASE_PATH = os.path.dirname( # src
+    os.path.dirname( # utils
+        __file__ # utils.constants
+    )
+)
 
 # best device
 DEVICE = "cpu" # torch.device("cuda" if torch.cuda.is_available() else "cpu")

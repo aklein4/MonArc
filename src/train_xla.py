@@ -40,18 +40,14 @@ def _mp_fn(index, args):
 
     log_print("Loading model...")
     annelid_config = AnnelidConfig(**model_config)
-    model = AnnelidLMModel(annelid_config)
+    model = AnnelidLMModel(annelid_config).to(xm.xla_device())
     
-    # broadcast with float16 for speed
+    # broadcast with bfloat16 for speed
     if not args.debug:
         log_print("Syncing model...")
-        model = model.to(torch.float16)
+        model = model.to(torch.bfloat16)
         xm.broadcast_master_param(model)
         model = model.to(torch.float32)
-
-    # move model to device after sync
-    log_print("Moving model to device...")
-    model = model.to(xm.xla_device())
 
     log_print("Loading data...")
     loader = get_wds_loader(

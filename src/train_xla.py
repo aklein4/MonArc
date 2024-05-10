@@ -43,10 +43,10 @@ def _mp_fn(index, args):
     model = AnnelidLMModel(annelid_config).to(constants.XLA_DEVICE())
     
     # broadcast with float16 for speed
-    # log_print("Syncing model...")
-    # model = model.to(torch.float16)
-    # xm.broadcast_master_param(model)
-    # model = model.to(torch.float32)
+    log_print("Syncing model...")
+    model = model.to(torch.float16)
+    xm.broadcast_master_param(model)
+    model = model.to(torch.float32)
 
     log_print("Loading data...")
     loader = get_wds_loader(

@@ -203,7 +203,8 @@ class XLATrainer(BaseXLATrainer):
                         'model': (model, True),
                         'optimizer': (optimizer, True),
                         'tokenizer': (tokenizer, False)
-                    }
+                    },
+                    curr_step
                 )
         
         self.save_checkpoint(
@@ -211,5 +212,6 @@ class XLATrainer(BaseXLATrainer):
                 'model': (model, True),
                 'optimizer': (optimizer, True),
                 'tokenizer': (tokenizer, False)
-            }
+            },
+            curr_step
         )

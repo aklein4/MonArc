@@ -58,18 +58,20 @@ class BaseXLATrainer:
     @torch.no_grad()
     def save_checkpoint(
         self,
-        models
+        models,
+        step
     ):
         if not constants.XLA_MAIN():
             return
         with LogSection("Saving Checkpoint"):
 
             api = hf.HfApi()
+            base_path = os.path.join(constants.LOCAL_DATA_PATH, f"{step:012d}")
 
             for name, tup in models.items():
                 model, on_device = tup
 
-                path = os.path.join(constants.LOCAL_DATA_PATH, name)
+                path = os.path.join(base_path, name)
 
                 if on_device:
                     os.makedirs(path, exist_ok=True)

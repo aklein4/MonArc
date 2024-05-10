@@ -15,13 +15,11 @@ from annelid.modeling_annelid import AnnelidLMModel
 from training.xla_trainer import XLATrainer
 
 import utils.constants as constants
-from utils.data_utils import DotDict
 from utils.config_utils import load_model_config, load_train_config
 from utils.logging_utils import log_print
 
 
 def _mp_fn(index, args):
-    args = DotDict().from_dict(args)
 
     # setup
     torch.set_default_dtype(torch.float32)

@@ -4,6 +4,9 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
+import functools
+from torch_xla.utils.checkpoint import checkpoint as xla_checkpoint_fn
+
 from transformers.modeling_utils import PreTrainedModel
 from transformers.models.stablelm.modeling_stablelm import StableLmDecoderLayer
 
@@ -34,6 +37,39 @@ class AnnelidPreTrainedModel(PreTrainedModel):
             module.weight.data.normal_(mean=0.0, std=std)
             if module.padding_idx is not None:
                 module.weight.data[module.padding_idx].zero_()
+
+    # converted from torch to torch xla
+    def xla_gradient_checkpointing_enable(self, gradient_checkpointing_kwargs=None):
+        if not self.supports_gradient_checkpointing:
+            raise ValueError(f"{self.__class__.__name__} does not support gradient checkpointing.")
+
+        gradient_checkpointing_func = functools.partial(xla_checkpoint_fn, **gradient_checkpointing_kwargs)
+        
+        self._set_gradient_checkpointing(enable=True, gradient_checkpointing_func=gradient_checkpointing_func)
+
+    def _xla_set_gradient_checkpointing(self, enable: bool = True, gradient_checkpointing_func=xla_checkpoint_fn):
+        """ Set gradient checkpointing for base model and submodules. """
+        
+        is_gradient_checkpointing_set = False
+
+        # Apply it on the top-level module in case the top-level modules supports it
+        # for example, LongT5Stack inherits from `PreTrainedModel`.
+        if hasattr(self, "gradient_checkpointing"):
+            self._gradient_checkpointing_func = gradient_checkpointing_func
+            self.gradient_checkpointing = enable
+            is_gradient_checkpointing_set = True
+
+        for module in self.modules():
+            if hasattr(module, "gradient_checkpointing"):
+                module._gradient_checkpointing_func = gradient_checkpointing_func
+                module.gradient_checkpointing = enable
+                is_gradient_checkpointing_set = True
+
+        if not is_gradient_checkpointing_set:
+            raise ValueError(
+                f"{self.__class__.__name__} is not compatible with gradient checkpointing. Make sure all the architecture support it by setting a boolean attribute"
+                " `gradient_checkpointing` to modules of the model that uses checkpointing."
+            )
 
 
 class AnnelidModel(AnnelidPreTrainedModel):
@@ -85,9 +121,9 @@ class AnnelidModel(AnnelidPreTrainedModel):
 
         # Compute configuration
         self._attn_implementation = config._attn_implementation
-        self.gradient_checkpointing = False
+        self.gradient_checkpointing = False # found by _xla_set_gradient_checkpointing
         if config._gradient_checkpointing:
-            self.gradient_checkpointing_enable()
+            self.xla_gradient_checkpointing_enable()
 
         # Initialize weights and apply final processing
         self.post_init()

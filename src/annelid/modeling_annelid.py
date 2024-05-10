@@ -39,7 +39,7 @@ class AnnelidPreTrainedModel(PreTrainedModel):
                 module.weight.data[module.padding_idx].zero_()
 
     # converted from torch to torch xla
-    def xla_gradient_checkpointing_enable(self, gradient_checkpointing_kwargs=None):
+    def xla_gradient_checkpointing_enable(self, gradient_checkpointing_kwargs={}):
         if not self.supports_gradient_checkpointing:
             raise ValueError(f"{self.__class__.__name__} does not support gradient checkpointing.")
 

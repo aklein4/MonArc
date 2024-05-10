@@ -85,7 +85,9 @@ class AnnelidModel(AnnelidPreTrainedModel):
 
         # Compute configuration
         self._attn_implementation = config._attn_implementation
-        self.gradient_checkpointing = config._gradient_checkpointing
+        self.gradient_checkpointing = False
+        if config._gradient_checkpointing:
+            self.gradient_checkpointing_enable()
 
         # Initialize weights and apply final processing
         self.post_init()

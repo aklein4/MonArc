@@ -26,6 +26,24 @@ class XLATrainer(BaseXLATrainer):
     
 
     @torch.no_grad()
+    def _ppl(self, logits, x, tokenizer):
+        x = x[:, 1:]
+        logits = logits[:, :-1]
+        mask = x != tokenizer.pad_token_id
+
+        logp = -F.cross_entropy(
+            logits.contiguous().view(-1, logits.shape[-1]),
+            x.contiguous().view(-1)
+            reduction='none'
+        ).reshape(x.shape)
+
+        logp = torch.masked_fill(logp, ~mask, 0.0)
+        logp_seq = logp.sum(-1) / (mask).float().sum(-1)
+
+        return torch.exp(-logp_seq).mean()
+
+
+    @torch.no_grad()
     def _acc(self, logits, x, tokenizer):
         x, logits = x[:, 1:], logits[:, :-1]
         mask = x != tokenizer.pad_token_id
@@ -56,6 +74,7 @@ class XLATrainer(BaseXLATrainer):
     def all_results(self, logits, x, tokenizer):
         return DotDict(
             loss=self._loss(logits, x, tokenizer),
+            ppl=self._ppl(logits, x, tokenizer),
             acc=self._acc(logits, x, tokenizer),
             pcorr=self._pcorr(logits, x, tokenizer)
         )

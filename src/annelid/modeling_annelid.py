@@ -85,12 +85,12 @@ class AnnelidModel(AnnelidPreTrainedModel):
 
         # Compute configuration
         self._attn_implementation = config._attn_implementation
-        self.gradient_checkpointing = False
+        self.gradient_checkpointing = config._gradient_checkpointing
 
         # Initialize weights and apply final processing
         self.post_init()
 
-        # extra embedds init to zero
+        # extra embeds init to zero
         if self.segment_embeds is not None:
             self.segment_embeds.weight.data.zero_()
         if self.prefix_embeds is not None:
@@ -315,6 +315,7 @@ class AnnelidModel(AnnelidPreTrainedModel):
                     position_ids=pos,
                     past_key_values=None,
                     output_attentions=False,
+                    use_cache=False,
                 )[0]
 
             else:
@@ -349,7 +350,6 @@ class AnnelidModel(AnnelidPreTrainedModel):
 
 
 class AnnelidLMModel(AnnelidPreTrainedModel):
-    # _tied_weights_keys = ["lm_head.weight"] # needed?
 
     def __init__(self, config: AnnelidConfig):
         """ Annelid model with a linear head for language modeling.

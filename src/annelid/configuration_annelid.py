@@ -89,6 +89,8 @@ class AnnelidConfig(PretrainedConfig):
             Size of segments to be used for quasi language model.
         use_segment_embeds (`bool`, *optional*, defaults to `False`):
             Whether to use segment position embeddings.
+        _gradient_checkpointing (`bool`, *optional*, defaults to `False`):
+            Whether to use gradient checkpointing to save memory at the expense of slower backward pass.
     """
 
     model_type = "annelid"
@@ -123,6 +125,7 @@ class AnnelidConfig(PretrainedConfig):
         is_quasi_lm=False,
         segment_size=1,
         use_segment_embeds=False,
+        _gradient_checkpointing=False,
         **kwargs,
     ):
         self.vocab_size = vocab_size
@@ -152,6 +155,8 @@ class AnnelidConfig(PretrainedConfig):
         self.is_quasi_lm = is_quasi_lm
         self.segment_size = segment_size
         self.use_segment_embeds = use_segment_embeds
+
+        self._gradient_checkpointing = _gradient_checkpointing
 
         super().__init__(
             bos_token_id=bos_token_id,

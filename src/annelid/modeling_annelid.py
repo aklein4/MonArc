@@ -253,31 +253,32 @@ class AnnelidModel(AnnelidPreTrainedModel):
                 ],
                 dim=1
             )
-
-            # cannot broadcast to batch size
-            mask = mask.expand(batch_size, -1, -1)
         
         # use standard mask for standard LM
         else:
-            mask = torch.ones(batch_size, seq_length, seq_length, dtype=torch.bool, device=input_ids.device)
+            mask = torch.ones(1, seq_length, seq_length, dtype=torch.bool, device=input_ids.device)
             mask = torch.triu(mask, diagonal=1)
         
-        # final processing
+        # process for attn version
         if self._attn_implementation == 'eager':
             # eager uses attn bias
             # https://github.com/huggingface/transformers/blob/v4.40.2/src/transformers/models/stablelm/modeling_stablelm.py#L290
             mask = torch.masked_fill(torch.zeros_like(mask).float(), mask, float('-inf'))
-
         elif self._attn_implementation == 'sdpa':
             # sdpa uses True = NOT masked
             # https://pytorch.org/docs/stable/generated/torch.nn.functional.scaled_dot_product_attention.html
             mask = ~mask
-        
         else:
             # no mask for flash attention
             mask = None
 
+        # final processing
         if mask is not None:
+
+            # cannot broadcast to batch size
+            if mask.shape[0] == 1:
+                mask = mask.expand(batch_size, -1, -1)
+
             # head dim
             mask = mask.unsqueeze(1)
 

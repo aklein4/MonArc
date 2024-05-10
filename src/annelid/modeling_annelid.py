@@ -313,11 +313,10 @@ class AnnelidModel(AnnelidPreTrainedModel):
                 hidden_states = self._gradient_checkpointing_func(
                     decoder_layer.__call__,
                     hidden_states,
-                    attention_mask=mask,
-                    position_ids=pos,
-                    past_key_values=None,
-                    output_attentions=False,
-                    use_cache=False,
+                    mask,
+                    pos,
+                    None,
+                    False,
                 )[0]
 
             else:

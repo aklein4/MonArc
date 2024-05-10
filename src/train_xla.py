@@ -43,10 +43,11 @@ def _mp_fn(index, args):
     model = AnnelidLMModel(annelid_config)
     
     # broadcast with float16 for speed
-    log_print("Syncing model...")
-    model = model.to(torch.float16)
-    xm.broadcast_master_param(model)
-    model = model.to(torch.float32)
+    if not args.debug:
+        log_print("Syncing model...")
+        model = model.to(torch.float16)
+        xm.broadcast_master_param(model)
+        model = model.to(torch.float32)
 
     # move model to device after sync
     log_print("Moving model to device...")
@@ -66,7 +67,8 @@ def _mp_fn(index, args):
     trainer = XLATrainer(
         args.project,
         args.name,
-        train_config
+        train_config,
+        debug=args.debug
     )
     trainer.train(
         model,
@@ -87,6 +89,7 @@ if __name__ == '__main__':
     args.add_argument("--model_config", type=str, required=True)
     args.add_argument("--train_config", type=str, required=True)
     args.add_argument("--dataset", type=str, required=True)
+    args.add_argument("--debug", action="store_true")
     args = args.parse_args()
 
     xmp.spawn(_mp_fn, args=(args,))

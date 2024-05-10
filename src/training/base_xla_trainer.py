@@ -18,16 +18,18 @@ class BaseXLATrainer:
         self,
         project,
         name,
-        config
+        config,
+        debug=False
     ):
         self.project = project
         self.name = name
         self.config = config
+        self.debug = debug
 
         save_name = f"{project}_{name}"
         self.save_repo = f"{constants.HF_ID}/{save_name}"
 
-        if constants.XLA_MAIN():
+        if constants.XLA_MAIN() and not self.debug:
             with LogSection("Save Locations Creation"):
                 hf.create_repo(
                     save_name, private=True, exist_ok=True
@@ -47,7 +49,7 @@ class BaseXLATrainer:
 
 
     def log_step(self):
-        if not constants.XLA_MAIN():
+        if not constants.XLA_MAIN() or self.debug:
             return
         
         # save and clear log
@@ -61,7 +63,7 @@ class BaseXLATrainer:
         models,
         step
     ):
-        if not constants.XLA_MAIN():
+        if not constants.XLA_MAIN() or self.debug:
             return
         with LogSection("Saving Checkpoint"):
 

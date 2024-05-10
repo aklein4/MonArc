@@ -33,7 +33,7 @@ class XLATrainer(BaseXLATrainer):
 
         logp = -F.cross_entropy(
             logits.contiguous().view(-1, logits.shape[-1]),
-            x.contiguous().view(-1)
+            x.contiguous().view(-1),
             reduction='none'
         ).reshape(x.shape)
 

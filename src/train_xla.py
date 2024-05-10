@@ -88,4 +88,4 @@ if __name__ == '__main__':
     args.add_argument("--dataset", type=str, required=True)
     args = args.parse_args()
 
-    xmp.spawn(_mp_fn, args=(d,))
+    xmp.spawn(_mp_fn, args=(args,))

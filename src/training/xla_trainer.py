@@ -147,10 +147,6 @@ class XLATrainer(BaseXLATrainer):
                             enc_results[k] = enc_results[k] / len(x_split)
                             enc_results[k] = enc_results[k] / constants.NUM_XLA_DEVICES()
 
-                # mark step to save gradients
-                results.loss.backward()
-                xm.mark_step()
-
                 # save results
                 with torch.no_grad():
                     for k, v in results.items():
@@ -165,15 +161,14 @@ class XLATrainer(BaseXLATrainer):
                         else:
                             results_accum[enck] = v.detach()
                 
+                # mark step to save gradients
+                results.loss.backward()
+                xm.mark_step()
+
             # perform a single optimizer step
             xm.optimizer_step(optimizer)
-            optimizer.zero_grad()
+            optimizer.zero_grad(set_to_none=True)
             
-            # log
-            for k, v in results_accum.items():
-                r = xm.mesh_reduce(f"{k}_reduce", v.item(), np.sum)
-                self.log[k] = r
-
             # update lr
             self.log.lr = lr_scheduler.get_last_lr()[0]
             if not isinstance(self.log.lr, float):
@@ -185,16 +180,23 @@ class XLATrainer(BaseXLATrainer):
             step_tracker.add(1)
             curr_step += 1
 
-            # print update
-            msg = [
-                f"Step {curr_step}",
-                f"LR = {self.log.lr:.2e}",
-                f"Loss = {self.log.loss:.4f}",
-                f"{step_tracker.rate():.2f} steps/s",
-                f"{round(3600*token_tracker.rate()):_} tok/h"
-            ]
-            log_master_print("{: >15}{: >20}{: >20}{: >20}{: >23}".format(*msg))
-            
+            def _post_step():
+                # log
+                for k, v in results_accum.items():
+                    r = xm.mesh_reduce(f"{k}_reduce", v.item(), np.sum)
+                    self.log[k] = r
+
+                # print update
+                msg = [
+                    f"Step {curr_step}",
+                    f"LR = {self.log.lr:.2e}",
+                    f"Loss = {self.log.loss:.4f}",
+                    f"{step_tracker.rate():.2f} steps/s",
+                    f"{round(3600*token_tracker.rate()):_} tok/h"
+                ]
+                log_master_print("{: >15}{: >20}{: >20}{: >20}{: >23}".format(*msg))
+            xm.add_step_closure(_post_step)
+
             # save
             self.log_step()
             if curr_step % self.checkpoint_interval == 0:

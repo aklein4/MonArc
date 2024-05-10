@@ -25,10 +25,10 @@ def _mp_fn(index, args):
 
     # setup
     torch.set_default_dtype(torch.float32)
-    dist.init_process_group('xla', init_method='xla://') # needed?
-    print(
-        f"XLA Master: {xm.is_master_ordinal(local=False)}, XLA Ordinal: {xm.get_ordinal()}, XLA Local Master: {xm.is_master_ordinal(local=True)}, XLA Local Ordinal: {xm.get_local_ordinal()}, XLA World Size: {xm.xrt_world_size()}, Dist Rank: {dist.get_rank()}, Dist World Size: {dist.get_world_size()}",
-        flush=True
+
+    # debug infp
+    log_print(
+        f"Local Ordinal: {xm.get_local_ordinal()}, Local Master: {xm.is_master_ordinal(local=True)}, Master: {xm.is_master_ordinal(local=False)}, World Size: {xm.xrt_world_size()}"
     )
 
     log_print("Loading tokenizer...")
@@ -87,11 +87,5 @@ if __name__ == '__main__':
     args.add_argument("--train_config", type=str, required=True)
     args.add_argument("--dataset", type=str, required=True)
     args = args.parse_args()
-
-    # arguments must be picklable
-    d = {}
-    for k, v in vars(args).items():
-        if isinstance(v, (str, int, float, bool)):
-            d[k] = v
 
     xmp.spawn(_mp_fn, args=(d,))

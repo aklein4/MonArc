@@ -195,19 +195,20 @@ class XLATrainer(BaseXLATrainer):
                     f"{round(3600*token_tracker.rate()):_} tok/h"
                 ]
                 log_master_print("{: >15}{: >20}{: >20}{: >20}{: >23}".format(*msg))
+            
+                # save
+                self.log_step()
+                if curr_step % self.checkpoint_interval == 0:
+                    self.save_checkpoint(
+                        {
+                            'model': (model, True),
+                            'optimizer': (optimizer, True),
+                            'tokenizer': (tokenizer, False)
+                        },
+                        curr_step
+                    )
+            
             xm.add_step_closure(_post_step)
-
-            # save
-            self.log_step()
-            if curr_step % self.checkpoint_interval == 0:
-                self.save_checkpoint(
-                    {
-                        'model': (model, True),
-                        'optimizer': (optimizer, True),
-                        'tokenizer': (tokenizer, False)
-                    },
-                    curr_step
-                )
         
         self.save_checkpoint(
             {

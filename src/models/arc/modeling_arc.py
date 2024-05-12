@@ -361,7 +361,7 @@ class ArcLMModel(ArcPreTrainedModel):
     ):
         og_state = self.model.training
         self.model.eval()
-        out = self.model(input_ids).detach()
+        out = self.model(input_ids)
         self.model.train(og_state)
 
         lm_logits = self.lm_head(out.hidden_states).detach()

@@ -12,20 +12,20 @@ rope_theta: 10000
 tie_word_embeddings: False
 use_qkv_bias: True
 
-hidden_size: 2048
-intermediate_size: 5632
+hidden_size: 1024
+intermediate_size: 3072
 
-num_attention_heads: 32
-num_hidden_layers: 24
-num_key_value_heads: 32
+num_attention_heads: 12
+num_hidden_layers: 12
+num_key_value_heads: 12
 
 max_position_embeddings: 1024
 
 is_prefix_lm: False
 is_quasi_lm: False
-segment_size: 32
+segment_size: 16
 use_segment_embeds: False
 
 _attn_implementation: eager
-_gradient_checkpointing: True
+_gradient_checkpointing: False
 use_cache: False

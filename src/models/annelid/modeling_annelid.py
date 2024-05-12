@@ -447,6 +447,6 @@ class AnnelidLMModel(AnnelidPreTrainedModel):
             enc_logits = F.log_softmax(enc_logits, dim=-1)
 
         return DotDict(
-            logits=logits,
+            lm_logits=logits,
             enc_logits=enc_logits
         )

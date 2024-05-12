@@ -25,6 +25,6 @@ class XLAArcTrainer(BaseXLATrainer):
             arc_acc=acc(out.arc_preds, out.arc_targets, -1),
             arc_pcorr=pcorr(out.arc_preds, out.arc_targets, -1)
         )
-        results.loss = results.lm_loss + results.arc_loss
+        results.loss = results.lm_loss + self.w_arc * results.arc_loss
 
         return results

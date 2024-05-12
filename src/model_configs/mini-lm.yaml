@@ -27,5 +27,5 @@ segment_size: 16
 use_segment_embeds: False
 
 _attn_implementation: eager
-_gradient_checkpointing: True
+_gradient_checkpointing: False
 use_cache: False

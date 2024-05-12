@@ -346,7 +346,18 @@ class ArcLMModel(ArcPreTrainedModel):
 
 
     def forward(self, input_ids):
-        return self.train_forward(input_ids, self.model.padding_idx)
+        out = self.model(
+            input_ids,
+        )
+
+        # get lm predictions
+        lm_logits = self.lm_head(out)
+        lm_logits = F.log_softmax(lm_logits, dim=-1)
+
+        return DotDict(
+            lm_logits=lm_logits
+        )
+
 
     def train_forward(
         self,

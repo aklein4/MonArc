@@ -39,7 +39,7 @@ def main():
     x = tokenizer("Hello, my dog is cute", return_tensors="pt", padding="max_length", max_length=16).input_ids
     
     annelid_out = annelid_model(x)
-    arc_out = arc_model(x, tokenizer.pad_token_id, debug=False)
+    arc_out = arc_model(x)
 
     diff = torch.abs(annelid_out.lm_logits - arc_out.lm_logits).max()
     print(diff.item())

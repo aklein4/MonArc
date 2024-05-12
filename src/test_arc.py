@@ -36,6 +36,9 @@ def main():
     print("copying weights...")
     arc_model.load_state_dict(annelid_model.state_dict(), strict=False)
 
+    arc_model.train()
+    annelid_model.train()
+
     x = tokenizer(["Hello, my dog is cute", "His dog is cute too", "All dogs are cute"], return_tensors="pt", padding="max_length", max_length=16).input_ids
     
     annelid_out = annelid_model(x)

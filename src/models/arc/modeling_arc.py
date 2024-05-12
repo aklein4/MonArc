@@ -383,30 +383,30 @@ class ArcLMModel(ArcPreTrainedModel):
         batch_size, seq_length = input_ids.shape
 
         # sample negative examples
-        with torch.no_grad():
+        # with torch.no_grad():
 
-            # og_state = self.model.training
-            # self.model.eval()
-            out_sample = self.model(input_ids)
-            # self.model.train(og_state)
+        #     # og_state = self.model.training
+        #     # self.model.eval()
+        #     out_sample = self.model(input_ids)
+        #     # self.model.train(og_state)
 
-            logits_sample = self.lm_head(out_sample)
-            logits_sample = F.log_softmax(logits_sample, dim=-1)
-            dist = torch.distributions.Categorical(logits=logits_sample)
+        #     logits_sample = self.lm_head(out_sample)
+        #     logits_sample = F.log_softmax(logits_sample, dim=-1)
+        #     dist = torch.distributions.Categorical(logits=logits_sample)
             
-            neg_ids = dist.sample()
-            if debug:
-                neg_ids = input_ids.clone()
-                neg_ids[:, :-1] = input_ids[:, 1:]
+        #     neg_ids = dist.sample()
+            # if debug:
+        neg_ids = input_ids.clone()
+        neg_ids[:, :-1] = input_ids[:, 1:]
 
-            arc_ids = torch.cat(
-                [
-                    input_ids,
-                    input_ids[:, :1],
-                    neg_ids[:, :-1]
-                ],
-                dim=1
-            )
+        arc_ids = torch.cat(
+            [
+                input_ids,
+                input_ids[:, :1],
+                neg_ids[:, :-1]
+            ],
+            dim=1
+        )
 
         # get arc inputs
         arc_mask = self._get_arc_mask(input_ids)

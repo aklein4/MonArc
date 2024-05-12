@@ -10,7 +10,7 @@ from torch_xla.utils.checkpoint import checkpoint as xla_checkpoint_fn
 from transformers.modeling_utils import PreTrainedModel
 from transformers.models.stablelm.modeling_stablelm import StableLmDecoderLayer
 
-from annelid.configuration_annelid import AnnelidConfig
+from models.annelid.configuration_annelid import AnnelidConfig
 from utils.data_utils import DotDict
 
 

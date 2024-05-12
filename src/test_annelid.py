@@ -2,13 +2,13 @@ import torch
 
 from transformers import AutoTokenizer
 
-from annelid.configuration_annelid import AnnelidConfig
-from annelid.modeling_annelid import AnnelidLMModel
+from models.annelid.configuration_annelid import AnnelidConfig
+from models.annelid.modeling_annelid import AnnelidLMModel
 from utils.config_utils import load_model_config, load_train_config
 import utils.constants as constants
 
 
-MODEL_CONFIG = "mini_quasi"
+MODEL_CONFIG = "test-lm"
 
 
 def main():

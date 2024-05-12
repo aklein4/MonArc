@@ -9,9 +9,8 @@ import argparse
 from transformers import AutoTokenizer
 
 from loaders.wds_loader import get_wds_loader
-from annelid.configuration_annelid import AnnelidConfig 
-from annelid.modeling_annelid import AnnelidLMModel
-from training.xla_trainer import XLATrainer
+from models import CONFIG_DICT, MODEL_DICT
+from trainers import TRAINER_DICT
 
 import utils.constants as constants
 from utils.config_utils import load_model_config, load_train_config
@@ -39,8 +38,9 @@ def _mp_fn(index, args):
     seq_length = model_config["max_position_embeddings"]
 
     log_print("Loading model...")
-    annelid_config = AnnelidConfig(**model_config)
-    model = AnnelidLMModel(annelid_config).to(xm.xla_device())
+    model_type = model_config.pop("model_type")
+    model_type_config = CONFIG_DICT[model_type](**model_config)
+    model = MODEL_DICT[model_type](model_type_config).to(xm.xla_device())
     
     # broadcast with bfloat16 for speed
     if not args.debug:
@@ -60,7 +60,8 @@ def _mp_fn(index, args):
     )
 
     log_print("Train!")
-    trainer = XLATrainer(
+    trainer_type = train_config.pop("trainer_type")
+    trainer = TRAINER_DICT[trainer_type](
         args.project,
         args.name,
         train_config,

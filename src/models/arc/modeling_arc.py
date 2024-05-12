@@ -385,14 +385,14 @@ class ArcLMModel(ArcPreTrainedModel):
         # sample negative examples
         with torch.no_grad():
 
-            og_state = self.model.training
-            self.model.eval()
-            out = self.model(input_ids)
-            self.model.train(og_state)
+            # og_state = self.model.training
+            # self.model.eval()
+            out_sample = self.model(input_ids)
+            # self.model.train(og_state)
 
-            logits = self.lm_head(out)
-            logits = F.log_softmax(logits, dim=-1)
-            dist = torch.distributions.Categorical(logits=logits)
+            logits_sample = self.lm_head(out_sample)
+            logits_sample = F.log_softmax(logits_sample, dim=-1)
+            dist = torch.distributions.Categorical(logits=logits_sample)
             
             neg_ids = dist.sample()
             if debug:

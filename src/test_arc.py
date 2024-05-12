@@ -36,10 +36,10 @@ def main():
     print("copying weights...")
     arc_model.load_state_dict(annelid_model.state_dict(), strict=False)
 
-    x = tokenizer("Hello, my dog is cute", return_tensors="pt", padding="max_length", max_length=16).input_ids
+    x = tokenizer(["Hello, my dog is cute", "His dog is cute too", "All dogs are cute"], return_tensors="pt", padding="max_length", max_length=16).input_ids
     
     annelid_out = annelid_model(x)
-    arc_out = arc_model(x)
+    arc_out = arc_model.train_forward(x, tokenizer.pad_token_id)
 
     diff = torch.abs(annelid_out.lm_logits - arc_out.lm_logits).max()
     print(diff.item())

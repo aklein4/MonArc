@@ -15,6 +15,7 @@ from transformers.models.stablelm.modeling_stablelm import StableLmDecoderLayer
 
 from models.annelid.configuration_annelid import AnnelidConfig
 from utils.data_utils import DotDict
+from utils.logging_utils import log_print
 
 
 class AnnelidPreTrainedModel(PreTrainedModel):
@@ -128,6 +129,7 @@ class AnnelidModel(AnnelidPreTrainedModel):
         self._attn_implementation = config._attn_implementation
         self.gradient_checkpointing = False # found by _xla_set_gradient_checkpointing
         if config._gradient_checkpointing:
+            log_print("Gradient checkpointing enabled!")
             self.xla_gradient_checkpointing_enable()
 
         # Initialize weights and apply final processing

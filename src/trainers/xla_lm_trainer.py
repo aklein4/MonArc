@@ -2,7 +2,7 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
-from training.base_xla_trainer import BaseXLATrainer
+from trainers.base_xla_trainer import BaseXLATrainer
 from utils.data_utils import DotDict
 from  utils.training_utils import loss, ppl, acc, pcorr
 

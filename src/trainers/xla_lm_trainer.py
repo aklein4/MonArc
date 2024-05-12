@@ -12,15 +12,16 @@ class XLALMTrainer(BaseXLATrainer):
 
     def train_step(self, model, x, tokenizer):
         out = model(x)
+        ignore_index = tokenizer.pad_token_id
 
         return DotDict(
-            loss=loss(out.logits, x, tokenizer),
-            ppl=ppl(out.logits, x, tokenizer),
-            acc=acc(out.logits, x, tokenizer),
-            pcorr=pcorr(out.logits, x, tokenizer),
+            loss=loss(out.logits, x, ignore_index),
+            ppl=ppl(out.logits, x, ignore_index),
+            acc=acc(out.logits, x, ignore_index),
+            pcorr=pcorr(out.logits, x, ignore_index),
 
-            enc_loss=loss(out.enc_logits, x, tokenizer),
-            enc_ppl=ppl(out.enc_logits, x, tokenizer),
-            enc_acc=acc(out.enc_logits, x, tokenizer),
-            enc_pcorr=pcorr(out.enc_logits, x, tokenizer)
+            enc_loss=loss(out.enc_logits, x, ignore_index),
+            enc_ppl=ppl(out.enc_logits, x, ignore_index),
+            enc_acc=acc(out.enc_logits, x, ignore_index),
+            enc_pcorr=pcorr(out.enc_logits, x, ignore_index)
         )

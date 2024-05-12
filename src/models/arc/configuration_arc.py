@@ -3,7 +3,7 @@ from transformers.configuration_utils import PretrainedConfig
 from transformers.utils import logging
 
 
-class AnnelidConfig(PretrainedConfig):
+class ArcConfig(PretrainedConfig):
     r"""
     This is the configuration class to store the configuration of a [`~StableLmModel`].
     It is used to instantiate an StableLM model according to the specified arguments, defining the model
@@ -79,19 +79,11 @@ class AnnelidConfig(PretrainedConfig):
             The id of the `EOS` token in the vocabulary.
         pad_token_id (int, *optional*, defaults to None):
             The id of the `PAD` token in the vocabulary.
-        is_prefix_lm (`bool`, *optional*, defaults to `False`):
-            Whether the model is used as a prefix language model.
-        is_quasi_lm (`bool`, *optional*, defaults to `False`):
-            Whether the model is used as a quasi language model.
-        segment_size (`int`, *optional*, defaults to 1):
-            Size of segments to be used for quasi language model.
-        use_segment_embeds (`bool`, *optional*, defaults to `False`):
-            Whether to use segment position embeddings.
         _gradient_checkpointing (`bool`, *optional*, defaults to `False`):
             Whether to use gradient checkpointing to save memory at the expense of slower backward pass.
     """
 
-    model_type = "annelid"
+    model_type = "arc"
     keys_to_ignore_at_inference = ["past_key_values"]
 
     def __init__(
@@ -119,10 +111,6 @@ class AnnelidConfig(PretrainedConfig):
         bos_token_id=0,
         eos_token_id=0,
         pad_token_id=None,
-        is_prefix_lm=False,
-        is_quasi_lm=False,
-        segment_size=1,
-        use_segment_embeds=False,
         _gradient_checkpointing=False,
         **kwargs,
     ):
@@ -148,11 +136,6 @@ class AnnelidConfig(PretrainedConfig):
         self.attention_dropout = attention_dropout
         self.partial_rotary_factor = partial_rotary_factor
         self._rope_scaling_validation()
-
-        self.is_prefix_lm = is_prefix_lm
-        self.is_quasi_lm = is_quasi_lm
-        self.segment_size = segment_size
-        self.use_segment_embeds = use_segment_embeds
 
         self._gradient_checkpointing = _gradient_checkpointing
 

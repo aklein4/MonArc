@@ -3,21 +3,21 @@ import torch.nn as nn
 import torch.nn.functional as F
 
 
-def loss(logits, x, tokenizer):
+def loss(logits, x, ignore_index):
     x, logits = x[:, 1:], logits[:, :-1]
 
     return F.cross_entropy(
         logits.contiguous().view(-1, logits.shape[-1]),
         x.contiguous().view(-1),
-        ignore_index=tokenizer.pad_token_id
+        ignore_index=ignore_index
     )
 
 
 @torch.no_grad()
-def ppl(logits, x, tokenizer):
+def ppl(logits, x, ignore_index):
     x = x[:, 1:]
     logits = logits[:, :-1]
-    mask = x != tokenizer.pad_token_id
+    mask = x != ignore_index
 
     logp = -F.cross_entropy(
         logits.contiguous().view(-1, logits.shape[-1]),
@@ -32,9 +32,9 @@ def ppl(logits, x, tokenizer):
 
 
 @torch.no_grad()
-def acc(logits, x, tokenizer):
+def acc(logits, x, ignore_index):
     x, logits = x[:, 1:], logits[:, :-1]
-    mask = x != tokenizer.pad_token_id
+    mask = x != ignore_index
 
     corr = torch.logical_and(
         logits.argmax(-1) == x,
@@ -44,10 +44,10 @@ def acc(logits, x, tokenizer):
 
 
 @torch.no_grad()
-def pcorr(logits, x, tokenizer):
+def pcorr(logits, x, ignore_index):
     x = x[:, 1:].contiguous().view(-1)
     logits = logits[:, :-1].contiguous().view(-1, logits.shape[-1])
-    mask = x != tokenizer.pad_token_id
+    mask = x != ignore_index
 
     logp = -F.cross_entropy(
         logits, x,

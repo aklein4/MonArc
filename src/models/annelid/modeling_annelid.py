@@ -5,7 +5,10 @@ import torch.nn as nn
 import torch.nn.functional as F
 
 import functools
-from torch_xla.utils.checkpoint import checkpoint as xla_checkpoint_fn
+try:
+    from torch_xla.utils.checkpoint import checkpoint as xla_checkpoint_fn
+except ImportError:
+    print("WARNING: torch_xla not installed, cannot use gradient checkpointing")
 
 from transformers.modeling_utils import PreTrainedModel
 from transformers.models.stablelm.modeling_stablelm import StableLmDecoderLayer
@@ -38,6 +41,7 @@ class AnnelidPreTrainedModel(PreTrainedModel):
             if module.padding_idx is not None:
                 module.weight.data[module.padding_idx].zero_()
 
+
     # converted from torch to torch xla
     def xla_gradient_checkpointing_enable(self, gradient_checkpointing_kwargs={}):
         if not self.supports_gradient_checkpointing:
@@ -47,7 +51,8 @@ class AnnelidPreTrainedModel(PreTrainedModel):
         
         self._set_gradient_checkpointing(enable=True, gradient_checkpointing_func=gradient_checkpointing_func)
 
-    def _xla_set_gradient_checkpointing(self, enable: bool = True, gradient_checkpointing_func=xla_checkpoint_fn):
+
+    def _xla_set_gradient_checkpointing(self, enable: bool = True, gradient_checkpointing_func=None):
         """ Set gradient checkpointing for base model and submodules. """
         
         is_gradient_checkpointing_set = False

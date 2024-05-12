@@ -135,12 +135,6 @@ class AnnelidModel(AnnelidPreTrainedModel):
         # Initialize weights and apply final processing
         self.post_init()
 
-        # extra embeds init to zero
-        if self.segment_embeds is not None:
-            self.segment_embeds.weight.data.zero_()
-        if self.prefix_embeds is not None:
-            self.prefix_embeds.weight.data.zero_()
-
 
     def _get_tokens(
         self,

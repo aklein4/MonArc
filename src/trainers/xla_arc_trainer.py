@@ -7,7 +7,7 @@ from utils.data_utils import DotDict
 from  utils.training_utils import loss, ppl, acc, pcorr
 
 
-class XLALMTrainer(BaseXLATrainer):
+class XLAArcTrainer(BaseXLATrainer):
 
 
     def train_step(self, model, x, tokenizer):

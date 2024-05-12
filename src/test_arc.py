@@ -19,6 +19,8 @@ def main():
     print("Loading tokenizer...")
     tokenizer = AutoTokenizer.from_pretrained(constants.GPT2_TOKENIZER, resume_download=None)
     tokenizer.add_special_tokens({"pad_token": "[PAD]"})
+    
+    x = tokenizer(["Hello, my dog is cute", "His dog is cute too", "All dogs are cute"], return_tensors="pt", padding="max_length", max_length=16).input_ids
 
     print("loading arc...")
     arc_model_config = load_model_config(ARC_CONFIG, tokenizer)
@@ -35,17 +37,16 @@ def main():
 
     print("copying weights...")
     arc_model.load_state_dict(annelid_model.state_dict(), strict=False)
-
-    arc_model.train()
-    annelid_model.train()
-
-    x = tokenizer(["Hello, my dog is cute", "His dog is cute too", "All dogs are cute"], return_tensors="pt", padding="max_length", max_length=16).input_ids
     
     annelid_out = annelid_model(x)
     arc_out = arc_model.train_forward(x, tokenizer.pad_token_id, debug=True)
 
-    diff = torch.abs(annelid_out.lm_logits - arc_out.lm_logits).max()
-    print(diff.item())
+    lm_diff = torch.abs(annelid_out.lm_logits - arc_out.lm_logits).max()
+    print(f"LM logits diff: {lm_diff}")
+
+    pos, neg = torch.split(arc_out.arc_preds, x.shape[1], dim=1)
+    arc_diff = torch.abs(pos - neg).max()
+    print(f"Arc logits diff: {arc_diff}")
 
 
 if __name__ == '__main__':

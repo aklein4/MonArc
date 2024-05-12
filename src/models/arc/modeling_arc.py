@@ -12,6 +12,7 @@ except ImportError:
 
 from transformers.modeling_utils import PreTrainedModel
 from transformers.models.stablelm.modeling_stablelm import StableLmDecoderLayer
+from transformers.cache_utils import DynamicCache
 
 from models.arc.configuration_arc import ArcConfig
 from utils.data_utils import DotDict
@@ -104,7 +105,8 @@ class ArcModel(ArcPreTrainedModel):
         self._attn_implementation = config._attn_implementation
         self.gradient_checkpointing = False # found by _xla_set_gradient_checkpointing
         if config._gradient_checkpointing:
-            log_print("Gradient checkpointing enabled!")
+            raise NotImplementedError("Gradient checkpointing not supported for ArcModel!")
+            # log_print("Gradient checkpointing enabled!")
             self.xla_gradient_checkpointing_enable()
 
         # Initialize weights and apply final processing
@@ -214,6 +216,7 @@ class ArcModel(ArcPreTrainedModel):
         input_ids: torch.LongTensor,
         position_ids: Optional[torch.LongTensor]=None,
         attention_mask: Optional[torch.BoolTensor]=None,
+        kv: Optional[torch.Tensor]=None
     ) -> torch.Tensor:
         """ Forward pass of the LM
 
@@ -233,29 +236,34 @@ class ArcModel(ArcPreTrainedModel):
         position_ids = self._get_position_ids(input_ids, position_ids)
 
         # run transformer
+        if kv is None:
+            kv = DynamicCache()
         for decoder_layer in self.layers:
 
-            if self.gradient_checkpointing and self.training:
-                hidden_states = self._gradient_checkpointing_func(
-                    decoder_layer.__call__,
-                    hidden_states,
-                    attention_mask,
-                    position_ids,
-                    None,
-                    False,
-                )[0]
+            # if self.gradient_checkpointing and self.training:
+            #     hidden_states = self._gradient_checkpointing_func(
+            #         decoder_layer.__call__,
+            #         hidden_states,
+            #         attention_mask,
+            #         position_ids,
+            #         None,
+            #         False,
+            #     )[0]
 
-            else:
-                hidden_states = decoder_layer(
-                    hidden_states=hidden_states,
-                    attention_mask=attention_mask,
-                    position_ids=position_ids,
-                    past_key_value=None,
-                    output_attentions=False,
-                    use_cache=False,
-                )[0]
+            layer_out = decoder_layer(
+                hidden_states=hidden_states,
+                attention_mask=attention_mask,
+                position_ids=position_ids,
+                past_key_value=kv,
+                output_attentions=False,
+                use_cache=True,
+            )
+            hidden_states = layer_out[0]
 
-        return self.norm(hidden_states)
+        return DotDict(
+            hidden_states=self.norm(hidden_states),
+            kv=kv
+        )
 
 
 class ArcLMModel(ArcPreTrainedModel):
@@ -313,13 +321,14 @@ class ArcLMModel(ArcPreTrainedModel):
         se = ~torch.eye(seq_length, dtype=torch.bool, device=input_ids.device)
 
         # combine
-        return torch.cat(
-            [
-                torch.cat([nw, ne], dim=1),
-                torch.cat([sw, se], dim=1)
-            ],
-            dim=0
-        )
+        # return torch.cat(
+        #     [
+        #         torch.cat([nw, ne], dim=1),
+        #         torch.cat([sw, se], dim=1)
+        #     ],
+        #     dim=0
+        # )
+        return torch.cat([sw, se], dim=1)
 
     
     @torch.no_grad()
@@ -382,50 +391,46 @@ class ArcLMModel(ArcPreTrainedModel):
         """
         batch_size, seq_length = input_ids.shape
 
-        # sample negative examples
-        # with torch.no_grad():
-
-        og_state = self.model.training
-        self.model.eval()
-        out_sample = self.model(input_ids).detach()
-        self.model.train(og_state)
-
-        logits_sample = self.lm_head(out_sample).detach()
-        logits_sample = F.log_softmax(logits_sample, dim=-1)
-        dist = torch.distributions.Categorical(logits=logits_sample)
+        # get lm predictions
+        out = self.model(input_ids)
+        lm_logits = self.lm_head(out.hidden_states)
+        lm_logits = F.log_softmax(lm_logits, dim=-1)
         
+        # get negative samples
+        dist = torch.distributions.Categorical(logits=lm_logits)
         neg_ids = dist.sample()
         if debug:
             neg_ids = input_ids.clone()
             neg_ids[:, :-1] = input_ids[:, 1:]
 
+        # get arc inputs
         arc_ids = torch.cat(
             [
-                input_ids,
                 input_ids[:, :1],
                 neg_ids[:, :-1]
             ],
             dim=1
         )
-
-        # get arc inputs
         arc_mask = self._get_arc_mask(input_ids)
-        arc_position_ids = self._get_arc_position_ids(input_ids)
 
-        # run transformer
-        out = self.model(
+        # get arc outputs
+        arc_out = self.model(
             input_ids=arc_ids,
-            position_ids=arc_position_ids,
-            attention_mask=arc_mask
+            attention_mask=arc_mask,
+            kv=out.kv
         )
 
-        # get lm predictions
-        lm_logits = self.lm_head(out[:, :seq_length])
-        lm_logits = F.log_softmax(lm_logits, dim=-1)
+        arc_states = torch.cat(
+            [
+                out.hidden_states,
+                arc_out.hidden_states
+            ],
+            dim=1
+        )
 
         # get arc predictions
         # formated to use cross entropy loss
-        arc_preds = self.arc_head(out)[:, :, 0]
+        arc_preds = self.arc_head(arc_states)[:, :, 0]
         arc_preds = torch.stack(
             [-arc_preds/2, arc_preds/2],
             dim=-1

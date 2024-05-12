@@ -10,8 +10,8 @@ from utils.config_utils import load_model_config
 import utils.constants as constants
 
 
-ARC_CONFIG = "test-arc"
-ANNELID_CONFIG = "test-lm"
+ARC_CONFIG = "mini-arc"
+ANNELID_CONFIG = "mini-lm"
 
 
 def main():
@@ -22,7 +22,6 @@ def main():
 
     print("loading arc...")
     arc_model_config = load_model_config(ARC_CONFIG, tokenizer)
-    arc_model_config["_gradient_checkpointing"] = False
 
     arc_config = ArcConfig(**arc_model_config)
     arc_model = ArcLMModel(arc_config)
@@ -30,16 +29,12 @@ def main():
     print("loading annelid...")
     annelid_model_config = load_model_config(ANNELID_CONFIG, tokenizer)
     annelid_model_config["segment_size"] = 4
-    annelid_model_config["_gradient_checkpointing"] = False
 
     annelid_config = AnnelidConfig(**annelid_model_config)
     annelid_model = AnnelidLMModel(annelid_config)
 
     print("copying weights...")
     arc_model.load_state_dict(annelid_model.state_dict(), strict=False)
-
-    arc_model.train()
-    annelid_model.train()
 
     x = tokenizer("Hello, my dog is cute", return_tensors="pt", padding="max_length", max_length=16).input_ids
     

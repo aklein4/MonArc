@@ -345,8 +345,8 @@ class ArcLMModel(ArcPreTrainedModel):
         )
 
 
-    def forward(self, *args, **kwargs):
-        return self.train_forward(*args, **kwargs)
+    def forward(self, input_ids):
+        return self.train_forward(input_ids, self.model.padding_idx)
 
     def train_forward(
         self,

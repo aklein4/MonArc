@@ -1,4 +1,8 @@
-import torch_xla.core.xla_model as xm
+
+try:
+    import torch_xla.core.xla_model as xm
+except ImportError:
+    print("WARNING: torch_xla not found.")
 
 import utils.constants as constants
 

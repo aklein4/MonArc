@@ -378,18 +378,18 @@ class ArcLMModel(ArcPreTrainedModel):
 
             logits = self.lm_head(out)
             logits = F.log_softmax(logits, dim=-1)
-
             dist = torch.distributions.Categorical(logits=logits)
+            
             neg_ids = dist.sample()
-
             if debug:
-                neg_ids = input_ids
+                neg_ids = input_ids.clone()
+                neg_ids[:, :-1] = input_ids[:, 1:]
 
             arc_ids = torch.cat(
                 [
                     input_ids,
                     input_ids[:, :1],
-                    neg_ids[:, 1:]
+                    neg_ids[:, :-1]
                 ],
                 dim=1
             )

@@ -172,7 +172,8 @@ class BaseXLATrainer:
                 
                 # mark step to save gradients
                 results.loss.backward()
-                xm.mark_step()
+                if len(x_split) > 1:
+                    xm.mark_step()
 
             # perform a single optimizer step
             xm.optimizer_step(optimizer)

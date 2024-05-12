@@ -345,6 +345,9 @@ class ArcLMModel(ArcPreTrainedModel):
         )
 
 
+    def forward(self, *args, **kwargs):
+        return self.train_forward(*args, **kwargs)
+
     def train_forward(
         self,
         input_ids: torch.LongTensor,

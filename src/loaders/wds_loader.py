@@ -148,6 +148,7 @@ def get_wds_loader(
         dataset,
         batch_size=sample_size,
         collate_fn=collator,
+        drop_last=True
     )
 
     # wrap with xla loader

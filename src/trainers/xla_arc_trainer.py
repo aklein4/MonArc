@@ -18,7 +18,7 @@ class XLAArcTrainer(BaseXLATrainer):
             lm_loss=loss(out.lm_logits, x, ignore_index),
             lm_ppl=ppl(out.lm_logits, x, ignore_index),
             lm_acc=acc(out.lm_logits, x, ignore_index),
-            pcorr=pcorr(out.lm_logits, x, ignore_index),
+            lm_pcorr=pcorr(out.lm_logits, x, ignore_index),
 
             arc_loss=loss(out.arc_preds, out.arc_targets, -1),
             arc_ppl=ppl(out.arc_preds, out.arc_targets, -1),

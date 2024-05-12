@@ -3,8 +3,8 @@ trainer_type: XLALMTrainer
 start_lr: 0.0002
 end_lr: 0.00002
 
-bs: 256
-mini_bs: 32
+bs: 1024
+mini_bs: 8
 
 beta1: 0.9
 beta2: 0.95

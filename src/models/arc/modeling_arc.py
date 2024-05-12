@@ -105,8 +105,8 @@ class ArcModel(ArcPreTrainedModel):
         self._attn_implementation = config._attn_implementation
         self.gradient_checkpointing = False # found by _xla_set_gradient_checkpointing
         if config._gradient_checkpointing:
-            raise NotImplementedError("Gradient checkpointing not supported for ArcModel!")
-            # log_print("Gradient checkpointing enabled!")
+            # raise NotImplementedError("Gradient checkpointing not supported for ArcModel!")
+            log_print("Gradient checkpointing enabled!")
             self.xla_gradient_checkpointing_enable()
 
         # Initialize weights and apply final processing

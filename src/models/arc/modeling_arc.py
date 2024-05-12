@@ -360,7 +360,11 @@ class ArcLMModel(ArcPreTrainedModel):
         input_ids,
         pad_token_id
     ):
+        og_state = self.model.training
+        self.model.eval()
         out = self.model(input_ids)
+        self.model.train(og_state)
+
         lm_logits = self.lm_head(out.hidden_states)
         lm_logits = F.log_softmax(lm_logits, dim=-1)
         lm_logits[:, :, pad_token_id] = float('-inf')

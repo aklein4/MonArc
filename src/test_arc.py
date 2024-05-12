@@ -39,7 +39,8 @@ def main():
     arc_model.load_state_dict(annelid_model.state_dict(), strict=False)
     
     annelid_out = annelid_model(x)
-    arc_out = arc_model.train_forward(x, tokenizer.pad_token_id, debug=True)
+    negatives = arc_model.sample_negatives(x, tokenizer.pad_token_id)
+    arc_out = arc_model.forward_from_sample(x, negatives, tokenizer.pad_token_id, debug=True)
 
     lm_diff = torch.abs(annelid_out.lm_logits - arc_out.lm_logits).max()
     print(f"LM logits diff: {lm_diff}")

@@ -10,8 +10,8 @@ from utils.config_utils import load_model_config
 import utils.constants as constants
 
 
-ARC_CONFIG = "mini-arc"
-ANNELID_CONFIG = "mini-lm"
+ARC_CONFIG = "test-arc"
+ANNELID_CONFIG = "test-lm"
 
 
 def main():

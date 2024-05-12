@@ -42,7 +42,7 @@ def main():
     x = tokenizer(["Hello, my dog is cute", "His dog is cute too", "All dogs are cute"], return_tensors="pt", padding="max_length", max_length=16).input_ids
     
     annelid_out = annelid_model(x)
-    arc_out = arc_model.train_forward(x, tokenizer.pad_token_id, debug=False)
+    arc_out = arc_model.train_forward(x, tokenizer.pad_token_id, debug=True)
 
     diff = torch.abs(annelid_out.lm_logits - arc_out.lm_logits).max()
     print(diff.item())

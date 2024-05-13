@@ -448,7 +448,7 @@ class ArcLMModel(ArcPreTrainedModel):
         batch_size, seq_length = input_ids.shape
         seq_length = seq_length // 2
 
-        arc_mask = self._get_arc_mask(input_ids, fast=True)
+        arc_mask = self._get_arc_mask(input_ids[:, :seq_length], fast=True)
         arc_pos = self._get_arc_position_ids(input_ids[:, :seq_length])
 
         # get arc outputs

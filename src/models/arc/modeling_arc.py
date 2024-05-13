@@ -236,8 +236,8 @@ class ArcModel(ArcPreTrainedModel):
         position_ids = self._get_position_ids(input_ids, position_ids)
 
         # run transformer
-        if kv is None:
-            kv = DynamicCache()
+        # if kv is None:
+        #     kv = DynamicCache()
         for decoder_layer in self.layers:
 
             # if self.gradient_checkpointing and self.training:
@@ -257,7 +257,7 @@ class ArcModel(ArcPreTrainedModel):
                 position_ids=position_ids,
                 past_key_value=kv,
                 output_attentions=False,
-                use_cache=True,
+                use_cache=(kv is not None),
             )
             hidden_states = layer_out[0]
 
@@ -355,84 +355,87 @@ class ArcLMModel(ArcPreTrainedModel):
         )
 
 
-    # # @torch.no_grad()
-    # def sample_negatives(
-    #     self,
-    #     input_ids,
-    #     pad_token_id
-    # ):
-    #     out = self.model(input_ids, disable_grad=True)
+    @torch.no_grad()
+    def sample_negatives(
+        self,
+        input_ids,
+        pad_token_id
+    ):
+        og_state = self.model.training
+        self.model.eval()
+        out = self.model(torch.cat([input_ids, input_ids, dim=-1]))
+        self.model.train(og_state)
 
-    #     lm_logits = self.lm_head(out.hidden_states).detach()
-    #     lm_logits = F.log_softmax(lm_logits, dim=-1)
-    #     lm_logits[:, :, pad_token_id] = float('-inf')
+        lm_logits = self.lm_head(out.hidden_states[:, :input_ids.shape[-1]]).detach()
+        lm_logits = F.log_softmax(lm_logits, dim=-1)
+        lm_logits[:, :, pad_token_id] = float('-inf')
 
-    #     # get negative samples
-    #     dist = torch.distributions.Categorical(logits=lm_logits)
-    #     return dist.sample().detach()
+        # get negative samples
+        dist = torch.distributions.Categorical(logits=lm_logits)
+        return dist.sample().detach()
 
     
-    # def forward_from_sample(
-    #     self,
-    #     input_ids,
-    #     negative_samples,
-    #     pad_token_id,
-    #     debug=False
-    # ):
-    #     batch_size, seq_length = input_ids.shape
+    def forward_from_sample(
+        self,
+        input_ids,
+        negative_samples,
+        pad_token_id,
+        debug=False
+    ):
+        batch_size, seq_length = input_ids.shape
 
-    #     if debug:
-    #         negative_samples = input_ids.clone()
-    #         negative_samples[:, :-1] = input_ids[:, 1:]
+        if debug:
+            negative_samples = input_ids.clone()
+            negative_samples[:, :-1] = input_ids[:, 1:]
 
-    #     # get arc inputs
-    #     arc_ids = torch.cat(
-    #         [
-    #             input_ids,
-    #             input_ids[:, :1],
-    #             negative_samples[:, :-1]
-    #         ],
-    #         dim=1
-    #     )
-    #     arc_mask = self._get_arc_mask(input_ids)
-    #     arc_pos = self._get_arc_position_ids(input_ids)
+        # get arc inputs
+        arc_ids = torch.cat(
+            [
+                input_ids,
+                input_ids[:, :1],
+                negative_samples[:, :-1]
+            ],
+            dim=1
+        )
+        arc_mask = self._get_arc_mask(input_ids)
+        arc_pos = self._get_arc_position_ids(input_ids)
 
-    #     # get arc outputs
-    #     out = self.model(
-    #         input_ids=arc_ids,
-    #         attention_mask=arc_mask,
-    #         position_ids=arc_pos
-    #     )
+        # get arc outputs
+        out = self.model(
+            input_ids=arc_ids,
+            attention_mask=arc_mask,
+            position_ids=arc_pos
+        )
 
-    #     lm_logits = self.lm_head(out.hidden_states[:, :seq_length])
-    #     lm_logits = F.log_softmax(lm_logits, dim=-1)
+        lm_logits = self.lm_head(out.hidden_states[:, :seq_length])
+        lm_logits = F.log_softmax(lm_logits, dim=-1)
 
-    #     # get arc predictions
-    #     # formated to use cross entropy loss
-    #     arc_preds = self.arc_head(out.hidden_states)[:, :, 0]
-    #     arc_preds = torch.stack(
-    #         [-arc_preds/2, arc_preds/2],
-    #         dim=-1
-    #     )
+        # get arc predictions
+        # formated to use cross entropy loss
+        arc_preds = self.arc_head(out.hidden_states)[:, :, 0]
+        arc_preds = torch.stack(
+            [-arc_preds/2, arc_preds/2],
+            dim=-1
+        )
 
-    #     # get arc targets
-    #     arc_targets = torch.zeros(batch_size, 2*seq_length, dtype=input_ids.dtype, device=input_ids.device)
-    #     arc_targets[:, :seq_length] = 1
+        # get arc targets
+        arc_targets = torch.zeros(batch_size, 2*seq_length, dtype=input_ids.dtype, device=input_ids.device)
+        arc_targets[:, :seq_length] = 1
         
-    #     # target padding
-    #     arc_targets[:, 0] = -1
-    #     arc_targets[:, seq_length] = -1
-    #     arc_targets = torch.masked_fill(
-    #         arc_targets, 
-    #         torch.cat([input_ids, input_ids], dim=1) == pad_token_id,
-    #         -1
-    #     )
+        # target padding
+        arc_targets[:, 0] = -1
+        arc_targets[:, seq_length] = -1
+        arc_targets = torch.masked_fill(
+            arc_targets, 
+            torch.cat([input_ids, input_ids], dim=1) == pad_token_id,
+            -1
+        )
 
-    #     return DotDict(
-    #         lm_logits=lm_logits,
-    #         arc_preds=arc_preds,
-    #         arc_targets=arc_targets
-    #     )
+        return DotDict(
+            lm_logits=lm_logits,
+            arc_preds=arc_preds,
+            arc_targets=arc_targets
+        )
 
 
     def train_forward(
@@ -459,7 +462,7 @@ class ArcLMModel(ArcPreTrainedModel):
         batch_size, seq_length = input_ids.shape
 
         # get lm predictions
-        out = self.model(input_ids)
+        out = self.model(input_ids, kv=DynamicCache())
         lm_logits = self.lm_head(out.hidden_states)
         lm_logits = F.log_softmax(lm_logits, dim=-1)
         

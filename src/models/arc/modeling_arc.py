@@ -455,7 +455,7 @@ class ArcLMModel(ArcPreTrainedModel):
         out = self.model(
             input_ids=input_ids,
             attention_mask=arc_mask,
-            arc_pos=arc_pos
+            position_ids=arc_pos
         )
 
         lm_logits = self.lm_head(out.hidden_states[:, :seq_length])

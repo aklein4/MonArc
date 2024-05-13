@@ -16,4 +16,4 @@ lr_steps: 500000
 
 checkpoint_interval: 2500
 
-w_arc: 10.0
+w_arc: 1.0

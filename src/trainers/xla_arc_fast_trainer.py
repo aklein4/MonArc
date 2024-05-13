@@ -14,7 +14,7 @@ class XLAArcFastTrainer(BaseXLATrainer):
         ignore_index = tokenizer.pad_token_id
 
         with torch.no_grad():
-            sample_logits = model.fast_forward(torch.cat([x, x], dim=-1), ignore_index)
+            sample_logits = model.fast_forward(torch.cat([x, x], dim=-1), ignore_index).lm_logits
             sample_logits[:, :, tokenizer.pad_token_id] = float('-inf')
 
             dist = torch.distributions.Categorical(logits=sample_logits)

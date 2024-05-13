@@ -478,7 +478,7 @@ class ArcLMModel(ArcPreTrainedModel):
         arc_targets[:, seq_length] = -1
         arc_targets = torch.masked_fill(
             arc_targets, 
-            torch.cat([input_ids, input_ids], dim=1) == pad_token_id,
+            input_ids == pad_token_id,
             -1
         )
 

@@ -363,7 +363,7 @@ class ArcLMModel(ArcPreTrainedModel):
     ):
         og_state = self.model.training
         self.model.eval()
-        out = self.model(torch.cat([input_ids, input_ids, dim=-1]))
+        out = self.model(torch.cat([input_ids, input_ids] dim=-1))
         self.model.train(og_state)
 
         lm_logits = self.lm_head(out.hidden_states[:, :input_ids.shape[-1]]).detach()

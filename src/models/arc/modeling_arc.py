@@ -217,6 +217,7 @@ class ArcModel(ArcPreTrainedModel):
         position_ids: Optional[torch.LongTensor]=None,
         attention_mask: Optional[torch.BoolTensor]=None,
         kv: Optional[torch.Tensor]=None,
+        disable_grad = False
     ) -> torch.Tensor:
         """ Forward pass of the LM
 
@@ -240,7 +241,7 @@ class ArcModel(ArcPreTrainedModel):
         #     kv = DynamicCache()
         for decoder_layer in self.layers:
 
-            if self.gradient_checkpointing and self.training:
+            if self.gradient_checkpointing and self.training and not disable_grad:
                 hidden_states = self._gradient_checkpointing_func(
                     decoder_layer.__call__,
                     hidden_states,
@@ -260,6 +261,9 @@ class ArcModel(ArcPreTrainedModel):
                     use_cache=False,
                 )
                 hidden_states = layer_out[0]
+
+            if disable_grad:
+                hidden_states = hidden_states.detach()
 
         return DotDict(
             hidden_states=self.norm(hidden_states),
@@ -361,10 +365,7 @@ class ArcLMModel(ArcPreTrainedModel):
         input_ids,
         pad_token_id
     ):
-        og_state = self.model.training
-        self.model.eval()
-        out = self.model(input_ids)
-        self.model.train(og_state)
+        out = self.model(input_ids, disable_grad=True)
 
         lm_logits = self.lm_head(out.hidden_states).detach()
         lm_logits = F.log_softmax(lm_logits, dim=-1)

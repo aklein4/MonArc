@@ -357,7 +357,7 @@ class ArcLMModel(ArcPreTrainedModel):
         )
 
 
-    @torch.no_grad()
+    # @torch.no_grad()
     def sample_negatives(
         self,
         input_ids,

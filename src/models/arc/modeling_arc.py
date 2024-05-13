@@ -293,7 +293,8 @@ class ArcLMModel(ArcPreTrainedModel):
     @torch.no_grad()
     def _get_arc_mask(
         self,
-        input_ids: torch.LongTensor
+        input_ids: torch.LongTensor,
+        fast=False
     ) -> torch.BoolTensor:
         """ Get the mask for arc prediction.
          - True = MASKED
@@ -322,13 +323,14 @@ class ArcLMModel(ArcPreTrainedModel):
         se = ~torch.eye(seq_length, dtype=torch.bool, device=input_ids.device)
 
         # combine
-        # return torch.cat(
-        #     [
-        #         torch.cat([nw, ne], dim=1),
-        #         torch.cat([sw, se], dim=1)
-        #     ],
-        #     dim=0
-        # )
+        if fast:
+            return torch.cat(
+                [
+                    torch.cat([nw, ne], dim=1),
+                    torch.cat([sw, se], dim=1)
+                ],
+                dim=0
+            )
         return torch.cat([sw, se], dim=1)
 
     
@@ -397,7 +399,7 @@ class ArcLMModel(ArcPreTrainedModel):
             ],
             dim=1
         )
-        arc_mask = self._get_arc_mask(input_ids)
+        arc_mask = self._get_arc_mask(input_ids, fast=True)
         arc_pos = self._get_arc_position_ids(input_ids)
 
         # get arc outputs

@@ -1,4 +1,4 @@
-trainer_type: XLAArcTrainer
+trainer_type: XLAArcFastTrainer
 
 start_lr: 0.0006
 end_lr: 0.00006

@@ -22,8 +22,8 @@ class XLAArcFastTrainer(BaseXLATrainer):
 
             arc_x = torch.cat(
                 [
-                    x[:, :x.shape[1]//2],
-                    x[:, x.shape[1]//2].unsqueeze(1),
+                    x,
+                    x[:, :1],
                     negative_samples[:, :-1],
                 ],
                 dim=1

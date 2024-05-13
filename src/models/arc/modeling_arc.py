@@ -440,6 +440,56 @@ class ArcLMModel(ArcPreTrainedModel):
         )
 
 
+    def fast_forward(
+        self,
+        input_ids: torch.LongTensor,
+        pad_token_id: int,
+    ):
+        batch_size, seq_length = input_ids.shape
+        seq_length = seq_length // 2
+
+        arc_mask = self._get_arc_mask(input_ids, fast=True)
+        arc_pos = self._get_arc_position_ids(input_ids[:, :seq_length])
+
+        # get arc outputs
+        out = self.model(
+            input_ids=input_ids,
+            attention_mask=arc_mask,
+            arc_pos=arc_pos
+        )
+
+        lm_logits = self.lm_head(out.hidden_states[:, :seq_length])
+        lm_logits = F.log_softmax(lm_logits, dim=-1)
+
+        # get arc predictions
+        # formated to use cross entropy loss
+        arc_preds = self.arc_head(out.hidden_states)[:, :, 0]
+        arc_preds = torch.stack(
+            [-arc_preds/2, arc_preds/2],
+            dim=-1
+        )
+
+        # get arc targets
+        arc_targets = torch.zeros(batch_size, 2*seq_length, dtype=input_ids.dtype, device=input_ids.device)
+        arc_targets[:, :seq_length] = 1
+        
+        # target padding
+        arc_targets[:, 0] = -1
+        arc_targets[:, seq_length] = -1
+        arc_targets = torch.masked_fill(
+            arc_targets, 
+            torch.cat([input_ids, input_ids], dim=1) == pad_token_id,
+            -1
+        )
+
+        return DotDict(
+            lm_logits=lm_logits,
+            arc_preds=arc_preds,
+            arc_targets=arc_targets
+        )
+
+
+
     def train_forward(
         self,
         input_ids: torch.LongTensor,

@@ -14,4 +14,4 @@ weight_decay: 0.1
 warmup_steps: 500
 lr_steps: 500000
 
-checkpoint_interval: 4000
+checkpoint_interval: 2500

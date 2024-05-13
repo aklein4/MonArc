@@ -4,7 +4,7 @@ start_lr: 0.0002
 end_lr: 0.00002
 
 bs: 1024
-mini_bs: 1
+mini_bs: 2
 
 beta1: 0.9
 beta2: 0.95

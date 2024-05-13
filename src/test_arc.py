@@ -10,7 +10,7 @@ from utils.config_utils import load_model_config
 import utils.constants as constants
 
 
-ARC_CONFIG = "xl-arc"
+ARC_CONFIG = "test-arc"
 ANNELID_CONFIG = "test-lm"
 
 
@@ -25,11 +25,8 @@ def main():
     print("loading arc...")
     arc_model_config = load_model_config(ARC_CONFIG, tokenizer)
 
-    arc_model_config["_gradient_checkpointing"] = False
     arc_config = ArcConfig(**arc_model_config)
     arc_model = ArcLMModel(arc_config)
-    print(sum([p.numel() for p in arc_model.parameters()]))
-    return
 
     print("loading annelid...")
     annelid_model_config = load_model_config(ANNELID_CONFIG, tokenizer)
@@ -40,10 +37,9 @@ def main():
 
     print("copying weights...")
     arc_model.load_state_dict(annelid_model.state_dict(), strict=False)
-
+    
     annelid_out = annelid_model(x)
-    negatives = arc_model.sample_negatives(x, tokenizer.pad_token_id)
-    arc_out = arc_model.forward_from_sample(x, negatives, tokenizer.pad_token_id, debug=True)
+    arc_out = arc_model.train_forward(x, tokenizer.pad_token_id, debug=True)
 
     lm_diff = torch.abs(annelid_out.lm_logits - arc_out.lm_logits).max()
     print(f"LM logits diff: {lm_diff}")

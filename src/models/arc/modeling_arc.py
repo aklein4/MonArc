@@ -105,8 +105,8 @@ class ArcModel(ArcPreTrainedModel):
         self._attn_implementation = config._attn_implementation
         self.gradient_checkpointing = False # found by _xla_set_gradient_checkpointing
         if config._gradient_checkpointing:
-            # raise NotImplementedError("Gradient checkpointing not supported for ArcModel!")
-            log_print("Gradient checkpointing enabled!")
+            raise NotImplementedError("Gradient checkpointing not supported for ArcModel!")
+            # log_print("Gradient checkpointing enabled!")
             self.xla_gradient_checkpointing_enable()
 
         # Initialize weights and apply final processing
@@ -217,7 +217,6 @@ class ArcModel(ArcPreTrainedModel):
         position_ids: Optional[torch.LongTensor]=None,
         attention_mask: Optional[torch.BoolTensor]=None,
         kv: Optional[torch.Tensor]=None,
-        disable_grad = False
     ) -> torch.Tensor:
         """ Forward pass of the LM
 
@@ -237,33 +236,30 @@ class ArcModel(ArcPreTrainedModel):
         position_ids = self._get_position_ids(input_ids, position_ids)
 
         # run transformer
-        # if kv is None:
-        #     kv = DynamicCache()
+        if kv is None:
+            kv = DynamicCache()
         for decoder_layer in self.layers:
 
-            if self.gradient_checkpointing and self.training and not disable_grad:
-                hidden_states = self._gradient_checkpointing_func(
-                    decoder_layer.__call__,
-                    hidden_states,
-                    attention_mask,
-                    position_ids,
-                    None,
-                    False,
-                )[0]
+            # if self.gradient_checkpointing and self.training:
+            #     hidden_states = self._gradient_checkpointing_func(
+            #         decoder_layer.__call__,
+            #         hidden_states,
+            #         attention_mask,
+            #         position_ids,
+            #         None,
+            #         False,
+            #     )[0]
 
-            else:
-                layer_out = decoder_layer(
-                    hidden_states=hidden_states,
-                    attention_mask=attention_mask,
-                    position_ids=position_ids,
-                    past_key_value=None,
-                    output_attentions=False,
-                    use_cache=False,
-                )
-                hidden_states = layer_out[0]
-
-            if disable_grad:
-                hidden_states = hidden_states.detach()
+            # else:
+            layer_out = decoder_layer(
+                hidden_states=hidden_states,
+                attention_mask=attention_mask,
+                position_ids=position_ids,
+                past_key_value=kv,
+                output_attentions=False,
+                use_cache=True,
+            )
+            hidden_states = layer_out[0]
 
         return DotDict(
             hidden_states=self.norm(hidden_states),
@@ -326,14 +322,14 @@ class ArcLMModel(ArcPreTrainedModel):
         se = ~torch.eye(seq_length, dtype=torch.bool, device=input_ids.device)
 
         # combine
-        return torch.cat(
-            [
-                torch.cat([nw, ne], dim=1),
-                torch.cat([sw, se], dim=1)
-            ],
-            dim=0
-        )
-        # return torch.cat([sw, se], dim=1)
+        # return torch.cat(
+        #     [
+        #         torch.cat([nw, ne], dim=1),
+        #         torch.cat([sw, se], dim=1)
+        #     ],
+        #     dim=0
+        # )
+        return torch.cat([sw, se], dim=1)
 
     
     @torch.no_grad()
@@ -359,84 +355,84 @@ class ArcLMModel(ArcPreTrainedModel):
         )
 
 
-    # @torch.no_grad()
-    def sample_negatives(
-        self,
-        input_ids,
-        pad_token_id
-    ):
-        out = self.model(input_ids, disable_grad=True)
+    # # @torch.no_grad()
+    # def sample_negatives(
+    #     self,
+    #     input_ids,
+    #     pad_token_id
+    # ):
+    #     out = self.model(input_ids, disable_grad=True)
 
-        lm_logits = self.lm_head(out.hidden_states).detach()
-        lm_logits = F.log_softmax(lm_logits, dim=-1)
-        lm_logits[:, :, pad_token_id] = float('-inf')
+    #     lm_logits = self.lm_head(out.hidden_states).detach()
+    #     lm_logits = F.log_softmax(lm_logits, dim=-1)
+    #     lm_logits[:, :, pad_token_id] = float('-inf')
 
-        # get negative samples
-        dist = torch.distributions.Categorical(logits=lm_logits)
-        return dist.sample().detach()
+    #     # get negative samples
+    #     dist = torch.distributions.Categorical(logits=lm_logits)
+    #     return dist.sample().detach()
 
     
-    def forward_from_sample(
-        self,
-        input_ids,
-        negative_samples,
-        pad_token_id,
-        debug=False
-    ):
-        batch_size, seq_length = input_ids.shape
+    # def forward_from_sample(
+    #     self,
+    #     input_ids,
+    #     negative_samples,
+    #     pad_token_id,
+    #     debug=False
+    # ):
+    #     batch_size, seq_length = input_ids.shape
 
-        if debug:
-            negative_samples = input_ids.clone()
-            negative_samples[:, :-1] = input_ids[:, 1:]
+    #     if debug:
+    #         negative_samples = input_ids.clone()
+    #         negative_samples[:, :-1] = input_ids[:, 1:]
 
-        # get arc inputs
-        arc_ids = torch.cat(
-            [
-                input_ids,
-                input_ids[:, :1],
-                negative_samples[:, :-1]
-            ],
-            dim=1
-        )
-        arc_mask = self._get_arc_mask(input_ids)
-        arc_pos = self._get_arc_position_ids(input_ids)
+    #     # get arc inputs
+    #     arc_ids = torch.cat(
+    #         [
+    #             input_ids,
+    #             input_ids[:, :1],
+    #             negative_samples[:, :-1]
+    #         ],
+    #         dim=1
+    #     )
+    #     arc_mask = self._get_arc_mask(input_ids)
+    #     arc_pos = self._get_arc_position_ids(input_ids)
 
-        # get arc outputs
-        out = self.model(
-            input_ids=arc_ids,
-            attention_mask=arc_mask,
-            position_ids=arc_pos
-        )
+    #     # get arc outputs
+    #     out = self.model(
+    #         input_ids=arc_ids,
+    #         attention_mask=arc_mask,
+    #         position_ids=arc_pos
+    #     )
 
-        lm_logits = self.lm_head(out.hidden_states[:, :seq_length])
-        lm_logits = F.log_softmax(lm_logits, dim=-1)
+    #     lm_logits = self.lm_head(out.hidden_states[:, :seq_length])
+    #     lm_logits = F.log_softmax(lm_logits, dim=-1)
 
-        # get arc predictions
-        # formated to use cross entropy loss
-        arc_preds = self.arc_head(out.hidden_states)[:, :, 0]
-        arc_preds = torch.stack(
-            [-arc_preds/2, arc_preds/2],
-            dim=-1
-        )
+    #     # get arc predictions
+    #     # formated to use cross entropy loss
+    #     arc_preds = self.arc_head(out.hidden_states)[:, :, 0]
+    #     arc_preds = torch.stack(
+    #         [-arc_preds/2, arc_preds/2],
+    #         dim=-1
+    #     )
 
-        # get arc targets
-        arc_targets = torch.zeros(batch_size, 2*seq_length, dtype=input_ids.dtype, device=input_ids.device)
-        arc_targets[:, :seq_length] = 1
+    #     # get arc targets
+    #     arc_targets = torch.zeros(batch_size, 2*seq_length, dtype=input_ids.dtype, device=input_ids.device)
+    #     arc_targets[:, :seq_length] = 1
         
-        # target padding
-        arc_targets[:, 0] = -1
-        arc_targets[:, seq_length] = -1
-        arc_targets = torch.masked_fill(
-            arc_targets, 
-            torch.cat([input_ids, input_ids], dim=1) == pad_token_id,
-            -1
-        )
+    #     # target padding
+    #     arc_targets[:, 0] = -1
+    #     arc_targets[:, seq_length] = -1
+    #     arc_targets = torch.masked_fill(
+    #         arc_targets, 
+    #         torch.cat([input_ids, input_ids], dim=1) == pad_token_id,
+    #         -1
+    #     )
 
-        return DotDict(
-            lm_logits=lm_logits,
-            arc_preds=arc_preds,
-            arc_targets=arc_targets
-        )
+    #     return DotDict(
+    #         lm_logits=lm_logits,
+    #         arc_preds=arc_preds,
+    #         arc_targets=arc_targets
+    #     )
 
 
     def train_forward(

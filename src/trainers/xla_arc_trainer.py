@@ -11,10 +11,8 @@ class XLAArcTrainer(BaseXLATrainer):
 
 
     def train_step(self, model, x, tokenizer):
+        out = model.train_forward(x, tokenizer.pad_token_id)
         ignore_index = tokenizer.pad_token_id
-
-        negative_samples = model.sample_negatives(x, tokenizer.pad_token_id)
-        out = model.forward_from_sample(x, negative_samples, tokenizer.pad_token_id)
 
         results = DotDict(
             lm_loss=loss(out.lm_logits, x, ignore_index),

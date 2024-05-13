@@ -365,7 +365,7 @@ class ArcLMModel(ArcPreTrainedModel):
     ):
         out = self.model(input_ids)
 
-        lm_logits = self.lm_head(out.hidden_states[:, :input_ids.shape[-1]]).detach()
+        lm_logits = self.lm_head(out.hidden_states).detach()
         lm_logits = F.log_softmax(lm_logits, dim=-1)
         lm_logits[:, :, pad_token_id] = float('-inf')
 

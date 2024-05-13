@@ -355,7 +355,7 @@ class ArcLMModel(ArcPreTrainedModel):
         )
 
 
-    @torch.no_grad()
+    # @torch.no_grad()
     def sample_negatives(
         self,
         input_ids,
@@ -366,7 +366,7 @@ class ArcLMModel(ArcPreTrainedModel):
         out = self.model(input_ids)
         self.model.train(og_state)
 
-        lm_logits = self.lm_head(out.hidden_states)
+        lm_logits = self.lm_head(out.hidden_states).detach()
         lm_logits = F.log_softmax(lm_logits, dim=-1)
         lm_logits[:, :, pad_token_id] = float('-inf')
 

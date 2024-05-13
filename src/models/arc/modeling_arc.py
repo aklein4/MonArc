@@ -363,10 +363,7 @@ class ArcLMModel(ArcPreTrainedModel):
         input_ids,
         pad_token_id
     ):
-        og_state = self.model.training
-        self.model.eval()
-        out = self.model(torch.cat([input_ids, input_ids], dim=-1))
-        self.model.train(og_state)
+        out = self.model(input_ids)
 
         lm_logits = self.lm_head(out.hidden_states[:, :input_ids.shape[-1]]).detach()
         lm_logits = F.log_softmax(lm_logits, dim=-1)

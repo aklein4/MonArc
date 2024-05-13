@@ -1,4 +1,7 @@
 
+# local files
+local_data/
+
 # wandb logs
 wandb/
 

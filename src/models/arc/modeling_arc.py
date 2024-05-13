@@ -357,6 +357,61 @@ class ArcLMModel(ArcPreTrainedModel):
         )
 
 
+    def get_lm_logits(
+        self,
+        input_ids,
+        pad_token_id
+    ):
+        out = self.model(input_ids, kv=DynamicCache())
+
+        lm_logits = self.lm_head(out.hidden_states).detach()
+        lm_logits = F.log_softmax(lm_logits, dim=-1)
+        lm_logits[:, :, pad_token_id] = float('-inf')
+
+        residuals = -self.arc_head(out.hidden_states)[:, :, 0]
+
+        return DotDict(
+            lm_logits=lm_logits,
+            kv=out.kv,
+            residuals=residuals
+        )
+
+
+    def get_arc_preds(
+        self,
+        input_ids,
+        sample,
+        kv
+    ):
+        batch_size, seq_length = input_ids.shape
+
+        firstee = input_ids[:, :1]
+        if batch_size == 1:
+            firstee = firstee.expand(sample.shape[0], -1)
+            for i in range(len(kv.key_cache)):
+                kv.key_cache[i] = kv.key_cache[i].expand(sample.shape[0], -1, -1, -1)
+                kv.value_cache[i] = kv.value_cache[i].expand(sample.shape[0], -1, -1, -1)
+        else:
+            assert batch_size == sample.shape[0]
+
+        arc_inputs = torch.cat(
+            [
+                firstee,
+                sample[:, :-1]
+            ],
+            dim=1
+        )
+        arc_mask = self._get_arc_mask(input_ids)
+
+        out = self.model(
+            input_ids=arc_inputs,
+            attention_mask=arc_mask,
+            kv=kv
+        )
+
+        return -self.arc_head(out.hidden_states)[:, :, 0]
+
+
     # @torch.no_grad()
     def sample_negatives(
         self,

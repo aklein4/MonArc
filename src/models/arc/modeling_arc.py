@@ -217,7 +217,6 @@ class ArcModel(ArcPreTrainedModel):
         position_ids: Optional[torch.LongTensor]=None,
         attention_mask: Optional[torch.BoolTensor]=None,
         kv: Optional[torch.Tensor]=None,
-        disable_checkpoint: Optional[bool]=False
     ) -> torch.Tensor:
         """ Forward pass of the LM
 
@@ -241,7 +240,7 @@ class ArcModel(ArcPreTrainedModel):
         #     kv = DynamicCache()
         for decoder_layer in self.layers:
 
-            if self.gradient_checkpointing and self.training and not disable_checkpoint:
+            if self.gradient_checkpointing and self.training:
                 hidden_states = self._gradient_checkpointing_func(
                     decoder_layer.__call__,
                     hidden_states,
@@ -251,15 +250,16 @@ class ArcModel(ArcPreTrainedModel):
                     False,
                 )[0]
 
-            layer_out = decoder_layer(
-                hidden_states=hidden_states,
-                attention_mask=attention_mask,
-                position_ids=position_ids,
-                past_key_value=None,
-                output_attentions=False,
-                use_cache=False,
-            )
-            hidden_states = layer_out[0]
+            else:
+                layer_out = decoder_layer(
+                    hidden_states=hidden_states,
+                    attention_mask=attention_mask,
+                    position_ids=position_ids,
+                    past_key_value=None,
+                    output_attentions=False,
+                    use_cache=False,
+                )
+                hidden_states = layer_out[0]
 
         return DotDict(
             hidden_states=self.norm(hidden_states),
@@ -355,14 +355,18 @@ class ArcLMModel(ArcPreTrainedModel):
         )
 
 
+    @torch.no_grad()
     def sample_negatives(
         self,
         input_ids,
         pad_token_id
     ):
-        out = self.model(input_ids, disable_checkpoint=True)
+        og_state = self.model.training
+        self.model.eval()
+        out = self.model(input_ids)
+        self.model.train(og_state)
 
-        lm_logits = self.lm_head(out.hidden_states).detach()
+        lm_logits = self.lm_head(out.hidden_states)
         lm_logits = F.log_softmax(lm_logits, dim=-1)
         lm_logits[:, :, pad_token_id] = float('-inf')
 

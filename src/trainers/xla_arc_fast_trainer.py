@@ -13,7 +13,7 @@ class XLAArcFastTrainer(BaseXLATrainer):
     def train_step(self, model, x, tokenizer):
         ignore_index = tokenizer.pad_token_id
 
-        neg_x = model.sample_negatives(x)
+        neg_x = model.sample_negatives(x, tokenizer.pad_token_id)
         out = model.forward_from_sample(x, neg_x, tokenizer.pad_token_id)
 
         results = DotDict(

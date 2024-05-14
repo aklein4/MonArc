@@ -14,7 +14,7 @@ from transformers.modeling_utils import PreTrainedModel
 from transformers.models.stablelm.modeling_stablelm import StableLmDecoderLayer
 from transformers.cache_utils import DynamicCache
 
-from models.arc.configuration_arc import ArcConfig
+from models.arc_old.configuration_arc import ArcConfig
 from utils.data_utils import DotDict
 from utils.logging_utils import log_print
 

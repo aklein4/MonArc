@@ -8,8 +8,7 @@ try:
     from torch_xla.utils.checkpoint import checkpoint as xla_checkpoint_fn
     _xla_found = True
 except ImportError:
-    print("WARNING: torch_xla not installed, cannot use gradient checkpointing")
-    _xla_found = False
+    _xla_found = False # constants handles import errors
 try:
     from torch_xla.experimental.custom_kernel import flash_attention as flash_attn_xla
 except ImportError:
@@ -31,6 +30,7 @@ from transformers.cache_utils import Cache
 
 from utils.data_utils import DotDict
 from utils.logging_utils import log_print
+import utils.constants as constants
 
 
 class BaseConfig(StableLmConfig):
@@ -42,9 +42,15 @@ class BaseConfig(StableLmConfig):
         # backward compatibility
         kwargs["use_parallel_residual"] = kwargs.get("use_parallel_residual", False)
         
+        # work arounds
         gradient_checkpointing = kwargs.pop("gradient_checkpointing", False)
+        _attn_implementation = kwargs.pop("_attn_implementation", "eager")
+
         super().__init__(**kwargs)
+
+        # work arounds
         self.gradient_checkpointing = gradient_checkpointing
+        self._attn_implementation = _attn_implementation
 
 
 class BaseModel(PreTrainedModel):

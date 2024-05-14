@@ -99,8 +99,11 @@ class ArcLmModel(BaseModel):
         """
         batch_size, seq_length = input_ids.shape
 
+        # reuse kv cache
+        kv = DynamicCache()
+
         # get lm predictions
-        out = self.model(input_ids, kv=DynamicCache())
+        out = self.model(input_ids, kv=kv)
         lm_logits = self.lm_head(out.hidden_states)
         lm_logits = F.log_softmax(lm_logits, dim=-1)
         
@@ -119,15 +122,16 @@ class ArcLmModel(BaseModel):
             ],
             dim=1
         )
-        arc_mask = self._get_arc_mask(input_ids)
+        arc_mask = self._get_arc_mask(input_ids, cached=True)
+        arc_position_ids = self._get_arc_position_ids(input_ids, cached=True)
 
         # get arc outputs
         arc_out = self.model(
             input_ids=arc_ids,
             attention_mask=arc_mask,
+            position_ids=arc_position_ids,
             kv=out.kv
         )
-
         arc_states = torch.cat(
             [
                 out.hidden_states,
@@ -137,18 +141,18 @@ class ArcLmModel(BaseModel):
         )
 
         # get arc predictions
-        # formated to use cross entropy loss
+        # formated to use cross entropy loss, positive points to label 1
         arc_preds = self.arc_head(arc_states)[:, :, 0]
         arc_preds = torch.stack(
             [-arc_preds/2, arc_preds/2],
             dim=-1
         )
 
-        # get arc targets
-        arc_targets = torch.zeros(batch_size, 2*seq_length, dtype=input_ids.dtype, device=input_ids.device)
-        arc_targets[:, :seq_length] = 1
+        # get arc targets (first sequence is zero, second is 1)
+        arc_targets = torch.ones(batch_size, 2*seq_length, dtype=input_ids.dtype, device=input_ids.device)
+        arc_targets[:, :seq_length] = 0
         
-        # target padding
+        # target padding (first token of each sequence is ignored)
         arc_targets[:, 0] = -1
         arc_targets[:, seq_length] = -1
         arc_targets = torch.masked_fill(

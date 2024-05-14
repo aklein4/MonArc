@@ -3,8 +3,8 @@
 from models.annelid.modeling_annelid import AnnelidLMModel
 from models.annelid.configuration_annelid import AnnelidConfig
 
-from models.arc.modeling_arc import ArcLMModel
-from models.arc.configuration_arc import ArcConfig
+from models.arc_old.modeling_arc import ArcLMModel
+from models.arc_old.configuration_arc import ArcConfig
 
 from models.base import BaseConfig, BaseLmModel
 

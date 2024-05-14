@@ -2,7 +2,7 @@
 try:
     import torch_xla.core.xla_model as xm
 except ImportError:
-    print("WARNING: torch_xla not found.")
+    pass # constants handles error printing
 
 import utils.constants as constants
 

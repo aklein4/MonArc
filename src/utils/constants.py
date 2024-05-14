@@ -5,7 +5,7 @@ import os
 try:
     import torch_xla.core.xla_model as xm
 except ImportError:
-    print("Warning: torch_xla not found")
+    print("Warning: torch_xla not found", flush=True)
 
 # get the base path of src
 BASE_PATH = os.path.dirname( # src

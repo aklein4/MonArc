@@ -1,7 +1,7 @@
 
-model_type: annelid
+model_type: base
 architectures: [
-    AnnelidLMModel
+    BaseLmModel
 ]
 
 hidden_act: silu

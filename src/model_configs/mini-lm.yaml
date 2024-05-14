@@ -26,6 +26,6 @@ is_quasi_lm: False
 segment_size: 16
 use_segment_embeds: False
 
-_attn_implementation: flash_attention_2
+_attn_implementation: eager
 _gradient_checkpointing: False
 use_cache: False

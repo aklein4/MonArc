@@ -7,7 +7,7 @@ from models.annelid.configuration_annelid import AnnelidConfig
 # from models.arc_old.configuration_arc import ArcConfig
 
 from models.base import BaseConfig, BaseLmModel
-from models.arc.modeling_arc import ArcLmModel
+from models.arc import ArcLmModel
 
 
 CONFIG_DICT = {

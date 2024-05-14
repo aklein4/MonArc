@@ -88,9 +88,9 @@ class ArcModel(ArcPreTrainedModel):
         Args:
             config: ArcConfig
         """
+        prev_attn_implementation = config._attn_implementation
         super().__init__(config)
-        config._attn_implementation = 'sdpa'
-        log_print(config._attn_implementation)
+        config._attn_implementation = prev_attn_implementation
 
         # vocab info
         self.padding_idx = config.pad_token_id

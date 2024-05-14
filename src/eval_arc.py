@@ -15,7 +15,7 @@ from models.arc.modeling_arc import ArcLMModel
 import utils.constants as constants
 
 
-CHECKPOINT_REPO = f"{constants.HF_ID}/Arc_mini-arc-w10"
+CHECKPOINT_REPO = f"{constants.HF_ID}/Arc_mini-lm"
 CHECKPOINT_SUBFOLDER = "000000010000/model"
 
 
@@ -36,7 +36,7 @@ def main():
     )
     model.load_state_dict(torch.load(path), strict=False)
 
-    x = tokenizer(["""Dungeons & Dragons (commonly abbreviated as D&D or DnD)[2] is a fantasy tabletop role-playing game (RPG) originally created and designed by Gary Gygax and Dave Arneson.[3][4][5] The game was first published in 1974 by Tactical Studies Rules, Inc. (TSR).[5] It has been published by Wizards of the Coast, later a subsidiary of Hasbro, since 1997. The game was derived from miniature wargames, with a variation of the 1971 game Chainmail serving as the initial rule system.[4][6] D&D's publication is commonly recognized as the beginning of modern role-playing games and the role-playing game industry,[5][7] and also deeply influenced video games, especially the role-playing video game genre.[8][9][10] D&D departs from traditional wargaming by allowing each player to create their own character to play instead of a military formation. These characters embark upon adventures within a fantasy setting. A Dungeon Master (DM) serves as referee and storyteller for the game, while maintaining the setting in which the adventures occur, and playing the role of the inhabitants of the game world, known as non-player characters (NPCs). The characters form a party and they interact with the setting's inhabitants and each other. Together they solve problems, engage in battles, explore, and gather treasure and knowledge. In the process, player characters earn experience points (XP) to level up, and become increasingly powerful over a series of separate gaming sessions.[3][7][11] Players choose a class when they create their character, which gives them special perks and abilities every few levels."""], return_tensors="pt", truncation=True, max_length=1024).input_ids
+    x = tokenizer(["""The basic goal of the effective altruism movement is to create efficient philanthropic change by backing programs and innovations that are cost-effective so that each dollar given impacts as many people as possible. The underlying tenet is that donor dollars are a limited resource, but dollars are just one of the limiting factors. There’s still another major resource that needs to be accounted for: research time. There’s a learning curve for calculation-driven cause groups (and donors) to figure out what world-plaguing problems really are the most pressing, what solutions seem the most promising or neglected, and what else might need to be done. The problem is there hasn’t been a single resource for accessing all this information in one place. To change that, Rethink Priorities, an initiative of the effective altruism awareness and engagement building nonprofit Rethink Charity, has launched Priority Wiki, a publicly editable Wikipedia-like online encyclopedia for cause prioritization wonks. It collects and categorizes vetted research around pressing charitable causes and potential interventions. “This is a big problem because thousands of hours are going into this kind of research, and you don’t want people to forget it exists, or maybe try to duplicate efforts, or just not even remember it,” says Peter Hurford, who codeveloped the wiki alongside colleague Marcus Davis. “We’re trying to capture all relevant research under a wide variety of global issues so that everyone can have a go-to spot to get up to speed.” To do that, Wiki is organized into six broad types of causes. That includes “Existential/Catastrophic Future Risks,” “Improving Research,” “Decisions and Values,” “Improving Policy,” “Developing World Health and Economic Development,” “Developed World Health and Economic Development,” and “Specific Scientific Research.” Each entry is then comprised of related topics. Under the catastrophe heading, for instance, there’s biosecurity, nuclear security, climate change, and geomagnetic storms. As the developers explain in an open letter about their efforts, the wiki is currently populated with a collection of research by effective altruism research organizations including Open Philanthropy, GiveWell, 80,000 Hours, and Animal Charity Evaluators. Many of these are formatted in what’s commonly referred to as a “shallow review,” or high-level overview of each issue, and various important statistics and findings. “That gives you a lot of opportunities to dive into the problem and make a more structured way than dumping someone a 60-item reading list,” says Hurford. Contributors are already revising the content and sharing data about things the originators hadn’t considered. Two recent additions include information about psychedelics and drug reform, and how to prevent or reduce aging-related diseases to extend our natural lifespan."""], return_tensors="pt", truncation=True, max_length=1024).input_ids
 
     lm_out = model.get_lm_logits(x, tokenizer.pad_token_id)
     true_residuals = lm_out.residuals[0]
@@ -65,14 +65,14 @@ def main():
         x[0, 1:],
         reduction="none"
     )
-    print("Baseline Loss:", logp.mean().item()) # torch.exp(-logp.mean()).item())
+    print("Baseline PPL:", torch.exp(-logp.mean()).item())
 
     logp -= true_residuals[1:]
     upper_logp = logp - upper[1:]
     lower_logp = logp - lower[1:]
 
-    print("upper Loss:", upper_logp.mean().item()) # torch.exp(-upper_logp.mean()).item())
-    print("lower Loss:", lower_logp.mean().item()) # torch.exp(-lower_logp.mean()).item())
+    print("upper PPL:", torch.exp(-upper_logp.mean()).item())
+    print("lower PPL:", torch.exp(-lower_logp.mean()).item())
 
 
 if __name__ == '__main__':

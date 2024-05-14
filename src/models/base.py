@@ -169,7 +169,6 @@ class BaseTransformer(BaseModel):
 
         # Compute configuration
         self._attn_implementation = config._attn_implementation
-        log_print(f"Attention implementation: {self._attn_implementation}")
 
         # training configuration
         self.gradient_checkpointing = False # found by _xla_set_gradient_checkpointing
@@ -196,13 +195,13 @@ class BaseTransformer(BaseModel):
     ) -> torch.BoolTensor:
         batch_size, seq_length = input_ids.shape
 
-        # default causal mask
-        if mask is None:
+        # default eager causal mask
+        if mask is None and self._attn_implementation == 'eager':
             mask = torch.ones(seq_length, seq_length, dtype=torch.bool, device=input_ids.device)
             mask = torch.triu(mask, diagonal=1)
 
         # check for custom mask
-        elif self._attn_implementation.count('flash_attention_2'):
+        if mask is not None and self._attn_implementation.count('flash_attention_2'):
             raise ValueError("Custom attention mask is not supported for Flash Attention 2!")
 
         # process for attn version
@@ -210,13 +209,10 @@ class BaseTransformer(BaseModel):
             # eager uses attn bias
             # https://github.com/huggingface/transformers/blob/v4.40.2/src/transformers/models/stablelm/modeling_stablelm.py#L290
             mask = torch.masked_fill(torch.zeros_like(mask).float(), mask, float('-inf'))
-        elif self._attn_implementation == 'sdpa':
+        elif mask is not None and self._attn_implementation == 'sdpa':
             # sdpa uses True = NOT masked
             # https://pytorch.org/docs/stable/generated/torch.nn.functional.scaled_dot_product_attention.html
             mask = ~mask
-        else:
-            # no mask for flash attention
-            mask = None
 
         # final processing
         if mask is not None:

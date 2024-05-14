@@ -27,7 +27,7 @@ def main():
     eager_model = BaseLmModel(BaseConfig(**config)).to(constants.XLA_DEVICE())
 
     print("loading flash attention...")
-    config["_attn_implementation"] = 'flash_attention_2_xla'
+    config["_attn_implementation"] = 'sdpa'
     flash_model = BaseLmModel(BaseConfig(**config)).to(constants.XLA_DEVICE())
 
     print("copying weights...")

@@ -303,10 +303,7 @@ class BaseTransformer(BaseModel):
                     use_cache=(kv is not None),
                 )[0]
 
-        return {
-            "hidden_states": self.norm(hidden_states),
-            "kv": kv
-        }
+        return self.norm(hidden_states)
 
 
 class BaseLmModel(BaseModel):
@@ -315,7 +312,7 @@ class BaseLmModel(BaseModel):
         super().__init__(config)
 
         # transformer
-        self.transformer = BaseTransformer(config)
+        self.model = BaseTransformer(config)
 
         # lm modeling
         self.vocab_size = config.vocab_size
@@ -346,16 +343,14 @@ class BaseLmModel(BaseModel):
         """
 
         # get lm predictions
-        out = self.transformer(
+        out = self.model(
             input_ids=input_ids,
             position_ids=position_ids,
             attention_mask=attention_mask,
             kv=kv
         )
 
-        lm_logits = self.lm_head(out["hidden_states"])
+        lm_logits = self.lm_head(out)
         lm_logits = F.log_softmax(lm_logits, dim=-1)
         
-        return {
-            "lm_logits": lm_logits
-        }
+        return lm_logits

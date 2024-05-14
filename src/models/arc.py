@@ -17,7 +17,7 @@ class ArcLmModel(BaseModel):
         super().__init__(config)
 
         # transformer
-        self.transfomer = BaseTransformer(config)
+        self.model = BaseTransformer(config)
 
         # lm modeling
         self.vocab_size = config.vocab_size

@@ -169,6 +169,7 @@ class BaseTransformer(BaseModel):
 
         # Compute configuration
         self._attn_implementation = config._attn_implementation
+        log_print(f"Attention implementation: {self._attn_implementation}")
 
         # training configuration
         self.gradient_checkpointing = False # found by _xla_set_gradient_checkpointing

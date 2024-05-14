@@ -318,7 +318,7 @@ class BaseLmModel(BaseModel):
         super().__init__(config)
 
         # transformer
-        self.model = BaseTransformer(config)
+        self.transformer = BaseTransformer(config)
 
         # lm modeling
         self.vocab_size = config.vocab_size
@@ -349,7 +349,7 @@ class BaseLmModel(BaseModel):
         """
 
         # get lm predictions
-        out = self.model(
+        out = self.transformer(
             input_ids=input_ids,
             position_ids=position_ids,
             attention_mask=attention_mask,

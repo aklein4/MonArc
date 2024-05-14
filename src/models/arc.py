@@ -130,7 +130,7 @@ class ArcLmModel(BaseModel):
             input_ids=arc_ids,
             attention_mask=arc_mask,
             position_ids=arc_position_ids,
-            kv=out.kv
+            kv=kv
         )
         arc_states = torch.cat(
             [

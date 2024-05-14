@@ -11,7 +11,7 @@ class XLAArcTrainer(BaseXLATrainer):
 
 
     def train_step(self, model, x, tokenizer):
-        lm_logits, arc_preds, arc_targets = model.train_forward(x, tokenizer.pad_token_id)
+        lm_logits, arc_preds, arc_targets = model.forward(x, tokenizer.pad_token_id)
         ignore_index = tokenizer.pad_token_id
 
         results = DotDict(

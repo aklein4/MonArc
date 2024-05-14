@@ -18,6 +18,7 @@ def main():
     tokenizer.add_special_tokens({"pad_token": "[PAD]"})
     
     x = tokenizer(["Hello, my dog is cute", "His dog is cute too", "All dogs are cute"], return_tensors="pt", padding="max_length", max_length=16).input_ids
+    x = x.to(constants.XLA_DEVICE())
 
     print("loading config...")
     config = load_model_config(MODEL_CONFIG, tokenizer)
@@ -41,4 +42,3 @@ def main():
 
 if __name__ == '__main__':
     main()
-    

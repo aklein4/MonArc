@@ -303,10 +303,10 @@ class BaseTransformer(BaseModel):
                     use_cache=(kv is not None),
                 )[0]
 
-        return DotDict(
-            hidden_states=self.norm(hidden_states),
-            kv=kv
-        )
+        return {
+            "hidden_states": self.norm(hidden_states),
+            "kv": kv
+        }
 
 
 class BaseLmModel(BaseModel):
@@ -353,9 +353,9 @@ class BaseLmModel(BaseModel):
             kv=kv
         )
 
-        lm_logits = self.lm_head(out.hidden_states)
+        lm_logits = self.lm_head(out["hidden_states"])
         lm_logits = F.log_softmax(lm_logits, dim=-1)
         
-        return DotDict(
-            lm_logits=lm_logits,
-        )
+        return {
+            "lm_logits": lm_logits
+        }

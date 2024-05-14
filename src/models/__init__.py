@@ -6,13 +6,13 @@ from models.annelid.configuration_annelid import AnnelidConfig
 from models.arc.modeling_arc import ArcLMModel
 from models.arc.configuration_arc import ArcConfig
 
-from models.base import BaseLmModel
+from models.base import BaseConfig, BaseLmModel
 
 
 CONFIG_DICT = {
     "annelid": AnnelidConfig,
     "arc": ArcConfig,
-    "base": BaseLmModel,
+    "base": BaseConfig,
 }
 
 MODEL_DICT = {

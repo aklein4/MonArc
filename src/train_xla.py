@@ -49,7 +49,7 @@ def _mp_fn(index, args):
         xm.broadcast_master_param(model)
         model = model.to(torch.float32)
     
-    # log_print("Compiling model...")
+    log_print("Compiling model...")
     model = torch.compile(model, backend='openxla')
 
     log_print("Loading data...")

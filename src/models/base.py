@@ -42,15 +42,10 @@ class BaseConfig(StableLmConfig):
         # backward compatibility
         kwargs["use_parallel_residual"] = kwargs.get("use_parallel_residual", False)
         
-        # work arounds
+        # init with work arounds
         gradient_checkpointing = kwargs.pop("gradient_checkpointing", False)
-        _attn_implementation = kwargs.pop("_attn_implementation", "eager")
-
         super().__init__(**kwargs)
-
-        # work arounds
         self.gradient_checkpointing = gradient_checkpointing
-        self._attn_implementation = _attn_implementation
 
 
 class BaseModel(PreTrainedModel):
@@ -152,7 +147,12 @@ class BaseDecoderLayer(StableLmDecoderLayer):
 class BaseTransformer(BaseModel):
 
     def __init__(self, config: BaseConfig):
+
+        # init with work arounds
+        tmp_attn_implementation = config._attn_implementation
+        config._attn_implementation = 'eager'
         super().__init__(config)
+        config._attn_implementation = tmp_attn_implementation
 
         # vocab info
         self.padding_idx = config.pad_token_id

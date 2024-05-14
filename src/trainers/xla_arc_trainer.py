@@ -11,19 +11,19 @@ class XLAArcTrainer(BaseXLATrainer):
 
 
     def train_step(self, model, x, tokenizer):
-        out = model.train_forward(x, tokenizer.pad_token_id)
+        lm_logits, arc_preds, arc_targets = model.train_forward(x, tokenizer.pad_token_id)
         ignore_index = tokenizer.pad_token_id
 
         results = DotDict(
-            lm_loss=loss(out.lm_logits, x, ignore_index),
-            lm_ppl=ppl(out.lm_logits, x, ignore_index),
-            lm_acc=acc(out.lm_logits, x, ignore_index),
-            lm_pcorr=pcorr(out.lm_logits, x, ignore_index),
+            lm_loss=loss(lm_logits, x, ignore_index),
+            lm_ppl=ppl(lm_logits, x, ignore_index),
+            lm_acc=acc(lm_logits, x, ignore_index),
+            lm_pcorr=pcorr(lm_logits, x, ignore_index),
 
-            arc_loss=loss(out.arc_preds, out.arc_targets, -1),
-            arc_ppl=ppl(out.arc_preds, out.arc_targets, -1),
-            arc_acc=acc(out.arc_preds, out.arc_targets, -1),
-            arc_pcorr=pcorr(out.arc_preds, out.arc_targets, -1)
+            arc_loss=loss(arc_preds, arc_targets, -1),
+            arc_ppl=ppl(arc_preds, arc_targets, -1),
+            arc_acc=acc(arc_preds, arc_targets, -1),
+            arc_pcorr=pcorr(arc_preds, arc_targets, -1)
         )
         results.loss = results.lm_loss + self.w_arc * results.arc_loss
 

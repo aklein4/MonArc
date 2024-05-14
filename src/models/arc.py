@@ -104,7 +104,7 @@ class ArcLmModel(BaseModel):
 
         # get lm predictions
         out = self.model(input_ids, kv=kv)
-        lm_logits = self.lm_head(out.hidden_states)
+        lm_logits = self.lm_head(out)
         lm_logits = F.log_softmax(lm_logits, dim=-1)
         
         # get negative samples
@@ -134,8 +134,8 @@ class ArcLmModel(BaseModel):
         )
         arc_states = torch.cat(
             [
-                out.hidden_states,
-                arc_out.hidden_states
+                out,
+                arc_out
             ],
             dim=1
         )
@@ -161,8 +161,8 @@ class ArcLmModel(BaseModel):
             -1
         )
 
-        return DotDict(
-            lm_logits=lm_logits,
-            arc_preds=arc_preds,
-            arc_targets=arc_targets
+        return (
+            lm_logits,
+            arc_preds,
+            arc_targets
         )

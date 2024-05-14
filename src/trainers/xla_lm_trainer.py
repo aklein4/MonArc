@@ -15,10 +15,10 @@ class XLALMTrainer(BaseXLATrainer):
         ignore_index = tokenizer.pad_token_id
 
         results = DotDict(
-            lm_loss=loss(out.lm_logits, x, ignore_index),
-            lm_ppl=ppl(out.lm_logits, x, ignore_index),
-            lm_acc=acc(out.lm_logits, x, ignore_index),
-            lm_pcorr=pcorr(out.lm_logits, x, ignore_index),
+            lm_loss=loss(out["lm_logits"], x, ignore_index),
+            lm_ppl=ppl(out["lm_logits"], x, ignore_index),
+            lm_acc=acc(out["lm_logits"], x, ignore_index),
+            lm_pcorr=pcorr(out["out.lm_logits"], x, ignore_index),
         )
         results.loss = results.lm_loss
 

@@ -24,6 +24,9 @@ export PATH="/home/$USER/.local/bin:$PATH"
 # install extras
 pip install transformers datasets webdataset wandb matplotlib
 
+# install jax for flash attention
+pip install -U "jax[tpu]" -f https://storage.googleapis.com/jax-releases/libtpu_releases.html
+
 # login to huggingface
 huggingface-cli login --token $1 --add-to-git-credential
 

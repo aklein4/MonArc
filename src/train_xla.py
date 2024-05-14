@@ -50,7 +50,7 @@ def _mp_fn(index, args):
         model = model.to(torch.float32)
     
     log_print("Compiling model...")
-    model = torch.compile(model, backend='openxla')
+    model = torch.compile(model, backend='aot_torchxla_trace_once')
 
     log_print("Loading data...")
     loader = get_wds_loader(

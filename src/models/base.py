@@ -60,6 +60,13 @@ class BaseModel(PreTrainedModel):
     _supports_cache_class = True
     _supports_sdpa = True
 
+    # init with work arounds
+    def __init__(self, config: BaseConfig):
+        tmp_attn_implementation = config._attn_implementation
+        config._attn_implementation = 'eager'
+        super().__init__(config)
+        config._attn_implementation = tmp_attn_implementation
+
     # from StableLM
     def _init_weights(self, module):
         std = self.config.initializer_range
@@ -147,12 +154,7 @@ class BaseDecoderLayer(StableLmDecoderLayer):
 class BaseTransformer(BaseModel):
 
     def __init__(self, config: BaseConfig):
-
-        # init with work arounds
-        tmp_attn_implementation = config._attn_implementation
-        config._attn_implementation = 'eager'
         super().__init__(config)
-        config._attn_implementation = tmp_attn_implementation
 
         # vocab info
         self.padding_idx = config.pad_token_id

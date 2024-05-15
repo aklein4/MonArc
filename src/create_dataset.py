@@ -12,7 +12,7 @@ DATA_SUBSET = "CC-MAIN-2024-10"
 
 SAVE_REPO = 'fineweb-2024-packed'
 
-TRAIN_SIZE = 1e15
+TRAIN_SIZE = None
 VAL_SIZE = 1e8
 TEST_SIZE = 1e8
 

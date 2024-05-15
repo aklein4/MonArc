@@ -234,7 +234,7 @@ def create_split(
         ) as pbar:
 
             curr_ind = 0
-            while q.trunc_count < num_tokens:
+            while num_tokens is None or q.trunc_count < num_tokens:
                 try:
                     input_ids = next(token_iterator)["input_ids"]
                 except StopIteration:
@@ -254,6 +254,7 @@ def create_split(
 
                 pbar.update(q.trunc_count-pbar.n)
                 pbar.set_postfix(
+                    total=q.trunc_count,
                     ind=curr_ind,
                     perc=(q.trunc_count/q.total_count),
                     q=np.sum(q.filled),

@@ -16,7 +16,7 @@ MAX_SHARD_SIZE = 4e7
 
 Q_SIZE = 1028*8
 
-MIN_INTERVAL = 60
+MIN_INTERVAL = 0.25
 
 
 class HfShardWriter(wds.ShardWriter):

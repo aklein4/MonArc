@@ -12,11 +12,11 @@ import utils.constants as constants
 TEMP_PATH = "temp.tar.gz"
 
 MAX_FILES_IN_SHARD = 1e12
-MAX_SHARD_SIZE = 4e7
+MAX_SHARD_SIZE = 4e9
 
 Q_SIZE = 1028*8
 
-MIN_INTERVAL = 0.25
+MIN_INTERVAL = 60
 
 
 class HfShardWriter(wds.ShardWriter):

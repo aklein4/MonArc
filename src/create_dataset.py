@@ -47,7 +47,7 @@ def main():
         "val",
         VAL_SIZE,
         MAX_LENGTH,
-        MIN_LENGTH
+        0
     )
 
     create_split(

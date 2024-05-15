@@ -12,7 +12,7 @@ import utils.constants as constants
 TEMP_PATH = "temp.tar.gz"
 
 MAX_FILES_IN_SHARD = 1e12
-MAX_SHARD_SIZE = 3e9
+MAX_SHARD_SIZE = 4e9
 
 Q_SIZE = 1028*8
 
@@ -209,6 +209,7 @@ class TokenizerMap:
 
 
 def create_split(
+    tokenizer,
     token_iterator,
     repo,
     split,
@@ -217,7 +218,7 @@ def create_split(
     min_length,
 ):
     q = TokenPackingQueue(
-        tokenizer=token_iterator.tokenizer,
+        tokenizer=tokenizer,
         max_length=max_length,
         min_length=min_length,
     )

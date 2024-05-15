@@ -41,6 +41,7 @@ def main():
     data_iterator = iter(dataset)
 
     create_split(
+        tokenizer,
         data_iterator,
         SAVE_REPO,
         "val",
@@ -50,6 +51,7 @@ def main():
     )
 
     create_split(
+        tokenizer,
         data_iterator,
         SAVE_REPO,
         "test",
@@ -59,6 +61,7 @@ def main():
     )
 
     create_split(
+        tokenizer,
         data_iterator,
         SAVE_REPO,
         "train",

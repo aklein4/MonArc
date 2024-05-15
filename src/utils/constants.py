@@ -38,4 +38,3 @@ GPT2_TOKENIZER = 'openai-community/gpt2'
 
 # huggingface login id
 HF_ID = "aklein4"
-HF_TOKEN = None

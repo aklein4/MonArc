@@ -254,7 +254,7 @@ def create_split(
 
                 pbar.update(q.trunc_count-pbar.n)
                 pbar.set_postfix(
-                    total=q.trunc_count,
+                    total=f"{q.trunc_count:_}",
                     ind=curr_ind,
                     perc=(q.trunc_count/q.total_count),
                     q=np.sum(q.filled),

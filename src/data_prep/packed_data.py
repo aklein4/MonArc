@@ -257,6 +257,7 @@ def create_split(
                     ind=curr_ind,
                     perc=(q.trunc_count/q.total_count),
                     q=np.sum(q.filled),
-                    q_perc=np.sum(q.filled)/q.q_size
+                    q_perc=np.sum(q.filled)/q.q_size,
+                    refresh=False
                 )
                 

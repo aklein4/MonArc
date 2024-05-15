@@ -1,12 +1,7 @@
 
-
-import os
-
 import datasets
 from transformers import GPT2TokenizerFast
-import huggingface_hub as hf
 
-import utils.constants as constants
 from data_prep.packed_data import create_split, TokenizerMap
 
 
@@ -15,9 +10,9 @@ TOKENIZER_URL = "openai-community/gpt2"
 DATA_URL = 'HuggingFaceFW/fineweb'
 DATA_SUBSET = "CC-MAIN-2024-10"
 
-SAVE_REPO = 'fw-50b'
+SAVE_REPO = 'fineweb-2024-packed'
 
-TRAIN_SIZE = 5e10
+TRAIN_SIZE = 1e15
 VAL_SIZE = 1e9
 TEST_SIZE = 1e9
 
@@ -71,7 +66,7 @@ def main():
         MAX_LENGTH,
         MIN_LENGTH
     )
-    
+
 
 if __name__ == "__main__":
     main()

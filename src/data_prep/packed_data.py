@@ -12,7 +12,7 @@ import utils.constants as constants
 TEMP_PATH = "temp.tar.gz"
 
 MAX_FILES_IN_SHARD = 1e12
-MAX_SHARD_SIZE = 4e9
+MAX_SHARD_SIZE = 4e7
 
 Q_SIZE = 1028*8
 

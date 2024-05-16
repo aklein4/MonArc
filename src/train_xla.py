@@ -81,6 +81,7 @@ if __name__ == '__main__':
   
     # setup PJRT runtime
     os.environ['PJRT_DEVICE'] = 'TPU'
+    os.environ['XLA_NO_SPECIAL_SCALARS'] = 1
 
     # handle arguments
     args = argparse.ArgumentParser()

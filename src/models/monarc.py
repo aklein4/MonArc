@@ -310,6 +310,9 @@ class MonArcLmModel(BaseModel):
         """
         batch_size, seq_length = input_ids.shape
 
+        # for sampling faster
+        generator = torch.Generator(device=input_ids.device)
+
         # get lm predictions
         memory = self.model(input_ids)
         # do norm here so it's not applied to the head transformer
@@ -320,7 +323,9 @@ class MonArcLmModel(BaseModel):
         true_labels = input_ids.clone()
         true_labels[:, :-1] = input_ids[:, 1:]
         fake_labels = input_ids.clone()
-        fake_labels[:, :-1] = torch.distributions.Categorical(logits=lm_logits).sample()[:, :-1]
+        fake_labels[:, :-1] = torch.distributions.Categorical(
+            logits=lm_logits, generator=generator
+        ).sample()[:, :-1]
 
         # get the true and fake logits
         true_states = self.head_model(true_labels, memory)

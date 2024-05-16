@@ -328,28 +328,20 @@ class MonArcLmModel(BaseModel):
         true_labels[:, :-1] = input_ids[:, 1:]
 
         fake_labels = input_ids.clone()
-        fake_labels[:, :-1] = torch.distributions.Categorical(
-            logits=lm_logits.detach().float()
-        ).sample()[:, :-1]
-        # fake_labels[:, :-1] = torch.multinomial(
-        #     torch.softmax(lm_logits.detach().float(), dim=-1).view(-1, lm_logits.shape[-1]),
-        #     1,
-        #     True
-        # ).view(batch_size, seq_length)[:, :-1]
 
-        # factored_probs = torch.softmax(
-        #     lm_logits.detach().float(), dim=-1
-        # ).view(-1, self.vocab_factor, self.vocab_chunk)
+        factored_probs = torch.softmax(
+            lm_logits.detach().float(), dim=-1
+        ).view(-1, self.vocab_factor, self.vocab_chunk)
 
-        # outer_probs = factored_probs.sum(dim=-1)
-        # outer_sample = torch.multinomial(outer_probs, 1, True)[:, 0]
+        outer_probs = factored_probs.sum(dim=-1)
+        outer_sample = torch.multinomial(outer_probs, 1, True)[:, 0]
 
-        # ar = torch.arange(batch_size*seq_length, device=input_ids.device, dtype=torch.long)
-        # inner_probs = factored_probs[ar, outer_sample]
-        # inner_sample = torch.multinomial(inner_probs, 1, True)[:, 0]
+        ar = torch.arange(batch_size*seq_length, device=input_ids.device, dtype=torch.long)
+        inner_probs = factored_probs[ar, outer_sample]
+        inner_sample = torch.multinomial(inner_probs, 1, True)[:, 0]
 
-        # sample = (self.vocab_chunk*outer_sample + inner_sample).view(batch_size, seq_length)
-        # fake_labels[:, :-1] = sample[:, :-1]
+        sample = (self.vocab_chunk*outer_sample + inner_sample).view(batch_size, seq_length)
+        fake_labels[:, :-1] = sample[:, :-1]
 
         # get the true and fake logits
         true_states = self.head_model(true_labels, memory)

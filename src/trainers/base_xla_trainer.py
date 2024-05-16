@@ -128,7 +128,7 @@ class BaseXLATrainer:
         # init model
         for p in model.parameters():
             p.requires_grad = True
-        model.train()
+        model.eval()
 
         # init training objs
         optimizer = syncfree.AdamW(

@@ -320,7 +320,8 @@ class MonArcLmModel(BaseModel):
         # no norm here, head_model handles it
         true_logits = self.lm_head(true_states)
 
-        fake_ids = torch.distributions.Categorical(logits=lm_logits).sample()
+        sample_ids = torch.distributions.Categorical(logits=lm_logits).sample()
+        fake_ids = torch.cat([input_ids[:, :1], sample_ids[:, :-1]], dim=-1)
         fake_states = self.head_model(fake_ids, memory)
         # no norm here, head_model handles it
         fake_logits = self.lm_head(fake_states)

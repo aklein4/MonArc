@@ -294,9 +294,9 @@ class MonArcLmModel(BaseModel):
         self.post_init()
 
         # init to zero to avoid noise
-        self.head_model.embed_tokens.weight.data = 0 * self.head_model.embed_tokens.weight.data
+        self.head_model.embed_tokens.data.zero_()
 
-
+        
     def forward(
         self,
         input_ids: torch.LongTensor,

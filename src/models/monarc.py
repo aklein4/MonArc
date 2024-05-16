@@ -293,6 +293,7 @@ class MonArcLmModel(BaseModel):
     def forward(
         self,
         input_ids: torch.LongTensor,
+        generator=None
     ) -> DotDict:
         """ Forward pass of the LM for training. 
          - creates negative samples
@@ -309,9 +310,6 @@ class MonArcLmModel(BaseModel):
                 torch.Tensor: arc targets [bs, seq_length-2]
         """
         batch_size, seq_length = input_ids.shape
-
-        # for sampling faster
-        generator = torch.Generator(device=input_ids.device)
 
         # get lm predictions
         memory = self.model(input_ids)

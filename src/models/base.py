@@ -196,6 +196,7 @@ class BaseTransformer(BaseModel):
         input_ids: torch.LongTensor,
         mask: Optional[torch.BoolTensor]=None
     ) -> torch.BoolTensor:
+        return None
         batch_size, seq_length = input_ids.shape
 
         # default eager causal mask

@@ -139,10 +139,6 @@ class BaseXLATrainer:
         )
         lr_scheduler = self._get_scheduler(optimizer)
 
-        # extras
-        generator = torch.Generator(device=constants.XLA_DEVICE())
-        generator.manual_seed(0)
-
         # loop
         curr_step = 0
         token_tracker = xm.RateTracker()

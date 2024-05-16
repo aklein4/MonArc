@@ -49,8 +49,8 @@ def _mp_fn(index, args):
         xm.broadcast_master_param(model)
         model = model.to(torch.float32)
     
-    log_print("Compiling model...")
-    model.model = torch.compile(model.model, backend='openxla')
+    # log_print("Compiling model...")
+    # model.model = torch.compile(model.model, backend='openxla')
 
     log_print("Loading data...")
     loader = get_wds_loader(

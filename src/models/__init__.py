@@ -8,13 +8,14 @@ from models.arc_old.configuration_arc import ArcConfig
 
 from models.base import BaseConfig, BaseLmModel
 from models.arc import ArcLmModel
-
+from models.monarc import MonArcConfig, MonArcLmModel
 
 CONFIG_DICT = {
     "annelid": AnnelidConfig,
     "arc": BaseConfig,
     "base": BaseConfig,
     "arc_old": ArcConfig,
+    "monarch": MonArcConfig,
 }
 
 MODEL_DICT = {
@@ -22,4 +23,5 @@ MODEL_DICT = {
     "arc": ArcLmModel,
     "base": BaseLmModel,
     "arc_old": ArcLMModel,
+    "monarch": MonArcLmModel,
 }

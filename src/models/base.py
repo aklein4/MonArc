@@ -153,19 +153,22 @@ class BaseDecoderLayer(StableLmDecoderLayer):
 
 class BaseTransformer(BaseModel):
 
-    def __init__(self, config: BaseConfig):
+    def __init__(self, config: BaseConfig, disable_norm=False):
         super().__init__(config)
 
-        # vocab info
+        # info
         self.padding_idx = config.pad_token_id
         self.vocab_size = config.vocab_size
+        self.disable_norm = disable_norm
 
         # weights
         self.embed_tokens = nn.Embedding(config.vocab_size, config.hidden_size, self.padding_idx)
         self.layers = nn.ModuleList(
             [BaseDecoderLayer(config, layer_idx) for layer_idx in range(config.num_hidden_layers)]
         )
-        self.norm = nn.LayerNorm(config.hidden_size, eps=config.layer_norm_eps)
+
+        # optionally disable norm
+        self.norm = nn.Identity() if disable_norm else nn.LayerNorm(config.hidden_size, eps=config.layer_norm_eps)
 
         # Compute configuration
         self._attn_implementation = config._attn_implementation
@@ -316,6 +319,7 @@ class BaseLmModel(BaseModel):
 
         # lm modeling
         self.vocab_size = config.vocab_size
+        self.pad_token_id = config.pad_token_id
         self.lm_head = nn.Linear(config.hidden_size, config.vocab_size, bias=False)
 
         # Initialize weights and apply final processing
@@ -351,6 +355,8 @@ class BaseLmModel(BaseModel):
         )
 
         lm_logits = self.lm_head(out)
+        lm_logits[:, :, self.pad_token_id] = float('-inf')
+
         lm_logits = F.log_softmax(lm_logits, dim=-1)
-        
+
         return lm_logits

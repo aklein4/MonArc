@@ -320,7 +320,7 @@ class MonArcLmModel(BaseModel):
         true_labels = input_ids.clone()
         true_labels[:, :-1] = input_ids[:, 1:]
         fake_labels = input_ids.clone()
-        fake_labels[:, :-1] = torch.distributions.Categorical(logits=lm_logits).sample()[:, :-1]
+        # fake_labels[:, :-1] = torch.distributions.Categorical(logits=lm_logits.detach()).sample()[:, :-1]
 
         # get the true and fake logits
         true_states = self.head_model(true_labels, memory)
@@ -333,7 +333,7 @@ class MonArcLmModel(BaseModel):
 
         # get arc outputs
         ar = torch.arange(batch_size*seq_length, device=input_ids.device, dtype=torch.long)
-        tmp_lm_logits = lm_logits.view(-1, lm_logits.shape[-1])
+        tmp_lm_logits = lm_logits.view(-1, lm_logits.shape[-1]).detach()
         tmp_true_logits = true_logits.view(-1, true_logits.shape[-1])
         tmp_fake_logits = fake_logits.view(-1, fake_logits.shape[-1])
         tmp_true_labels = true_labels.view(-1)

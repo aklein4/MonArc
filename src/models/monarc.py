@@ -327,15 +327,16 @@ class MonArcLmModel(BaseModel):
         # do norm here so it's not applied to the head transformer
         lm_logits = self.lm_head(self.norm(memory))
 
-        # get the true and fake labels
-        # the last token is discarded later in the loss
-        true_labels = input_ids.clone()
-        true_labels[:, :-1] = input_ids[:, 1:]
-
         if self.control:
-            fake_labels = true_labels.clone()
+            true_labels = torch.zeros_like(input_ids)
+            fake_labels = torch.zeros_like(input_ids)
 
-        else:
+        # get the true and fake labels
+        else:  
+            # the last token is discarded later in the loss
+            true_labels = input_ids.clone()
+            true_labels[:, :-1] = input_ids[:, 1:]
+
             fake_labels = input_ids.clone()
 
             factored_probs = torch.softmax(

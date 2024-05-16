@@ -285,7 +285,7 @@ class MonArcLmModel(BaseModel):
         self.lm_head = nn.Linear(config.hidden_size, config.vocab_size, bias=False)
 
         # fast sampling info
-        self.vocab_factor = np.round(np.sqrt(self.vocab_size))
+        self.vocab_factor = int(np.round(np.sqrt(self.vocab_size)))
         while self.vocab_size % self.vocab_factor != 0:
             self.vocab_factor += 1
         self.vocab_chunk = self.vocab_size // self.vocab_factor

@@ -293,7 +293,6 @@ class MonArcLmModel(BaseModel):
     def forward(
         self,
         input_ids: torch.LongTensor,
-        generator=None
     ) -> DotDict:
         """ Forward pass of the LM for training. 
          - creates negative samples
@@ -320,12 +319,8 @@ class MonArcLmModel(BaseModel):
         # the last token is discarded later in the loss
         true_labels = input_ids.clone()
         true_labels[:, :-1] = input_ids[:, 1:]
-
         fake_labels = input_ids.clone()
-        coin = torch.rand(batch_size, seq_length, 1, generator=generator, dtype=torch.float32).to(lm_logits.device)
-        buckets = torch.cumsum(torch.softmax(lm_logits.detach().float(), dim=-1), dim=-1)
-        sample = (coin > buckets).long().sum(dim=-1)
-        fake_labels[:, :-1] = sample[:, :-1]
+        fake_labels[:, :-1] = torch.distributions.Categorical(logits=lm_logits).sample()[:, :-1]
 
         # get the true and fake logits
         true_states = self.head_model(true_labels, memory)

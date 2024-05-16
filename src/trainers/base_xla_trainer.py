@@ -140,7 +140,7 @@ class BaseXLATrainer:
         lr_scheduler = self._get_scheduler(optimizer)
 
         # extras
-        generator = torch.Generator()
+        generator = torch.Generator(device=constants.XLA_DEVICE())
         generator.manual_seed(0)
 
         # loop
@@ -163,7 +163,7 @@ class BaseXLATrainer:
 
                 # get results from train step
                 with autocast(constants.XLA_DEVICE()):
-                    results = self.train_step(model, mini_x, tokenizer, generator=generator)
+                    results = self.train_step(model, mini_x, tokenizer)
 
                     # scale results for accumulation
                     for k, v in results.items():

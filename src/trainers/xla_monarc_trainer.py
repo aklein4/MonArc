@@ -10,8 +10,8 @@ from  utils.training_utils import loss, ppl, acc, pcorr
 class XLAMonArcTrainer(BaseXLATrainer):
 
 
-    def train_step(self, model, x, tokenizer, generator=None):
-        lm_logits, arc_preds, arc_targets = model.forward(x, generator=generator)
+    def train_step(self, model, x, tokenizer):
+        lm_logits, arc_preds, arc_targets = model.forward(x)
         ignore_index = tokenizer.pad_token_id
 
         results = DotDict(

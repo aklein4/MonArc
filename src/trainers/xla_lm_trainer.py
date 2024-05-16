@@ -10,7 +10,7 @@ from  utils.training_utils import loss, ppl, acc, pcorr
 class XLALMTrainer(BaseXLATrainer):
 
 
-    def train_step(self, model, x, tokenizer, generator=None):
+    def train_step(self, model, x, tokenizer):
         out = model(x)
         ignore_index = tokenizer.pad_token_id
 

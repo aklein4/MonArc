@@ -5,6 +5,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 
 import math
+import numpy as np
 
 from transformers.models.stablelm.modeling_stablelm import (
     StableLmAttention,
@@ -283,6 +284,12 @@ class MonArcLmModel(BaseModel):
         self.norm = nn.LayerNorm(config.hidden_size, eps=config.layer_norm_eps)
         self.lm_head = nn.Linear(config.hidden_size, config.vocab_size, bias=False)
 
+        # fast sampling info
+        self.vocab_factor = np.round(np.sqrt(self.vocab_size))
+        while self.vocab_size % self.vocab_factor != 0:
+            self.vocab_factor += 1
+        self.vocab_chunk = self.vocab_size // self.vocab_factor
+
         # Initialize weights and apply final processing
         self.post_init()
 
@@ -321,11 +328,25 @@ class MonArcLmModel(BaseModel):
         true_labels[:, :-1] = input_ids[:, 1:]
 
         fake_labels = input_ids.clone()
-        fake_labels[:, :-1] = torch.multinomial(
-            torch.softmax(lm_logits.detach().float(), dim=-1).view(-1, lm_logits.shape[-1]),
-            1,
-            True
-        ).view(batch_size, seq_length)[:, :-1]
+        # fake_labels[:, :-1] = torch.multinomial(
+        #     torch.softmax(lm_logits.detach().float(), dim=-1).view(-1, lm_logits.shape[-1]),
+        #     1,
+        #     True
+        # ).view(batch_size, seq_length)[:, :-1]
+
+        factored_probs = torch.softmax(
+            lm_logits.detach().float(), dim=-1
+        ).view(-1, self.vocab_factor, self.vocab_chunk)
+
+        outer_probs = factored_probs.sum(dim=-1)
+        outer_sample = torch.multinomial(outer_probs, 1, True)
+
+        ar = torch.arange(self.batch_size, device=input_ids.device, dtype=torch.long)
+        inner_probs = factored_probs[ar, outer_sample]
+        inner_sample = torch.multinomial(inner_probs, 1, True)
+
+        sample = (self.vocab_chunk*outer_sample + inner_sample).view(batch_size, seq_length)
+        fake_labels[:, :-1] = sample[:, :-1]
 
         # get the true and fake logits
         true_states = self.head_model(true_labels, memory)
@@ -353,7 +374,8 @@ class MonArcLmModel(BaseModel):
         # get arc predictions, true first
         arc_preds = torch.cat([true_arc, fake_arc], dim=0)
         # format for cross entropy loss, positive (ind 1) = fake
-        arc_preds = torch.stack([-arc_preds/2, arc_preds/2], dim=-1)
+        # note that we use the OPPOSITE SIGN as paper -> positive arc = higher prob
+        arc_preds = torch.stack([arc_preds/2, -arc_preds/2], dim=-1)
         assert tuple(arc_preds.shape) == (2 * batch_size, seq_length, 2)
 
         # get arc targets (first true sequence is zero, second fake is 1)

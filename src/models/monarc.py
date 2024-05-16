@@ -341,7 +341,7 @@ class MonArcLmModel(BaseModel):
         outer_probs = factored_probs.sum(dim=-1)
         outer_sample = torch.multinomial(outer_probs, 1, True)[:, 0]
 
-        ar = torch.arange(batch_size, device=input_ids.device, dtype=torch.long)
+        ar = torch.arange(batch_size*seq_length, device=input_ids.device, dtype=torch.long)
         inner_probs = factored_probs[ar, outer_sample]
         inner_sample = torch.multinomial(inner_probs, 1, True)[:, 0]
 

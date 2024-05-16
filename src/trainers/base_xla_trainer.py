@@ -140,7 +140,7 @@ class BaseXLATrainer:
         lr_scheduler = self._get_scheduler(optimizer)
 
         # extras
-        generator = torch.Generator(device=constants.XLA_DEVICE())
+        generator = torch.Generator()
         generator.manual_seed(0)
 
         # loop

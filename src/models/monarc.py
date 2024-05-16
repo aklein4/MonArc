@@ -319,8 +319,13 @@ class MonArcLmModel(BaseModel):
         # the last token is discarded later in the loss
         true_labels = input_ids.clone()
         true_labels[:, :-1] = input_ids[:, 1:]
+
         fake_labels = input_ids.clone()
-        # fake_labels[:, :-1] = torch.distributions.Categorical(logits=lm_logits.detach()).sample()[:, :-1]
+        fake_labels[:, :-1] = torch.multinomial(
+            torch.softmax(lm_logits.detach().float(), dim=-1).view(-1, lm_logits.shape[-1]),
+            1,
+            True
+        ).view(batch_size, seq_length)[:, :-1]
 
         # get the true and fake logits
         true_states = self.head_model(true_labels, memory)
@@ -339,8 +344,8 @@ class MonArcLmModel(BaseModel):
         tmp_true_labels = true_labels.view(-1)
         tmp_fake_labels = fake_labels.view(-1)
 
-        true_arc = tmp_true_logits[ar, tmp_true_labels] - tmp_lm_logits[ar, tmp_true_labels].detach()
-        fake_arc = tmp_fake_logits[ar, tmp_fake_labels] - tmp_lm_logits[ar, tmp_fake_labels].detach()
+        true_arc = tmp_true_logits[ar, tmp_true_labels] - tmp_lm_logits[ar, tmp_true_labels]
+        fake_arc = tmp_fake_logits[ar, tmp_fake_labels] - tmp_lm_logits[ar, tmp_fake_labels]
 
         true_arc = true_arc.view(batch_size, seq_length)
         fake_arc = fake_arc.view(batch_size, seq_length)

@@ -339,10 +339,12 @@ class MonArcLmModel(BaseModel):
         ).view(-1, self.vocab_factor, self.vocab_chunk)
 
         outer_probs = factored_probs.sum(dim=-1)
+        print("OUTER:", outer_probs.shape, flush=True)
         outer_sample = torch.multinomial(outer_probs, 1, True)
 
         ar = torch.arange(batch_size, device=input_ids.device, dtype=torch.long)
         inner_probs = factored_probs[ar, outer_sample]
+        print("INNER:", inner_probs.shape, outer_sample.shape, flush=True)
         inner_sample = torch.multinomial(inner_probs, 1, True)
 
         sample = (self.vocab_chunk*outer_sample + inner_sample).view(batch_size, seq_length)

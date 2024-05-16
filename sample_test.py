@@ -19,13 +19,13 @@ def main():
         ).view(vocab_factor, vocab_chunk)
 
         counts = torch.zeros(15)
-        for i in tqdm(range(1000)):
+        for i in tqdm(range(10000)):
 
             outer_probs = factored_probs.sum(dim=-1)
-            outer_sample = torch.multinomial(outer_probs, 1, True)[:, 0]
+            outer_sample = torch.multinomial(outer_probs, 1, True)[0]
 
             inner_probs = factored_probs[outer_sample]
-            inner_sample = torch.multinomial(inner_probs, 1, True)[:, 0]
+            inner_sample = torch.multinomial(inner_probs, 1, True)[0]
 
             sample = vocab_chunk*outer_sample + inner_sample
             counts[sample] += 1

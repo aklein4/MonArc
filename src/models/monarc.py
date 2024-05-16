@@ -328,11 +328,14 @@ class MonArcLmModel(BaseModel):
         true_labels[:, :-1] = input_ids[:, 1:]
 
         fake_labels = input_ids.clone()
-        fake_labels[:, :-1] = torch.multinomial(
-            torch.softmax(lm_logits.detach().float(), dim=-1).view(-1, lm_logits.shape[-1]),
-            1,
-            True
-        ).view(batch_size, seq_length)[:, :-1]
+        fake_labels[:, :-1] = torch.distributions.Categorical(
+            logits=lm_logits.detach().float()
+        ).sample()[:, :-1]
+        # fake_labels[:, :-1] = torch.multinomial(
+        #     torch.softmax(lm_logits.detach().float(), dim=-1).view(-1, lm_logits.shape[-1]),
+        #     1,
+        #     True
+        # ).view(batch_size, seq_length)[:, :-1]
 
         # factored_probs = torch.softmax(
         #     lm_logits.detach().float(), dim=-1

@@ -15,7 +15,7 @@ CONFIG_DICT = {
     "arc": BaseConfig,
     "base": BaseConfig,
     "arc_old": ArcConfig,
-    "monarch": MonArcConfig,
+    "monarc": MonArcConfig,
 }
 
 MODEL_DICT = {
@@ -23,5 +23,5 @@ MODEL_DICT = {
     "arc": ArcLmModel,
     "base": BaseLmModel,
     "arc_old": ArcLMModel,
-    "monarch": MonArcLmModel,
+    "monarc": MonArcLmModel,
 }

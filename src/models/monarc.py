@@ -31,9 +31,11 @@ class MonArcConfig(BaseConfig):
         self,
         *args,
         num_head_layers=4,
+        control=False,
         **kwargs
     ):
         self.num_head_layers = num_head_layers
+        self.control = control
 
         super().__init__(*args, **kwargs)
 
@@ -290,6 +292,9 @@ class MonArcLmModel(BaseModel):
             self.vocab_factor += 1
         self.vocab_chunk = self.vocab_size // self.vocab_factor
 
+        # extras
+        self.control = config.control
+
         # Initialize weights and apply final processing
         self.post_init()
 
@@ -327,21 +332,25 @@ class MonArcLmModel(BaseModel):
         true_labels = input_ids.clone()
         true_labels[:, :-1] = input_ids[:, 1:]
 
-        fake_labels = input_ids.clone()
+        if self.control:
+            fake_labels = true_labels.clone()
 
-        factored_probs = torch.softmax(
-            lm_logits.detach().float(), dim=-1
-        ).view(-1, self.vocab_factor, self.vocab_chunk)
+        else:
+            fake_labels = input_ids.clone()
 
-        outer_probs = factored_probs.sum(dim=-1)
-        outer_sample = torch.multinomial(outer_probs, 1, True)[:, 0]
+            factored_probs = torch.softmax(
+                lm_logits.detach().float(), dim=-1
+            ).view(-1, self.vocab_factor, self.vocab_chunk)
 
-        ar = torch.arange(batch_size*seq_length, device=input_ids.device, dtype=torch.long)
-        inner_probs = factored_probs[ar, outer_sample]
-        inner_sample = torch.multinomial(inner_probs, 1, True)[:, 0]
+            outer_probs = factored_probs.sum(dim=-1)
+            outer_sample = torch.multinomial(outer_probs, 1, True)[:, 0]
 
-        sample = (self.vocab_chunk*outer_sample + inner_sample).view(batch_size, seq_length)
-        fake_labels[:, :-1] = sample[:, :-1]
+            ar = torch.arange(batch_size*seq_length, device=input_ids.device, dtype=torch.long)
+            inner_probs = factored_probs[ar, outer_sample]
+            inner_sample = torch.multinomial(inner_probs, 1, True)[:, 0]
+
+            sample = (self.vocab_chunk*outer_sample + inner_sample).view(batch_size, seq_length)
+            fake_labels[:, :-1] = sample[:, :-1]
 
         # get the true and fake logits
         true_states = self.head_model(true_labels, memory)

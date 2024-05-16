@@ -287,8 +287,7 @@ class MonArcLmModel(BaseModel):
         self.post_init()
 
         # init to zero to avoid noise
-        with torch.no_grad():
-            self.head_model.embed_tokens.weight.zero_()
+        self.head_model.embed_tokens.weight.data = 0 * self.head_model.embed_tokens.weight.data
 
 
     def forward(
@@ -316,13 +315,19 @@ class MonArcLmModel(BaseModel):
         # do norm here so it's not applied to the head transformer
         lm_logits = self.lm_head(self.norm(memory))
 
-        true_states = self.head_model(input_ids, memory)
+        # get the true and fake labels
+        # the last token is discarded later in the loss
+        true_labels = input_ids.clone()
+        true_labels[:, :-1] = input_ids[:, 1:]
+        fake_labels = input_ids.clone()
+        fake_labels[:, :-1] = torch.distributions.Categorical(logits=lm_logits).sample()[:, :-1]
+
+        # get the true and fake logits
+        true_states = self.head_model(true_labels, memory)
         # no norm here, head_model handles it
         true_logits = self.lm_head(true_states)
 
-        sample_ids = torch.distributions.Categorical(logits=lm_logits).sample()
-        fake_ids = torch.cat([input_ids[:, :1], sample_ids[:, :-1]], dim=-1)
-        fake_states = self.head_model(fake_ids, memory)
+        fake_states = self.head_model(fake_labels, memory)
         # no norm here, head_model handles it
         fake_logits = self.lm_head(fake_states)
 
@@ -331,29 +336,29 @@ class MonArcLmModel(BaseModel):
         tmp_lm_logits = lm_logits.view(-1, lm_logits.shape[-1])
         tmp_true_logits = true_logits.view(-1, true_logits.shape[-1])
         tmp_fake_logits = fake_logits.view(-1, fake_logits.shape[-1])
-        tmp_input_ids = input_ids.view(-1)
-        tmp_fake_ids = fake_ids.view(-1)
+        tmp_true_labels = true_labels.view(-1)
+        tmp_fake_labels = fake_labels.view(-1)
 
-        true_arc = tmp_true_logits[ar, tmp_input_ids] - tmp_lm_logits[ar, tmp_input_ids].detach()
-        fake_arc = tmp_fake_logits[ar, tmp_fake_ids] - tmp_lm_logits[ar, tmp_fake_ids].detach()
+        true_arc = tmp_true_logits[ar, tmp_true_labels] - tmp_lm_logits[ar, tmp_true_labels].detach()
+        fake_arc = tmp_fake_logits[ar, tmp_fake_labels] - tmp_lm_logits[ar, tmp_fake_labels].detach()
 
         true_arc = true_arc.view(batch_size, seq_length)
         fake_arc = fake_arc.view(batch_size, seq_length)
 
-        # get arc predictions
-        arc_preds = torch.cat([true_arc, fake_arc], dim=-1)
+        # get arc predictions, true first
+        arc_preds = torch.cat([true_arc, fake_arc], dim=0)
         # format for cross entropy loss, positive (ind 1) = fake
         arc_preds = torch.stack([-arc_preds/2, arc_preds/2], dim=-1)
-        assert tuple(arc_preds.shape) == (batch_size, 2*seq_length, 2)
+        assert tuple(arc_preds.shape) == (2 * batch_size, seq_length, 2)
 
-        # get arc targets (first sequence is zero, second is 1)
-        arc_targets = torch.ones(batch_size, 2*seq_length, dtype=input_ids.dtype, device=input_ids.device)
-        arc_targets[:, :seq_length] = 0
+        # get arc targets (first true sequence is zero, second fake is 1)
+        arc_targets = torch.ones(2 * batch_size, seq_length, dtype=input_ids.dtype, device=input_ids.device)
+        arc_targets[:batch_size] = 0
         
         # target padding
         arc_targets = torch.masked_fill(
             arc_targets, 
-            torch.cat([input_ids, input_ids], dim=1) == self.pad_token_id,
+            torch.cat([input_ids, input_ids], dim=0) == self.pad_token_id,
             -1
         )
 

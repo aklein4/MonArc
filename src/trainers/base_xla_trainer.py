@@ -71,29 +71,31 @@ class BaseXLATrainer:
         with LogSection("Saving Checkpoint"):
 
             api = hf.HfApi()
-            base_path = os.path.join(constants.LOCAL_DATA_PATH, f"{step:012d}")
+            tmp_base_path = os.path.join(constants.LOCAL_DATA_PATH, "tmp_checkpoint")
+            out_base_path = f"{step:012d}"
 
             for name, tup in models.items():
                 model, on_device = tup
 
-                path = os.path.join(base_path, name)
+                tmp_path = os.path.join(tmp_base_path, name)
+                out_path = os.path.join(out_base_path, name)
 
                 if on_device:
-                    os.makedirs(path, exist_ok=True)
-                    xm.save(model.state_dict(), os.path.join(path, "state_dict.pt"))
+                    os.makedirs(tmp_path, exist_ok=True)
+                    xm.save(model.state_dict(), os.path.join(tmp_path, "state_dict.pt"))
                     try:
-                        model.config.save_pretrained(path, push_to_hub=False)
+                        model.config.save_pretrained(tmp_path, push_to_hub=False)
                     except:
                         print(f"Warning: {name} config not saved")
                         pass
 
                 else:
-                    model.save_pretrained(path, push_to_hub=False)
+                    model.save_pretrained(tmp_path, push_to_hub=False)
 
                 api.upload_folder(
                     repo_id=self.save_repo,
-                    folder_path=path,
-                    path_in_repo=os.path.join(f"{step:012d}", name),
+                    folder_path=tmp_path,
+                    path_in_repo=out_path,
                     repo_type="model"
                 )
     

@@ -320,10 +320,10 @@ class MonArcLmModel(BaseModel):
         # the last token is discarded later in the loss
         true_labels = input_ids.clone()
         true_labels[:, :-1] = input_ids[:, 1:]
-        fake_labels = input_ids.clone()
 
+        fake_labels = input_ids.clone()
         coin = torch.rand(batch_size, seq_length, 1, generator=generator, dtype=torch.float32).to(lm_logits.device)
-        buckets = torch.cumsum(torch.softmax(lm_logits.float(), dim=-1), dim=-1)
+        buckets = torch.cumsum(torch.softmax(lm_logits.detach().float(), dim=-1), dim=-1)
         sample = (coin > buckets).long().sum(dim=-1)
         fake_labels[:, :-1] = sample[:, :-1]
 

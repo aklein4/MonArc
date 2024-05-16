@@ -315,7 +315,6 @@ class MonArcLmModel(BaseModel):
         memory = self.model(input_ids)
         # do norm here so it's not applied to the head transformer
         lm_logits = self.lm_head(self.norm(memory))
-        lm_logits[:, :, self.pad_token_id] = float("-inf")
 
         true_states = self.head_model(input_ids, memory)
         # no norm here, head_model handles it

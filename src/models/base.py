@@ -355,8 +355,6 @@ class BaseLmModel(BaseModel):
         )
 
         lm_logits = self.lm_head(out)
-        lm_logits[:, :, self.pad_token_id] = float('-inf')
-
         lm_logits = F.log_softmax(lm_logits, dim=-1)
 
         return lm_logits

@@ -361,7 +361,7 @@ class MonArcLmModel(BaseModel):
         true_states = self.head_model(true_tokens, memory)
         # no norm here, head_model handles it
         true_logits = torch.bmm(
-            self.lm_head.weight[true_labels.view(-1)]unsqueeze(-2),
+            self.lm_head.weight[true_labels.view(-1)].unsqueeze(-2),
             true_states.view(-1, true_states.shape[-1]).unsqueeze(-1)
         )[:, 0]
 

@@ -2,8 +2,6 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
-from utils.logging_utils import log_print
-
 
 def loss(logits, x, ignore_index):
     x, logits = x[:, 1:], logits[:, :-1]
@@ -84,8 +82,6 @@ def arc_acc(true_arc, fake_arc, input_ids, ignore_index):
     fake_arc = fake_arc[:, :-1].view(-1)
     input_ids = input_ids[:, 1:].view(-1)
     
-    log_print(f"true_arc: {true_arc}")
-    log_print(f"fake_arc: {fake_arc}")
     true_acc = (true_arc < 0).float()
     fake_acc = (fake_arc > 0).float()
 

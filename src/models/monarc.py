@@ -238,7 +238,9 @@ class MonArcHeadTransformer(BaseTransformer):
 
         # get inputs
         if input_ids is not None:
-            hidden_states = hidden_states + self._get_tokens(input_ids)
+            extra = self._get_tokens(input_ids)
+            log_print(extra)
+            hidden_states = hidden_states + extra
         else:
             input_ids = torch.zeros(hidden_states.shape[:-1], dtype=torch.long, device=hidden_states.device)
         
@@ -396,7 +398,7 @@ class MonArcLmModel(BaseModel):
             attention_mask=torch.cat([attention_mask, attention_mask], dim=0),
             cached_mask=True
         )[0].chunk(2, dim=0)
-        
+
         true_logits = torch.bmm(
             self.lm_head.weight[true_labels.view(-1)].unsqueeze(-2),
             true_states.view(-1, true_states.shape[-1]).unsqueeze(-1)

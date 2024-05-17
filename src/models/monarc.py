@@ -149,6 +149,7 @@ class MonArcHeadLayer(nn.Module):
         self.post_attention_layernorm = nn.LayerNorm(config.hidden_size, eps=config.layer_norm_eps)
         self.dropout = nn.Dropout(config.hidden_dropout)
 
+
     # copied from StableLmDecoderLayer, changed memory
     def forward(
         self,
@@ -215,12 +216,6 @@ class MonArcHeadTransformer(BaseTransformer):
         # Compute configuration
         self._attn_implementation = config._attn_implementation
 
-        # training configuration
-        self.gradient_checkpointing = False # found by _xla_set_gradient_checkpointing
-        if config.gradient_checkpointing:
-            log_print("Head gradient checkpointing enabled!")
-            self.xla_gradient_checkpointing_enable()
-
         # Initialize weights and apply final processing
         self.post_init()
 
@@ -246,6 +241,7 @@ class MonArcHeadTransformer(BaseTransformer):
             if self.gradient_checkpointing and self.training:
                 if kv is not None:
                     raise ValueError("Gradient checkpointing is not compatible with cache!")
+                log_print("Head grad check!")
 
                 hidden_states = self._gradient_checkpointing_func(
                     decoder_layer.__call__,

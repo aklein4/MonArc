@@ -15,6 +15,8 @@ except ImportError:
     if _xla_found:
         print("WARNING: flash_attention not found for torch_xla", flush=True)
 
+import functools
+
 from transformers.modeling_utils import PreTrainedModel
 from transformers.models.stablelm.configuration_stablelm import StableLmConfig
 from transformers.models.stablelm.modeling_stablelm import (
@@ -79,34 +81,14 @@ class BaseModel(PreTrainedModel):
 
 
     # converted from torch to torch xla
-    def xla_gradient_checkpointing_enable(self, gradient_checkpointing_kwargs={}):
+    def gradient_checkpointing_enable(self, gradient_checkpointing_kwargs={}):
         if not self.supports_gradient_checkpointing:
             raise ValueError(f"{self.__class__.__name__} does not support gradient checkpointing.")
-        gradient_checkpointing_func = xla_checkpoint_fn
+        
+        gradient_checkpointing_func = functools.partial(xla_checkpoint_fn, **gradient_checkpointing_kwargs)
         self._set_gradient_checkpointing(enable=True, gradient_checkpointing_func=gradient_checkpointing_func)
-
-
-    def _xla_set_gradient_checkpointing(self, enable: bool = True, gradient_checkpointing_func=None):
-        """ Set gradient checkpointing for base model and submodules. """
-        is_gradient_checkpointing_set = False
-
-        # Apply it on the top-level module in case the top-level modules supports it
-        # for example, LongT5Stack inherits from `PreTrainedModel`.
-        if hasattr(self, "gradient_checkpointing"):
-            log_print(f"GRAD CHECKPOINT: {gradient_checkpointing_func.__name__}")
-            self._gradient_checkpointing_func = gradient_checkpointing_func
-            self.gradient_checkpointing = enable
-            is_gradient_checkpointing_set = True
-        for module in self.modules():
-            if hasattr(module, "gradient_checkpointing"):
-                module._gradient_checkpointing_func = gradient_checkpointing_func
-                module.gradient_checkpointing = enable
-                is_gradient_checkpointing_set = True
-        if not is_gradient_checkpointing_set:
-            raise ValueError(
-                f"{self.__class__.__name__} is not compatible with gradient checkpointing. Make sure all the architecture support it by setting a boolean attribute"
-                " `gradient_checkpointing` to modules of the model that uses checkpointing."
-            )
+        
+        log_print("Gradient checkpointing enabled!")
 
 
 class StableLmFlashAttention2XLA(StableLmFlashAttention2):
@@ -153,10 +135,7 @@ class BaseDecoderLayer(StableLmDecoderLayer):
 class BaseTransformer(BaseModel):
 
     def __init__(self, config: BaseConfig, disable_norm=False):
-        tmp_gradpoint = config.gradient_checkpointing
-        config.gradient_checkpointing = False
         super().__init__(config)
-        config.gradient_checkpointing = tmp_gradpoint
 
         # info
         self.padding_idx = config.pad_token_id
@@ -174,12 +153,6 @@ class BaseTransformer(BaseModel):
 
         # Compute configuration
         self._attn_implementation = config._attn_implementation
-
-        # training configuration
-        self.gradient_checkpointing = False # found by _xla_set_gradient_checkpointing
-        if config.gradient_checkpointing:
-            log_print("Gradient checkpointing enabled!")
-            self.xla_gradient_checkpointing_enable()
 
         # Initialize weights and apply final processing
         self.post_init()
@@ -289,7 +262,7 @@ class BaseTransformer(BaseModel):
                 if kv is not None:
                     raise ValueError("Gradient checkpointing is not compatible with cache!")
 
-                print(self._gradient_checkpointing_func.__name__)
+                log_print("transformer grad check")
                 hidden_states = self._gradient_checkpointing_func(
                     decoder_layer.__call__,
                     hidden_states,

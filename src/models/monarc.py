@@ -235,7 +235,6 @@ class MonArcHeadTransformer(BaseTransformer):
         cached_mask=False,
         kv=None,
     ) -> DotDict:
-        batch_size, seq_length = input_ids.shape
 
         # get inputs
         if input_ids is not None:

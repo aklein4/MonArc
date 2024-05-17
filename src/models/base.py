@@ -178,18 +178,30 @@ class BaseTransformer(BaseModel):
     def _get_mask(
         self,
         input_ids: torch.LongTensor,
-        mask: Optional[torch.BoolTensor]=None
+        mask: Optional[torch.BoolTensor]=None,
+        segment_ids: Optional[torch.LongTensor]=None
     ) -> torch.BoolTensor:
         batch_size, seq_length = input_ids.shape
+
+        # error check
+        if (mask is not None or segment_ids is not None) and self._attn_implementation.count('flash_attention_2'):
+            raise ValueError("Custom attention mask and segmend_ids are not supported for Flash Attention!")
 
         # default eager causal mask
         if mask is None and self._attn_implementation == 'eager':
             mask = torch.ones(seq_length, seq_length, dtype=torch.bool, device=input_ids.device)
             mask = torch.triu(mask, diagonal=1)
 
-        # check for custom mask
-        if mask is not None and self._attn_implementation.count('flash_attention_2'):
-            raise ValueError("Custom attention mask is not supported for Flash Attention 2!")
+        # must have batch dimension
+        if mask.dim() == 2:
+            mask = mask.unsqueeze(0)
+
+        # apply segment ids
+        if segment_ids is not None:
+            assert segment_ids.shape == input_ids.shape, f"Segment ids ({segment_ids.shape}) must have same shape as input ids ({input_ids.shape})"
+
+            segment_mask = segment_ids[:, None, :] != segment_ids[:, :, None]
+            mask = mask | segment_mask
 
         # process for attn version
         if self._attn_implementation == 'eager':
@@ -203,10 +215,6 @@ class BaseTransformer(BaseModel):
 
         # final processing
         if mask is not None:
-
-            # must have batch dimension
-            if mask.dim() == 2:
-                mask = mask.unsqueeze(0)
 
             # cannot broadcast to batch size
             if mask.shape[0] == 1:
@@ -242,6 +250,7 @@ class BaseTransformer(BaseModel):
         input_ids: torch.LongTensor,
         position_ids: Optional[torch.LongTensor]=None,
         attention_mask: Optional[torch.BoolTensor]=None,
+        segment_ids: Optional[torch.LongTensor]=None,
         kv: Optional[Cache]=None,
     ) -> DotDict:
         """ Forward pass of the LM
@@ -261,7 +270,7 @@ class BaseTransformer(BaseModel):
 
         # get inputs
         hidden_states = self._get_tokens(input_ids)
-        attention_mask = self._get_mask(input_ids, attention_mask)
+        attention_mask = self._get_mask(input_ids, attention_mask, segment_ids)
         position_ids = self._get_position_ids(input_ids, position_ids)
 
         # run transformer

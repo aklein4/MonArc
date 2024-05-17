@@ -12,8 +12,8 @@ from  utils.training_utils import (
 
 class XLAMonArcTrainer(BaseXLATrainer):
 
-    def train_step(self, model, x, tokenizer):
-        lm_logits, true_arc, fake_arc = model.forward(x)
+    def train_step(self, model, x, seg_ids, tokenizer):
+        lm_logits, true_arc, fake_arc = model.forward(x, segment_ids=seg_ids)
         ignore_index = tokenizer.pad_token_id
 
         results = DotDict(

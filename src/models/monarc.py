@@ -305,6 +305,7 @@ class MonArcLmModel(BaseModel):
     def forward(
         self,
         input_ids: torch.LongTensor,
+        segment_ids: Optional[torch.LongTensor]=None,
     ) -> DotDict:
         """ Forward pass of the LM for training. 
          - creates negative samples
@@ -323,7 +324,7 @@ class MonArcLmModel(BaseModel):
         batch_size, seq_length = input_ids.shape
 
         # get lm predictions
-        memory = self.model(input_ids)
+        memory = self.model(input_ids, segment_ids=segment_ids)
         # do norm here so it's not applied to the head transformer
         lm_logits = self.lm_head(self.norm(memory))
 
@@ -358,14 +359,14 @@ class MonArcLmModel(BaseModel):
             fake_tokens = fake_labels
 
         # get the true and fake logits
-        true_states = self.head_model(true_tokens, memory)
+        true_states = self.head_model(true_tokens, memory, segment_ids=segment_ids)
         # no norm here, head_model handles it
         true_logits = torch.bmm(
             self.lm_head.weight[true_labels.view(-1)].unsqueeze(-2),
             true_states.view(-1, true_states.shape[-1]).unsqueeze(-1)
         )[:, 0, 0]
 
-        fake_states = self.head_model(fake_tokens, memory)
+        fake_states = self.head_model(fake_tokens, memory, segment_ids=segment_ids)
         # # no norm here, head_model handles it
         fake_logits = torch.bmm(
             self.lm_head.weight[fake_labels.view(-1)].unsqueeze(-2),

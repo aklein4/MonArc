@@ -8,7 +8,7 @@ import argparse
 
 from transformers import AutoTokenizer
 
-from loaders.wds_loader import get_wds_loader
+from loaders.packed_loader import get_packed_loader
 from models import CONFIG_DICT, MODEL_DICT
 from trainers import TRAINER_DICT
 
@@ -53,7 +53,7 @@ def _mp_fn(index, args):
     # model.model = torch.compile(model.model, backend='openxla')
 
     log_print("Loading data...")
-    loader = get_wds_loader(
+    loader = get_packed_loader(
         args.dataset,
         "train",
         tokenizer.pad_token_id,

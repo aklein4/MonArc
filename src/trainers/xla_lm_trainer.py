@@ -10,8 +10,8 @@ from  utils.training_utils import loss, ppl, acc, pcorr
 class XLALMTrainer(BaseXLATrainer):
 
 
-    def train_step(self, model, x, tokenizer):
-        out = model(x)
+    def train_step(self, model, x, seg_ids, tokenizer):
+        out = model(x, segment_ids=seg_ids)
         ignore_index = tokenizer.pad_token_id
 
         results = DotDict(

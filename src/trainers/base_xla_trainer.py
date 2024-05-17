@@ -143,7 +143,8 @@ class BaseXLATrainer:
         curr_step = 0
         token_tracker = xm.RateTracker()
         step_tracker = xm.RateTracker()
-        for x in loader:
+        for x, seg_ids in loader:
+            assert x.shape == seg_ids.shape, f"Input ({x.shape}) and segment ids ({seg_ids.shape}) must have same shape!"
 
             # prepare x for accum
             n_x = x.shape[0]
@@ -152,14 +153,17 @@ class BaseXLATrainer:
             if n_x * constants.NUM_XLA_DEVICES() != self.bs:
                 print(f"Warning: sample size {n_x} with {constants.NUM_XLA_DEVICES()} devices does not match batch size {self.bs}")
             x_split = torch.split(x, self.mini_bs, dim=0)
+            seg_split = torch.split(seg_ids, self.mini_bs, dim=0)
 
             # accumulate gradients
             results_accum = DotDict()
-            for mini_x in x_split:
+            for split_idx in range(len(x_split)):
+                mini_x = x_split[split_idx]
+                mini_seg = seg_split[split_idx]
 
                 # get results from train step
                 with autocast(constants.XLA_DEVICE()):
-                    results = self.train_step(model, mini_x, tokenizer)
+                    results = self.train_step(model, mini_x, mini_seg, tokenizer)
 
                     # scale results for accumulation
                     for k, v in results.items():

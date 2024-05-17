@@ -324,6 +324,7 @@ class BaseLmModel(BaseModel):
         input_ids: torch.LongTensor,
         position_ids: Optional[torch.LongTensor]=None,
         attention_mask: Optional[torch.BoolTensor]=None,
+        segment_ids: Optional[torch.LongTensor]=None,
         kv: Optional[Cache]=None,
     ) -> DotDict:
         """ Forward pass of the LM
@@ -344,6 +345,7 @@ class BaseLmModel(BaseModel):
             input_ids=input_ids,
             position_ids=position_ids,
             attention_mask=attention_mask,
+            segment_ids=segment_ids,
             kv=kv
         )
 

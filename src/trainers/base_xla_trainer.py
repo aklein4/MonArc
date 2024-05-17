@@ -239,6 +239,7 @@ class BaseXLATrainer:
         self,
         model,
         x,
+        seg_ids,
         tokenizer
     ):
         """ Get results of a single training step.

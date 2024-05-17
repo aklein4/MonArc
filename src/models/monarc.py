@@ -360,22 +360,26 @@ class MonArcLmModel(BaseModel):
         # get the true and fake logits
         true_states = self.head_model(true_tokens, memory)
         # no norm here, head_model handles it
-        true_logits = F.linear(true_states, self.lm_head.weight[true_labels].unsqueeze(-2))
+        true_logits = torch.bmm(
+            self.lm_head.weight[true_labels.view(-1)]unsqueeze(-2),
+            true_states.view(-1, true_states.shape[-1]).unsqueeze(-1)
+        )[:, 0]
 
         fake_states = self.head_model(fake_tokens, memory)
         # # no norm here, head_model handles it
-        fake_logits = F.linear(fake_states, self.lm_head.weight[fake_labels].unsqueeze(-2))
+        fake_logits = torch.bmm(
+            self.lm_head.weight[fake_labels.view(-1)].unsqueeze(-2),
+            fake_states.view(-1, fake_states.shape[-1]).unsqueeze(-1)
+        )[:, 0]
 
         # get arc outputs
         ar = torch.arange(batch_size*seq_length, device=input_ids.device, dtype=torch.long)
         tmp_lm_logits = lm_logits.view(-1, lm_logits.shape[-1]).detach()
-        tmp_true_logits = true_logits.view(-1)
-        tmp_fake_logits = fake_logits.view(-1)
         tmp_true_labels = true_labels.view(-1)
         tmp_fake_labels = fake_labels.view(-1)
 
-        true_arc = tmp_true_logits - tmp_lm_logits[ar, tmp_true_labels]
-        fake_arc = tmp_fake_logits - tmp_lm_logits[ar, tmp_fake_labels]
+        true_arc = true_logits - tmp_lm_logits[ar, tmp_true_labels]
+        fake_arc = fake_logits - tmp_lm_logits[ar, tmp_fake_labels]
 
         # flip sign so higher = lower residual = more likely
         true_arc = -true_arc.view(batch_size, seq_length)

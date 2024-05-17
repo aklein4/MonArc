@@ -377,7 +377,6 @@ class MonArcLmModel(BaseModel):
         tmp_lm_logits = lm_logits.view(-1, lm_logits.shape[-1]).detach()
         tmp_true_labels = true_labels.view(-1)
         tmp_fake_labels = fake_labels.view(-1)
-        log_print(tmp_lm_logits[ar, tmp_true_labels].shape)
 
         true_arc = true_logits - tmp_lm_logits[ar, tmp_true_labels]
         fake_arc = fake_logits - tmp_lm_logits[ar, tmp_fake_labels]

@@ -295,6 +295,8 @@ class MonArcLmModel(BaseModel):
 
         # extras
         self.control = config.control
+        if self.control:
+            log_print("MonArc control mode enabled!")
 
         # Initialize weights and apply final processing
         self.post_init()

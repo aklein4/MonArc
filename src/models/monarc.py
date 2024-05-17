@@ -346,6 +346,16 @@ class MonArcLmModel(BaseModel):
             cached_mask=True
         )
 
+        # get the lm logits
+        lm_states, memory = self.head_model(
+            hidden_states,
+            input_ids=None,
+            memory=None,
+            attention_mask=attention_mask,
+            cached_mask=True
+        )
+        lm_logits = self.lm_head(lm_states)
+
         # get the true labels
         # the last token is discarded later in the loss
         true_labels = input_ids.clone()
@@ -375,16 +385,6 @@ class MonArcLmModel(BaseModel):
         else:
             true_tokens = true_labels
             fake_tokens = fake_labels
-
-        # get the lm logits
-        lm_states, memory = self.head_model(
-            hidden_states,
-            input_ids=None,
-            memory=None,
-            attention_mask=attention_mask,
-            cached_mask=True
-        )
-        lm_logits = self.lm_head(lm_states)
 
         # get the true and fake logits
         true_states = self.head_model(

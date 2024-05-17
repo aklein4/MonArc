@@ -363,7 +363,7 @@ class MonArcLmModel(BaseModel):
         true_logits = torch.bmm(
             self.lm_head.weight[true_labels.view(-1)].unsqueeze(-2),
             true_states.view(-1, true_states.shape[-1]).unsqueeze(-1)
-        )[:, 0]
+        )[:, 0, 0]
         log_print(true_logits.shape)
 
         fake_states = self.head_model(fake_tokens, memory)
@@ -371,7 +371,7 @@ class MonArcLmModel(BaseModel):
         fake_logits = torch.bmm(
             self.lm_head.weight[fake_labels.view(-1)].unsqueeze(-2),
             fake_states.view(-1, fake_states.shape[-1]).unsqueeze(-1)
-        )[:, 0]
+        )[:, 0, 0]
 
         # get arc outputs
         ar = torch.arange(batch_size*seq_length, device=input_ids.device, dtype=torch.long)

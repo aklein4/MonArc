@@ -18,13 +18,13 @@ class XLAMonArcTrainer(BaseXLATrainer):
 
         results = DotDict(
             lm_loss=loss(lm_logits, x, ignore_index),
-            lm_ppl=ppl(lm_logits, x, ignore_index),
-            lm_acc=acc(lm_logits, x, ignore_index),
-            lm_pcorr=pcorr(lm_logits, x, ignore_index),
+            # lm_ppl=ppl(lm_logits, x, ignore_index),
+            # lm_acc=acc(lm_logits, x, ignore_index),
+            # lm_pcorr=pcorr(lm_logits, x, ignore_index),
 
             arc_loss=arc_loss(true_arc, fake_arc, x, ignore_index),
-            arc_acc=arc_acc(true_arc, fake_arc, x, ignore_index),
-            arc_pcorr=arc_pcorr(true_arc, fake_arc, x, ignore_index),
+            # arc_acc=arc_acc(true_arc, fake_arc, x, ignore_index),
+            # arc_pcorr=arc_pcorr(true_arc, fake_arc, x, ignore_index),
         )
         results.loss = results.lm_loss + self.w_arc * results.arc_loss
 

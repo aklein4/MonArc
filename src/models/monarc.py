@@ -239,6 +239,9 @@ class MonArcHeadTransformer(BaseTransformer):
         # get inputs
         if input_ids is not None:
             hidden_states = hidden_states + self._get_tokens(input_ids)
+        else:
+            input_ids = torch.zeros(hidden_states.shape[:-1], dtype=torch.long, device=hidden_states.device)
+        
         attention_mask = self._get_mask(input_ids, attention_mask, segment_ids, cached_mask)
         position_ids = self._get_position_ids(input_ids, position_ids)
 

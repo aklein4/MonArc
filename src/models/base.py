@@ -15,8 +15,6 @@ except ImportError:
     if _xla_found:
         print("WARNING: flash_attention not found for torch_xla", flush=True)
 
-import functools
-
 from transformers.modeling_utils import PreTrainedModel
 from transformers.models.stablelm.configuration_stablelm import StableLmConfig
 from transformers.models.stablelm.modeling_stablelm import (
@@ -84,7 +82,7 @@ class BaseModel(PreTrainedModel):
     def xla_gradient_checkpointing_enable(self, gradient_checkpointing_kwargs={}):
         if not self.supports_gradient_checkpointing:
             raise ValueError(f"{self.__class__.__name__} does not support gradient checkpointing.")
-        gradient_checkpointing_func = functools.partial(xla_checkpoint_fn, **gradient_checkpointing_kwargs)
+        gradient_checkpointing_func = xla_checkpoint_fn
         self._set_gradient_checkpointing(enable=True, gradient_checkpointing_func=gradient_checkpointing_func)
 
 

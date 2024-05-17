@@ -24,6 +24,6 @@ max_position_embeddings: 1024
 
 _attn_implementation: eager
 gradient_checkpointing: True
-gradient_checkpointing_layers: 12
+gradient_checkpointing_layers: 16
 
 control: True

@@ -6,14 +6,9 @@ import torch.nn.functional as F
 
 try:
     from torch_xla.utils.checkpoint import checkpoint as xla_checkpoint_fn
-    _xla_found = True
-except ImportError:
-    _xla_found = False # constants handles import errors
-try:
     from torch_xla.experimental.custom_kernel import flash_attention as flash_attn_xla
 except ImportError:
-    if _xla_found:
-        print("WARNING: flash_attention not found for torch_xla", flush=True)
+    pass
 
 import functools
 
@@ -74,6 +69,7 @@ class BaseModel(PreTrainedModel):
         super().__init__(config)
         config._attn_implementation = tmp_attn_implementation
 
+
     # from StableLM
     def _init_weights(self, module):
         std = self.config.initializer_range
@@ -126,6 +122,7 @@ ATTENTION_CLASSES = {
 
 class BaseDecoderLayer(StableLmDecoderLayer):
 
+    # copied from StableLM with new ATTENTION_CLASSES
     def __init__(self, config: StableLmConfig, layer_idx: int):
         nn.Module.__init__(self)
         self.use_parallel_residual = config.use_parallel_residual
@@ -188,7 +185,7 @@ class BaseTransformer(BaseModel):
             raise ValueError("Custom attention mask and segmend_ids are not supported for Flash Attention!")
 
         # default eager causal mask
-        if mask is None and self._attn_implementation == 'eager':
+        if mask is None:
             mask = torch.ones(seq_length, seq_length, dtype=torch.bool, device=input_ids.device)
             mask = torch.triu(mask, diagonal=1)
 
@@ -208,10 +205,12 @@ class BaseTransformer(BaseModel):
             # eager uses attn bias
             # https://github.com/huggingface/transformers/blob/v4.40.2/src/transformers/models/stablelm/modeling_stablelm.py#L290
             mask = torch.masked_fill(torch.zeros_like(mask).float(), mask, float('-inf'))
-        elif mask is not None and self._attn_implementation == 'sdpa':
+        elif self._attn_implementation == 'sdpa':
             # sdpa uses True = NOT masked
             # https://pytorch.org/docs/stable/generated/torch.nn.functional.scaled_dot_product_attention.html
             mask = ~mask
+        else:
+            mask = None
 
         # final processing
         if mask is not None:
@@ -235,6 +234,7 @@ class BaseTransformer(BaseModel):
         batch_size, seq_length = input_ids.shape
         
         # default
+        # we use relative position ids so segment_ids can be ignored
         if position_ids is None:
             position_ids = torch.arange(seq_length, dtype=input_ids.dtype, device=input_ids.device)
 

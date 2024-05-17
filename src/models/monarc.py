@@ -230,13 +230,14 @@ class MonArcHeadTransformer(BaseTransformer):
         memory: torch.Tensor,
         position_ids: Optional[torch.LongTensor]=None,
         attention_mask: Optional[torch.BoolTensor]=None,
+        segment_ids: Optional[torch.LongTensor]=None,
         kv=None,
     ) -> DotDict:
         batch_size, seq_length = input_ids.shape
 
         # get inputs
-        hidden_states = self._get_tokens(input_ids) + memory
-        attention_mask = self._get_mask(input_ids, attention_mask)
+        hidden_states = self._get_tokens(input_ids) + memory # continue from memory
+        attention_mask = self._get_mask(input_ids, attention_mask, segment_ids)
         position_ids = self._get_position_ids(input_ids, position_ids)
 
         # run transformer
@@ -376,11 +377,9 @@ class MonArcLmModel(BaseModel):
         # get arc outputs
         ar = torch.arange(batch_size*seq_length, device=input_ids.device, dtype=torch.long)
         tmp_lm_logits = lm_logits.view(-1, lm_logits.shape[-1]).detach()
-        tmp_true_labels = true_labels.view(-1)
-        tmp_fake_labels = fake_labels.view(-1)
 
-        true_arc = true_logits - tmp_lm_logits[ar, tmp_true_labels]
-        fake_arc = fake_logits - tmp_lm_logits[ar, tmp_fake_labels]
+        true_arc = true_logits - tmp_lm_logits[ar, true_labels.view(-1)]
+        fake_arc = fake_logits - tmp_lm_logits[ar, fake_labels.view(-1)]
 
         # flip sign so higher = lower residual = more likely
         true_arc = -true_arc.view(batch_size, seq_length)

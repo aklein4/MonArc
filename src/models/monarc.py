@@ -215,6 +215,7 @@ class MonArcHeadTransformer(BaseTransformer):
 
         # Compute configuration
         self._attn_implementation = config._attn_implementation
+        self.gradient_checkpointing = False
 
         # Initialize weights and apply final processing
         self.post_init()

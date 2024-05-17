@@ -153,7 +153,10 @@ class BaseDecoderLayer(StableLmDecoderLayer):
 class BaseTransformer(BaseModel):
 
     def __init__(self, config: BaseConfig, disable_norm=False):
+        tmp_gradpoint = config.gradient_checkpointing
+        config.gradient_checkpointing = False
         super().__init__(config)
+        config.gradient_checkpointing = tmp_gradpoint
 
         # info
         self.padding_idx = config.pad_token_id

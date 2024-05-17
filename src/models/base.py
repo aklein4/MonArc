@@ -37,14 +37,21 @@ class BaseConfig(StableLmConfig):
 
     model_type = "base"
 
-    def __init__(self, *args, **kwargs):
+    def __init__(
+        self,
+        *args,
+        gradient_checkpointing_layers=1_000_000,
+        **kwargs
+    ):
 
         # backward compatibility
         kwargs["use_parallel_residual"] = kwargs.get("use_parallel_residual", False)
         
+        self.gradient_checkpointing_layers = gradient_checkpointing_layers
+
         # init with work arounds
         gradient_checkpointing = kwargs.pop("gradient_checkpointing", False)
-        super().__init__(**kwargs)
+        super().__init__(*args, **kwargs)
         self.gradient_checkpointing = gradient_checkpointing
 
 
@@ -153,6 +160,7 @@ class BaseTransformer(BaseModel):
 
         # Compute configuration
         self._attn_implementation = config._attn_implementation
+        self.gradient_checkpointing_layers = config.gradient_checkpointing_layers
         self.gradient_checkpointing = False
 
         # Initialize weights and apply final processing
@@ -257,9 +265,9 @@ class BaseTransformer(BaseModel):
         position_ids = self._get_position_ids(input_ids, position_ids)
 
         # run transformer
-        for decoder_layer in self.layers:
+        for layer_idx, decoder_layer in enumerate(self.layers):
 
-            if self.gradient_checkpointing and self.training:
+            if self.gradient_checkpointing and self.training and layer_idx < self.gradient_checkpointing_layers:
                 if kv is not None:
                     raise ValueError("Gradient checkpointing is not compatible with cache!")
 

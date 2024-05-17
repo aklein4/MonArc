@@ -32,10 +32,12 @@ class MonArcConfig(BaseConfig):
         *args,
         num_head_layers=4,
         control=False,
+        head_gradient_checkpointing=False,
         **kwargs
     ):
         self.num_head_layers = num_head_layers
         self.control = control
+        self.head_gradient_checkpointing = head_gradient_checkpointing
 
         super().__init__(*args, **kwargs)
 
@@ -215,6 +217,7 @@ class MonArcHeadTransformer(BaseTransformer):
 
         # Compute configuration
         self._attn_implementation = config._attn_implementation
+        self.head_gradient_checkpointing = config.head_gradient_checkpointing
         self.gradient_checkpointing = False
 
         # Initialize weights and apply final processing
@@ -239,7 +242,7 @@ class MonArcHeadTransformer(BaseTransformer):
         # run transformer
         for decoder_layer in self.layers:
 
-            if self.gradient_checkpointing and self.training:
+            if self.gradient_checkpointing and self.training and self.head_gradient_checkpointing:
                 if kv is not None:
                     raise ValueError("Gradient checkpointing is not compatible with cache!")
                 log_print("Head grad check!")
@@ -357,22 +360,22 @@ class MonArcLmModel(BaseModel):
         # get the true and fake logits
         true_states = self.head_model(true_tokens, memory)
         # no norm here, head_model handles it
-        true_logits = self.lm_head(true_states)
+        true_logits = F.linear(true_states, self.lm_head.weight[true_labels].unsqueeze(-2))
 
         fake_states = self.head_model(fake_tokens, memory)
         # # no norm here, head_model handles it
-        fake_logits = self.lm_head(fake_states)
+        fake_logits = F.linear(fake_states, self.lm_head.weight[fake_labels].unsqueeze(-2))
 
         # get arc outputs
         ar = torch.arange(batch_size*seq_length, device=input_ids.device, dtype=torch.long)
         tmp_lm_logits = lm_logits.view(-1, lm_logits.shape[-1]).detach()
-        tmp_true_logits = true_logits.view(-1, true_logits.shape[-1])
-        tmp_fake_logits = fake_logits.view(-1, fake_logits.shape[-1])
+        tmp_true_logits = true_logits.view(-1)
+        tmp_fake_logits = fake_logits.view(-1)
         tmp_true_labels = true_labels.view(-1)
         tmp_fake_labels = fake_labels.view(-1)
 
-        true_arc = tmp_true_logits[ar, tmp_true_labels] - tmp_lm_logits[ar, tmp_true_labels]
-        fake_arc = tmp_fake_logits[ar, tmp_fake_labels] - tmp_lm_logits[ar, tmp_fake_labels]
+        true_arc = tmp_true_logits - tmp_lm_logits[ar, tmp_true_labels]
+        fake_arc = tmp_fake_logits - tmp_lm_logits[ar, tmp_fake_labels]
 
         # flip sign so higher = lower residual = more likely
         true_arc = -true_arc.view(batch_size, seq_length)

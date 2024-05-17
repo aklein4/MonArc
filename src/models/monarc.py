@@ -327,38 +327,42 @@ class MonArcLmModel(BaseModel):
         # do norm here so it's not applied to the head transformer
         lm_logits = self.lm_head(self.norm(memory))
 
+        # get the true labels
+        # the last token is discarded later in the loss
+        true_labels = input_ids.clone()
+        true_labels[:, :-1] = input_ids[:, 1:]
+
+        # get the fake labels
+        fake_labels = input_ids.clone()
+
+        factored_probs = torch.softmax(
+            lm_logits.detach().float(), dim=-1
+        ).view(-1, self.vocab_factor, self.vocab_chunk)
+
+        outer_probs = factored_probs.sum(dim=-1)
+        outer_sample = torch.multinomial(outer_probs, 1, True)[:, 0]
+
+        ar = torch.arange(batch_size*seq_length, device=input_ids.device, dtype=torch.long)
+        inner_probs = factored_probs[ar, outer_sample]
+        inner_sample = torch.multinomial(inner_probs, 1, True)[:, 0]
+
+        sample = (self.vocab_chunk*outer_sample + inner_sample).view(batch_size, seq_length)
+        fake_labels[:, :-1] = sample[:, :-1]
+
+        # get the input tokens for the head
         if self.control:
-            true_labels = torch.zeros_like(input_ids)
-            fake_labels = torch.zeros_like(input_ids)
-
-        # get the true and fake labels
-        else:  
-            # the last token is discarded later in the loss
-            true_labels = input_ids.clone()
-            true_labels[:, :-1] = input_ids[:, 1:]
-
-            fake_labels = input_ids.clone()
-
-            factored_probs = torch.softmax(
-                lm_logits.detach().float(), dim=-1
-            ).view(-1, self.vocab_factor, self.vocab_chunk)
-
-            outer_probs = factored_probs.sum(dim=-1)
-            outer_sample = torch.multinomial(outer_probs, 1, True)[:, 0]
-
-            ar = torch.arange(batch_size*seq_length, device=input_ids.device, dtype=torch.long)
-            inner_probs = factored_probs[ar, outer_sample]
-            inner_sample = torch.multinomial(inner_probs, 1, True)[:, 0]
-
-            sample = (self.vocab_chunk*outer_sample + inner_sample).view(batch_size, seq_length)
-            fake_labels[:, :-1] = sample[:, :-1]
+            true_tokens = torch.zeros_like(true_labels)
+            fake_tokens = torch.zeros_like(fake_labels)
+        else:
+            true_tokens = true_labels
+            fake_tokens = fake_labels
 
         # get the true and fake logits
-        true_states = self.head_model(true_labels, memory)
+        true_states = self.head_model(true_tokens, memory)
         # no norm here, head_model handles it
         true_logits = self.lm_head(true_states)
 
-        fake_states = self.head_model(fake_labels, memory)
+        fake_states = self.head_model(fake_tokens, memory)
         # no norm here, head_model handles it
         fake_logits = self.lm_head(fake_states)
 
@@ -373,32 +377,15 @@ class MonArcLmModel(BaseModel):
         true_arc = tmp_true_logits[ar, tmp_true_labels] - tmp_lm_logits[ar, tmp_true_labels]
         fake_arc = tmp_fake_logits[ar, tmp_fake_labels] - tmp_lm_logits[ar, tmp_fake_labels]
 
-        true_arc = true_arc.view(batch_size, seq_length)
-        fake_arc = fake_arc.view(batch_size, seq_length)
-
-        # get arc predictions, true first
-        arc_preds = torch.cat([true_arc, fake_arc], dim=0)
-        # format for cross entropy loss, positive (ind 1) = fake
-        # note that we use the OPPOSITE SIGN as paper -> positive arc = higher prob
-        arc_preds = torch.stack([arc_preds/2, -arc_preds/2], dim=-1)
-        assert tuple(arc_preds.shape) == (2 * batch_size, seq_length, 2)
-
-        # get arc targets (first true sequence is zero, second fake is 1)
-        arc_targets = torch.ones(2 * batch_size, seq_length, dtype=input_ids.dtype, device=input_ids.device)
-        arc_targets[:batch_size] = 0
-        
-        # target padding
-        arc_targets = torch.masked_fill(
-            arc_targets, 
-            torch.cat([input_ids, input_ids], dim=0) == self.pad_token_id,
-            -1
-        )
+        # flip sign so higher = lower residual = more likely
+        true_arc = -true_arc.view(batch_size, seq_length)
+        fake_arc = -fake_arc.view(batch_size, seq_length)
 
         # final processing
         lm_logits = F.log_softmax(lm_logits, dim=-1)
 
         return (
             lm_logits,
-            arc_preds,
-            arc_targets
+            true_arc,
+            fake_arc
         )

@@ -362,9 +362,10 @@ class MonArcLmModel(BaseModel):
         # no norm here, head_model handles it
         true_logits = self.lm_head(true_states)
 
-        fake_states = self.head_model(fake_tokens, memory)
-        # no norm here, head_model handles it
-        fake_logits = self.lm_head(fake_states)
+        # fake_states = self.head_model(fake_tokens, memory)
+        # # no norm here, head_model handles it
+        # fake_logits = self.lm_head(fake_states)
+        fake_logits = true_states.clone()
 
         # get arc outputs
         ar = torch.arange(batch_size*seq_length, device=input_ids.device, dtype=torch.long)

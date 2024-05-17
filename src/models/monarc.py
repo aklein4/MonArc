@@ -210,7 +210,6 @@ class MonArcHeadTransformer(BaseTransformer):
         self.layers = nn.ModuleList(
             [MonArcHeadLayer(config, layer_idx) for layer_idx in range(config.num_head_layers)]
         )
-        log_print(f"LAYERS: {len(self.layers)}")
         self.norm = nn.LayerNorm(config.hidden_size, eps=config.layer_norm_eps)
 
         # Compute configuration

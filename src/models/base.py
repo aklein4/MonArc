@@ -93,6 +93,7 @@ class BaseModel(PreTrainedModel):
         # Apply it on the top-level module in case the top-level modules supports it
         # for example, LongT5Stack inherits from `PreTrainedModel`.
         if hasattr(self, "gradient_checkpointing"):
+            log_print(f"GRAD CHECKPOINT: {gradient_checkpointing_func.__name__}")
             self._gradient_checkpointing_func = gradient_checkpointing_func
             self.gradient_checkpointing = enable
             is_gradient_checkpointing_set = True

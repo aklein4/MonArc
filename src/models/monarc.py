@@ -389,25 +389,18 @@ class MonArcLmModel(BaseModel):
             fake_tokens = fake_labels
 
         # get the true and fake logits
-        true_states = self.head_model(
-            hidden_states,
-            input_ids=true_tokens,
-            memory=memory,
-            attention_mask=attention_mask,
+        true_states, fake_states = self.head_model(
+            torch.cat([hidden_states, hidden_states], dim=0),
+            input_ids=torch.cat([true_tokens, fake_tokens], dim=0),
+            memory=torch.cat([memory, memory], dim=1),
+            attention_mask=torch.cat([attention_mask, attention_mask], dim=0),
             cached_mask=True
-        )[0]
+        )[0].chunk(2, dim=0)
+        
         true_logits = torch.bmm(
             self.lm_head.weight[true_labels.view(-1)].unsqueeze(-2),
             true_states.view(-1, true_states.shape[-1]).unsqueeze(-1)
         )[:, 0, 0]
-
-        fake_states = self.head_model(
-            hidden_states,
-            input_ids=fake_tokens,
-            memory=memory,
-            attention_mask=attention_mask,
-            cached_mask=True
-        )[0]
         fake_logits = torch.bmm(
             self.lm_head.weight[fake_labels.view(-1)].unsqueeze(-2),
             fake_states.view(-1, fake_states.shape[-1]).unsqueeze(-1)

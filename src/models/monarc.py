@@ -226,22 +226,32 @@ class MonArcHeadTransformer(BaseTransformer):
 
     def forward(
         self,
-        input_ids: torch.LongTensor,
-        memory: torch.Tensor,
+        hidden_states: torch.Tensor,
+        input_ids: Optional[torch.LongTensor]=None,
+        memory: Optional[torch.Tensor]=None,
         position_ids: Optional[torch.LongTensor]=None,
         attention_mask: Optional[torch.BoolTensor]=None,
         segment_ids: Optional[torch.LongTensor]=None,
+        cached_mask=False,
         kv=None,
     ) -> DotDict:
         batch_size, seq_length = input_ids.shape
 
         # get inputs
-        hidden_states = self._get_tokens(input_ids) + memory # continue from memory
-        attention_mask = self._get_mask(input_ids, attention_mask, segment_ids)
+        if input_ids is not None:
+            hidden_states = hidden_states + self._get_tokens(input_ids)
+        attention_mask = self._get_mask(input_ids, attention_mask, segment_ids, cached_mask)
         position_ids = self._get_position_ids(input_ids, position_ids)
 
         # run transformer
-        for decoder_layer in self.layers:
+        mem_out = []
+        for layer_idx, decoder_layer in enumerate(self.layers):
+
+            mem_out.append(hidden_states)
+            if memory is None:
+                mem_in = hidden_states
+            else:
+                mem_in = memory[layer_idx]
 
             if self.gradient_checkpointing and self.training and self.head_gradient_checkpointing:
                 if kv is not None:
@@ -251,7 +261,7 @@ class MonArcHeadTransformer(BaseTransformer):
                 hidden_states = self._gradient_checkpointing_func(
                     decoder_layer.__call__,
                     hidden_states,
-                    memory,
+                    mem_in,
                     attention_mask,
                     position_ids,
                     None,
@@ -261,7 +271,7 @@ class MonArcHeadTransformer(BaseTransformer):
             else:
                 hidden_states = decoder_layer(
                     hidden_states=hidden_states,
-                    memory=memory,
+                    memory=mem_in,
                     attention_mask=attention_mask,
                     position_ids=position_ids,
                     past_key_value=kv,
@@ -269,7 +279,7 @@ class MonArcHeadTransformer(BaseTransformer):
                     use_cache=(kv is not None),
                 )[0]
 
-        return self.norm(hidden_states)
+        return self.norm(hidden_states), torch.stack(mem_out, dim=0)
 
 
 class MonArcLmModel(BaseModel):
@@ -326,10 +336,15 @@ class MonArcLmModel(BaseModel):
         """
         batch_size, seq_length = input_ids.shape
 
-        # get lm predictions
-        memory = self.model(input_ids, segment_ids=segment_ids)
-        # do norm here so it's not applied to the head transformer
-        lm_logits = self.lm_head(self.norm(memory))
+        # reuse the attention mask
+        attention_mask = self.model._get_mask(input_ids, None, segment_ids)
+
+        # get transformer output
+        hidden_states = self.model(
+            input_ids,
+            attention_mask=attention_mask,
+            cached_mask=True
+        )
 
         # get the true labels
         # the last token is discarded later in the loss
@@ -361,16 +376,36 @@ class MonArcLmModel(BaseModel):
             true_tokens = true_labels
             fake_tokens = fake_labels
 
+        # get the lm logits
+        lm_states, memory = self.head_model(
+            hidden_states,
+            input_ids=None,
+            memory=None,
+            attention_mask=attention_mask,
+            cached_mask=True
+        )
+        lm_logits = self.lm_head(lm_states)
+
         # get the true and fake logits
-        true_states = self.head_model(true_tokens, memory, segment_ids=segment_ids)
-        # no norm here, head_model handles it
+        true_states = self.head_model(
+            hidden_states,
+            input_ids=true_tokens,
+            memory=memory,
+            attention_mask=attention_mask,
+            cached_mask=True
+        )[0]
         true_logits = torch.bmm(
             self.lm_head.weight[true_labels.view(-1)].unsqueeze(-2),
             true_states.view(-1, true_states.shape[-1]).unsqueeze(-1)
         )[:, 0, 0]
 
-        fake_states = self.head_model(fake_tokens, memory, segment_ids=segment_ids)
-        # # no norm here, head_model handles it
+        fake_states = self.head_model(
+            hidden_states,
+            input_ids=fake_tokens,
+            memory=memory,
+            attention_mask=attention_mask,
+            cached_mask=True
+        )[0]
         fake_logits = torch.bmm(
             self.lm_head.weight[fake_labels.view(-1)].unsqueeze(-2),
             fake_states.view(-1, fake_states.shape[-1]).unsqueeze(-1)

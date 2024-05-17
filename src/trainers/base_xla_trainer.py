@@ -193,6 +193,7 @@ class BaseXLATrainer:
             token_tracker.add(self.bs * x.shape[1])
             step_tracker.add(1)
             curr_step += 1
+            self.log.steps_completed = curr_step
 
             def _post_step():
 

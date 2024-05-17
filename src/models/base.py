@@ -176,9 +176,13 @@ class BaseTransformer(BaseModel):
         self,
         input_ids: torch.LongTensor,
         mask: Optional[torch.BoolTensor]=None,
-        segment_ids: Optional[torch.LongTensor]=None
+        segment_ids: Optional[torch.LongTensor]=None,
+        cached_mask=False
     ) -> torch.BoolTensor:
         batch_size, seq_length = input_ids.shape
+
+        if cached_mask:
+            return mask
 
         # error check
         if (mask is not None or segment_ids is not None) and self._attn_implementation.count('flash_attention_2'):
@@ -188,6 +192,8 @@ class BaseTransformer(BaseModel):
         if mask is None:
             mask = torch.ones(seq_length, seq_length, dtype=torch.bool, device=input_ids.device)
             mask = torch.triu(mask, diagonal=1)
+        else:
+            assert mask.dtype == torch.bool, f"Non-cached mask must be boolean, got {mask.dtype}"
 
         # must have batch dimension
         if mask.dim() == 2:
@@ -251,6 +257,7 @@ class BaseTransformer(BaseModel):
         position_ids: Optional[torch.LongTensor]=None,
         attention_mask: Optional[torch.BoolTensor]=None,
         segment_ids: Optional[torch.LongTensor]=None,
+        cached_mask=False,
         kv: Optional[Cache]=None,
     ) -> DotDict:
         """ Forward pass of the LM
@@ -270,7 +277,7 @@ class BaseTransformer(BaseModel):
 
         # get inputs
         hidden_states = self._get_tokens(input_ids)
-        attention_mask = self._get_mask(input_ids, attention_mask, segment_ids)
+        attention_mask = self._get_mask(input_ids, attention_mask, segment_ids, cached_mask)
         position_ids = self._get_position_ids(input_ids, position_ids)
 
         # run transformer

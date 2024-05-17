@@ -364,7 +364,6 @@ class MonArcLmModel(BaseModel):
             self.lm_head.weight[true_labels.view(-1)].unsqueeze(-2),
             true_states.view(-1, true_states.shape[-1]).unsqueeze(-1)
         )[:, 0, 0]
-        log_print(true_logits.shape)
 
         fake_states = self.head_model(fake_tokens, memory)
         # # no norm here, head_model handles it
@@ -378,6 +377,7 @@ class MonArcLmModel(BaseModel):
         tmp_lm_logits = lm_logits.view(-1, lm_logits.shape[-1]).detach()
         tmp_true_labels = true_labels.view(-1)
         tmp_fake_labels = fake_labels.view(-1)
+        log_print(tmp_lm_logits[ar, tmp_true_labels].shape)
 
         true_arc = true_logits - tmp_lm_logits[ar, tmp_true_labels]
         fake_arc = fake_logits - tmp_lm_logits[ar, tmp_fake_labels]

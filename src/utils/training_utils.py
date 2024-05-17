@@ -77,14 +77,13 @@ def arc_loss(true_arc, fake_arc, input_ids, ignore_index):
     ) / mask.float().sum()
 
 
-ARC_ACC_EPS = 2e-3
 def arc_acc(true_arc, fake_arc, input_ids, ignore_index):
     true_arc = true_arc[:, :-1].view(-1)
     fake_arc = fake_arc[:, :-1].view(-1)
     input_ids = input_ids[:, 1:].view(-1)
     
-    true_acc = (true_arc <= -ARC_ACC_EPS).float() + 0.5*(true_arc.abs() < ARC_ACC_EPS).float()
-    fake_acc = (fake_arc >= ARC_ACC_EPS).float() + 0.5*(fake_arc.abs() < ARC_ACC_EPS).float()
+    true_acc = (true_arc < 0).float()
+    fake_acc = (fake_arc >= 0).float()
 
     mask = input_ids != ignore_index
     true_acc = torch.masked_fill(true_acc, ~mask, 0.0)

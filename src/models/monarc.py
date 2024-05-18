@@ -167,6 +167,7 @@ class MonArcHeadLayer(nn.Module):
         residual = hidden_states
 
         hidden_states = self.input_layernorm(hidden_states)
+        memory = self.input_layernorm(memory)
 
         # Cross Attention
         hidden_states, self_attn_weights, present_key_value = self.self_attn(
@@ -299,10 +300,6 @@ class MonArcLmModel(BaseModel):
         self.norm = nn.LayerNorm(config.hidden_size, eps=config.layer_norm_eps)
         self.lm_head = nn.Linear(config.hidden_size, config.vocab_size, bias=False)
 
-        # arc modedling
-        # self.scale_head = nn.Linear(config.hidden_size, 1, bias=True)
-        self.arc_head = nn.Linear(config.hidden_size, 1, bias=False)
-
         # fast sampling info
         self.vocab_factor = int(np.round(np.sqrt(self.vocab_size)))
         while self.vocab_size % self.vocab_factor != 0:
@@ -316,11 +313,6 @@ class MonArcLmModel(BaseModel):
 
         # Initialize weights and apply final processing
         self.post_init()
-
-        # init to zero to avoid noise
-        self.head_model.embed_tokens.weight.data.zero_()
-        # self.scale_head.weight.data.zero_()
-        # self.scale_head.bias.data.zero_()
 
 
     def forward(
@@ -402,38 +394,35 @@ class MonArcLmModel(BaseModel):
             attention_mask=torch.cat([attention_mask, attention_mask], dim=0),
             cached_mask=True
         )[0].chunk(2, dim=0)
-        
-        true_arc = self.arc_head(true_states)[:, :, 0]
-        fake_arc = self.arc_head(fake_states)[:, :, 0]
 
-        # # get the true and fake logits
-        # true_logits = torch.bmm(
-        #     self.lm_head.weight[true_labels.view(-1)].unsqueeze(-2),
-        #     true_states.view(-1, true_states.shape[-1]).unsqueeze(-1)
-        # )[:, 0, 0]
-        # fake_logits = torch.bmm(
-        #     self.lm_head.weight[fake_labels.view(-1)].unsqueeze(-2),
-        #     fake_states.view(-1, fake_states.shape[-1]).unsqueeze(-1)
-        # )[:, 0, 0]
+        # get the true and fake logits
+        true_logits = torch.bmm(
+            self.lm_head.weight[true_labels.view(-1)].unsqueeze(-2),
+            true_states.view(-1, true_states.shape[-1]).unsqueeze(-1)
+        )[:, 0, 0]
+        fake_logits = torch.bmm(
+            self.lm_head.weight[fake_labels.view(-1)].unsqueeze(-2),
+            fake_states.view(-1, fake_states.shape[-1]).unsqueeze(-1)
+        )[:, 0, 0]
 
-        # # get the true and fake scales
-        # true_scale = torch.exp(self.scale_head(true_states).view(-1))
-        # fake_scale = torch.exp(self.scale_head(fake_states).view(-1))
+        # get the true and fake scales
+        true_scale = torch.exp(self.scale_head(true_states).view(-1))
+        fake_scale = torch.exp(self.scale_head(fake_states).view(-1))
 
-        # # get arc outputs
-        # ar = torch.arange(batch_size*seq_length, device=input_ids.device, dtype=torch.long)
-        # tmp_lm_logits = lm_logits.view(-1, lm_logits.shape[-1]).detach()
+        # get arc outputs
+        ar = torch.arange(batch_size*seq_length, device=input_ids.device, dtype=torch.long)
+        tmp_lm_logits = lm_logits.view(-1, lm_logits.shape[-1]).detach()
 
-        # true_arc = true_logits - tmp_lm_logits[ar, true_labels.view(-1)]
-        # fake_arc = fake_logits - tmp_lm_logits[ar, fake_labels.view(-1)]
+        true_arc = true_logits - tmp_lm_logits[ar, true_labels.view(-1)]
+        fake_arc = fake_logits - tmp_lm_logits[ar, fake_labels.view(-1)]
 
-        # # apply scale
-        # true_arc = true_arc * true_scale
-        # fake_arc = fake_arc * fake_scale
+        # apply scale
+        true_arc = true_arc * true_scale
+        fake_arc = fake_arc * fake_scale
 
-        # # flip sign so higher = lower residual = more likely
-        # true_arc = -true_arc.view(batch_size, seq_length)
-        # fake_arc = -fake_arc.view(batch_size, seq_length)
+        # flip sign so higher = lower residual = more likely
+        true_arc = -true_arc.view(batch_size, seq_length)
+        fake_arc = -fake_arc.view(batch_size, seq_length)
 
         # final processing
         lm_logits = F.log_softmax(lm_logits, dim=-1)

@@ -405,20 +405,12 @@ class MonArcLmModel(BaseModel):
             fake_states.view(-1, fake_states.shape[-1]).unsqueeze(-1)
         )[:, 0, 0]
 
-        # get the true and fake scales
-        true_scale = torch.exp(self.scale_head(true_states).view(-1))
-        fake_scale = torch.exp(self.scale_head(fake_states).view(-1))
-
         # get arc outputs
         ar = torch.arange(batch_size*seq_length, device=input_ids.device, dtype=torch.long)
         tmp_lm_logits = lm_logits.view(-1, lm_logits.shape[-1]).detach()
 
         true_arc = true_logits - tmp_lm_logits[ar, true_labels.view(-1)]
         fake_arc = fake_logits - tmp_lm_logits[ar, fake_labels.view(-1)]
-
-        # apply scale
-        true_arc = true_arc * true_scale
-        fake_arc = fake_arc * fake_scale
 
         # flip sign so higher = lower residual = more likely
         true_arc = -true_arc.view(batch_size, seq_length)

@@ -1,7 +1,7 @@
 
-model_type: base
+model_type: arc
 architectures: [
-    BaseLmModel
+    ArcLmModel
 ]
 
 hidden_act: silu

@@ -110,8 +110,9 @@ class ArcAttention(StableLmAttention):
             attn_weights = attn_weights + attention_mask
 
         # remove self from attn_weights
-        attn_diag = attn_weights.diagonal(dim1=-2, dim2=-1)
-        attn_diag[:] = float("-inf")
+        diag_mask = torch.zeros_like(attn_weights[:, :1])
+        diag_mask.diagonal(dim1=-2, dim2=-1).fill_(float("-inf"))
+        attn_weights = attn_weights + diag_mask.detach()
 
         # get attention for all, with self at front
         # upcast attention to fp32
@@ -282,7 +283,7 @@ class ArcTransformer(BaseTransformer):
 
             mem_out.append(hidden_states)
             if memory is None:
-                mem_in = hidden_states
+                mem_in = None
             else:
                 mem_in = memory[layer_idx]
 

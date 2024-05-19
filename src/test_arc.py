@@ -19,6 +19,9 @@ def main():
     tokenizer.add_special_tokens({"pad_token": "[PAD]"})
     
     x = tokenizer(["Hello, my dog is cute", "His dog is cute too", "All dogs are cute"], return_tensors="pt", padding="max_length", max_length=16).input_ids
+    seq_ids = torch.zeros_like(x)
+    seq_ids[0, 8:] = 1
+    seq_ids[1, 4:6] = 1
 
     print("loading arc...")
     arc_model_config = load_model_config(ARC_CONFIG, tokenizer)

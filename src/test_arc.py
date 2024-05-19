@@ -2,7 +2,7 @@ import torch
 
 from transformers import AutoTokenizer
 
-from models.arc import ArcLmModel
+from models.arc import ArcLmModel, ArcConfig
 from models.base import BaseConfig, BaseLmModel
 from utils.config_utils import load_model_config
 import utils.constants as constants
@@ -19,14 +19,14 @@ def main():
     tokenizer.add_special_tokens({"pad_token": "[PAD]"})
     
     x = tokenizer(["Hello, my dog is cute", "His dog is cute too", "All dogs are cute"], return_tensors="pt", padding="max_length", max_length=16).input_ids
-    seq_ids = torch.zeros_like(x)
-    seq_ids[0, 8:] = 1
-    seq_ids[1, 4:6] = 1
+    seg_ids = torch.zeros_like(x)
+    seg_ids[0, 8:] = 1
+    seg_ids[1, 4:6] = 1
 
     print("loading arc...")
     arc_model_config = load_model_config(ARC_CONFIG, tokenizer)
 
-    arc_config = BaseConfig(**arc_model_config)
+    arc_config = ArcConfig(**arc_model_config)
     arc_model = ArcLmModel(arc_config)
 
     print("loading base...")
@@ -38,9 +38,9 @@ def main():
     print("copying weights...")
     arc_model.load_state_dict(base_model.state_dict(), strict=False)
 
-    base_out = base_model(x)
-    arc_out, debug_true, debug_false = arc_model(x, debug=True)
-    arc_out, sample_true, sample_false = arc_model(x, debug=False)
+    base_out = base_model(x, segment_ids=seg_ids)
+    arc_out, debug_true, debug_false = arc_model(x, segment_ids=seg_ids, debug=True)
+    arc_out, sample_true, sample_false = arc_model(x, segment_ids=seg_ids, debug=False)
 
     diff = torch.abs(base_out - arc_out).max()
     print(f"Base diff: {diff}")

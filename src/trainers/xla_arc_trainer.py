@@ -22,9 +22,9 @@ class XLAArcTrainer(BaseXLATrainer):
             lm_acc=acc(lm_logits, x, ignore_index),
             lm_pcorr=pcorr(lm_logits, x, ignore_index),
 
-            arc_loss=arc_loss(true_arc, fake_arc, x, ignore_index),
-            arc_acc=arc_acc(true_arc, fake_arc, x, ignore_index),
-            arc_pcorr=arc_pcorr(true_arc, fake_arc, x, ignore_index),
+            arc_loss=arc_loss(true_arc, fake_arc, x, ignore_index, model.arc_divisor),
+            arc_acc=arc_acc(true_arc, fake_arc, x, ignore_index, model.arc_divisor),
+            arc_pcorr=arc_pcorr(true_arc, fake_arc, x, ignore_index, model.arc_divisor)
         )
         results.loss = results.lm_loss + self.w_arc * results.arc_loss
 

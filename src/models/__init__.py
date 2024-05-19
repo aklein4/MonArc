@@ -1,13 +1,13 @@
 """ Models """
 
 from models.base import BaseConfig, BaseLmModel
-from models.arc import ArcLmModel
+from models.arc import ArcConfig, ArcLmModel
 from models.monarc import MonArcConfig, MonArcLmModel
 
 
 CONFIG_DICT = {
     "base": BaseConfig,
-    "arc": BaseConfig,
+    "arc": ArcConfig,
     "monarc": MonArcConfig,
 }
 

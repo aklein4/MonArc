@@ -23,6 +23,22 @@ from utils.data_utils import DotDict
 from utils.logging_utils import log_print
 
 
+
+class ArcConfig(BaseConfig):
+
+    model_type = "arc"
+
+    def __init__(
+        self,
+        *args,
+        arc_divisor: int = 1,
+        **kwargs
+    ):
+        self.arc_divisor = arc_divisor
+
+        super().__init__(*args, **kwargs)
+
+
 class ArcAttention(StableLmAttention):
 
 
@@ -330,6 +346,7 @@ class ArcLmModel(BaseModel):
         
         # arc modeling
         self.arc_head = nn.Linear(config.hidden_size, 1, bias=False)
+        self.arc_divisor = config.arc_divisor
 
         # fast sampling info
         self.vocab_factor = int(np.round(np.sqrt(self.vocab_size)))
@@ -363,24 +380,29 @@ class ArcLmModel(BaseModel):
         """
         batch_size, seq_length = input_ids.shape
 
-        # reuse the attention mask
-        attention_mask = self.model._get_mask(input_ids, None, segment_ids)
-
         # get transformer output
         true_states, memory = self.model(
             input_ids,
-            attention_mask=attention_mask,
-            cached_mask=True
+            segment_ids=segment_ids,
         )
         lm_logits = self.lm_head(true_states)
         lm_logits = F.log_softmax(lm_logits, dim=-1)
+
+        # apply the arc divisor
+        assert batch_size % self.arc_divisor == 0, f"Batch size {batch_size} must be divisible by {self.arc_divisor}!"
+        batch_size = batch_size // self.arc_divisor
+
+        input_ids = input_ids[:batch_size]
+        segment_ids = segment_ids[:batch_size]
+        memory = memory[:, :batch_size]
+        sample_logits = lm_logits[:batch_size]
 
         # get the fake ids
         if debug:
             fake_ids = input_ids.clone()
         else:
             factored_probs = torch.softmax(
-                lm_logits.detach().float(), dim=-1
+                sample_logits.detach().float(), dim=-1
             ).view(-1, self.vocab_factor, self.vocab_chunk)
 
             outer_probs = factored_probs.sum(dim=-1)
@@ -397,9 +419,8 @@ class ArcLmModel(BaseModel):
         # get fake outputs
         fake_states, _ = self.model(
             fake_ids,
+            segment_ids=segment_ids,
             memory=memory,
-            attention_mask=attention_mask,
-            cached_mask=True
         )
 
         # get arc predictions

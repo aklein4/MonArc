@@ -24,3 +24,5 @@ max_position_embeddings: 1024
 _attn_implementation: eager
 gradient_checkpointing: False
 gradient_checkpointing_layers: 24
+
+arc_divisor: 4

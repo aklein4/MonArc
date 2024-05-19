@@ -25,4 +25,4 @@ _attn_implementation: eager
 gradient_checkpointing: False
 gradient_checkpointing_layers: 24
 
-arc_divisor: 4
+arc_divisor: 8

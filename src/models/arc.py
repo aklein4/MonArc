@@ -126,7 +126,7 @@ class ArcAttention(StableLmAttention):
             attn_weights = attn_weights + attention_mask
 
         # remove self from attn_weights
-        diag_mask = torch.zeros_like(attn_weights[:, :1])
+        diag_mask = torch.zeros_like(attn_weights[:1, :1])
         diag_mask.diagonal(dim1=-2, dim2=-1).fill_(float("-inf"))
         attn_weights = attn_weights + diag_mask.detach()
 

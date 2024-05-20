@@ -132,10 +132,12 @@ class ArcAttention(StableLmAttention):
 
         # get attention for all, with self at front
         # upcast attention to fp32
-        full_attn = torch.cat([self_attn_weights, attn_weights], dim=-1)
+        full_attn = torch.cat([self_attn_weights, attn_weights[..., :-1]], dim=-1)
         attn_out = nn.functional.softmax(full_attn, dtype=torch.float32, dim=-1).to(query_states.dtype)
         attn_out = self.attention_dropout(attn_out)
-        self_attn_weights, attn_weights = attn_out[..., :1], attn_out[..., 1:]
+        self_attn_weights, attn_weights_tmp = attn_out[..., :1], attn_out[..., 1:]
+        attn_weights = torch.zeros_like(attn_weights)
+        attn_weights[..., :-1] = attn_weights_tmp 
 
         # apply attention to values
         attn_output = torch.matmul(attn_weights, mem_value_states)

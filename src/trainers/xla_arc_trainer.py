@@ -15,6 +15,10 @@ class XLAArcTrainer(BaseXLATrainer):
     def train_step(self, model, x, seg_ids, tokenizer):
         lm_logits, true_arc, fake_arc = model.forward(x, segment_ids=seg_ids)
         ignore_index = tokenizer.pad_token_id
+        try:
+            divisor = model.arc_divisor
+        except AttributeError:
+            divisor = 1
 
         results = DotDict(
             lm_loss=loss(lm_logits, x, ignore_index),
@@ -22,9 +26,9 @@ class XLAArcTrainer(BaseXLATrainer):
             lm_acc=acc(lm_logits, x, ignore_index),
             lm_pcorr=pcorr(lm_logits, x, ignore_index),
 
-            arc_loss=arc_loss(true_arc, fake_arc, x, ignore_index, model.arc_divisor),
-            arc_acc=arc_acc(true_arc, fake_arc, x, ignore_index, model.arc_divisor),
-            arc_pcorr=arc_pcorr(true_arc, fake_arc, x, ignore_index, model.arc_divisor)
+            arc_loss=arc_loss(true_arc, fake_arc, x, ignore_index, divisor),
+            arc_acc=arc_acc(true_arc, fake_arc, x, ignore_index, divisor),
+            arc_pcorr=arc_pcorr(true_arc, fake_arc, x, ignore_index, divisor)
         )
         results.loss = results.lm_loss + self.w_arc * results.arc_loss
 

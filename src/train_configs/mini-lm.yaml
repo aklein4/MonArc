@@ -12,6 +12,6 @@ eps: 0.00000001
 weight_decay: 0.1
 
 warmup_steps: 500
-lr_steps: 500000
+lr_steps: 100000
 
 checkpoint_interval: 5000

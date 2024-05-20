@@ -1,7 +1,7 @@
 
-model_type: base
+model_type: embarc
 architectures: [
-    BaseLmModel
+    EmbArcLmModel
 ]
 
 hidden_act: silu

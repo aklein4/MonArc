@@ -51,6 +51,8 @@ def main():
     monarc_out, debug_true_control, debug_false_control = monarc_model(x, segment_ids=seg_ids, debug=True)
     monarc_out, sample_true_control, sample_false_control = monarc_model(x, segment_ids=seg_ids, debug=False)
 
+    # should be the same
+    print(" ===== ")
     diff = torch.abs(base_out - monarc_out).max()
     print(f"Base diff: {diff}")
 
@@ -71,7 +73,7 @@ def main():
     # should be the same
     print(" ===== ")
     diff = torch.abs(debug_true_control - debug_false_control).max()
-    print(f"Debug True Control diff: {diff}")
+    print(f"Debug Control diff: {diff}")
 
     # should be different
     print(" ===== ")

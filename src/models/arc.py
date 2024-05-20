@@ -13,6 +13,7 @@ from transformers.models.stablelm.modeling_stablelm import (
     apply_rotary_pos_emb,
     repeat_kv
 )
+from transformers.cache_utils import DynamicCache
 
 from models.base import (
     BaseConfig,
@@ -160,6 +161,105 @@ class ArcAttention(StableLmAttention):
         return attn_output, attn_weights, past_key_value
 
 
+    def fast_forward(
+        self,
+        hidden_states: torch.Tensor,
+        memory: torch.Tensor,
+        attention_mask: Optional[torch.Tensor] = None,
+        position_ids: Optional[torch.LongTensor] = None,
+        past_key_value = None,
+        output_attentions: bool = False,
+        use_cache: bool = False,
+    ):
+        # apply memory
+        hidden_states = torch.cat([memory, hidden_states], dim=1)
+        position_ids = torch.cat([position_ids, position_ids], dim=1)
+        bsz, q_len, _ = hidden_states.size()
+
+        query_states = self.q_proj(hidden_states)
+        key_states = self.k_proj(hidden_states)
+        value_states = self.v_proj(hidden_states)
+
+        query_states = query_states.view(bsz, q_len, self.num_heads, self.head_dim).transpose(1, 2)
+        key_states = key_states.view(bsz, q_len, self.num_key_value_heads, self.head_dim).transpose(1, 2)
+        value_states = value_states.view(bsz, q_len, self.num_key_value_heads, self.head_dim).transpose(1, 2)
+
+        kv_seq_len = key_states.shape[-2]
+        if past_key_value is not None:
+            raise NotImplementedError("Cache not supported for ArcAttention!")
+        cos, sin = self.rotary_emb(value_states, seq_len=kv_seq_len)
+
+        # Partial rotary embedding
+        query_rot, query_pass = (
+            query_states[..., : self.rotary_emb.dim],
+            query_states[..., self.rotary_emb.dim :],
+        )
+        key_rot, key_pass = (
+            key_states[..., : self.rotary_emb.dim],
+            key_states[..., self.rotary_emb.dim :],
+        )
+        # [batch_size, seq_length, num_heads, head_dim // config.partial_rotary_factor]
+        query_rot, key_rot = apply_rotary_pos_emb(query_rot, key_rot, cos, sin, position_ids)
+
+        # [batch_size, seq_length, num_heads, head_dim]
+        query_states = torch.cat((query_rot, query_pass), dim=-1)
+        key_states = torch.cat((key_rot, key_pass), dim=-1)
+
+        # Repeat k/v heads if n_kv_heads < n_heads
+        key_states = repeat_kv(key_states, self.num_key_value_groups)
+        value_states = repeat_kv(value_states, self.num_key_value_groups)
+
+        # remove memory from query_states
+        query_states = query_states[:, :, memory.shape[1]:]
+
+        # apply attention
+        attn_weights = torch.matmul(query_states, key_states.transpose(2, 3)) / math.sqrt(self.head_dim)
+
+        # check sizes
+        if attn_weights.size() != (bsz, self.num_heads, q_len//2, kv_seq_len):
+            raise ValueError(
+                f"Attention weights should be of size {(bsz, self.num_heads, q_len, kv_seq_len)}, but is"
+                f" {attn_weights.size()}"
+            )
+
+        # apply mask with memory
+        left_mask = torch.zeros_like(attention_mask)
+        left_mask.diagonal(dim1=-2, dim2=-1).fill_(float("-inf"))
+        left_mask = left_mask.detach() + attention_mask
+
+        right_mask = torch.full_like(attention_mask, float("-inf"))
+        right_mask.diagonal(dim1=-2, dim2=-1).fill_(0)
+        right_mask = right_mask.detach() + attention_mask
+
+        attention_mask = torch.cat([left_mask, right_mask], dim=-1)
+
+        attn_weights = attn_weights + attention_mask
+
+        # get attention for all, with self at front
+        # upcast attention to fp32
+        attn_weights = nn.functional.softmax(attn_weights, dtype=torch.float32, dim=-1).to(query_states.dtype)
+        attn_weights = self.attention_dropout(attn_weights) 
+
+        # apply attention to values
+        attn_output = torch.matmul(attn_weights, value_states)
+
+        if attn_output.size() != (bsz, self.num_heads, q_len//2, self.head_dim):
+            raise ValueError(
+                f"`attn_output` should be of size {(bsz, self.num_heads, q_len, self.head_dim)}, but is"
+                f" {attn_output.size()}"
+            )
+
+        attn_output = attn_output.transpose(1, 2).contiguous()
+        attn_output = attn_output.reshape(bsz, q_len//2, self.hidden_size)
+
+        attn_output = self.o_proj(attn_output)
+
+        if not output_attentions:
+            attn_weights = None
+
+        return attn_output, attn_weights, past_key_value
+
+
     # copied from StableLmAttention, added memory
     def forward(
         self,
@@ -172,7 +272,7 @@ class ArcAttention(StableLmAttention):
         use_cache: bool = False,
     ):
         if memory is not None:
-            return self.arc_forward(
+            return self.fast_forward(
                 hidden_states,
                 memory,
                 attention_mask,
@@ -339,7 +439,7 @@ class ArcLmModel(BaseModel):
         super().__init__(config)
 
         # transformer
-        self.model = ArcTransformer(config)
+        self.model = BaseTransformer(config)
 
         # lm modeling
         self.vocab_size = config.vocab_size
@@ -382,29 +482,38 @@ class ArcLmModel(BaseModel):
         """
         batch_size, seq_length = input_ids.shape
 
+        # get the simple mask and cache
+        mask = self.model._get_mask(input_ids, segment_ids=segment_ids)
+        kv = DynamicCache()
+
         # get transformer output
-        true_states, memory = self.model(
+        true_states = self.model(
             input_ids,
             segment_ids=segment_ids,
+            attention_mask=mask,
+            cached_mask=True,
+            kv=kv
         )
+
+        # get lm logits
         lm_logits = self.lm_head(true_states)
         lm_logits = F.log_softmax(lm_logits, dim=-1)
 
-        # apply the arc divisor
-        assert batch_size % self.arc_divisor == 0, f"Batch size {batch_size} must be divisible by {self.arc_divisor}!"
-        batch_size = batch_size // self.arc_divisor
+        # # apply the arc divisor
+        # assert batch_size % self.arc_divisor == 0, f"Batch size {batch_size} must be divisible by {self.arc_divisor}!"
+        # batch_size = batch_size // self.arc_divisor
 
-        input_ids = input_ids[:batch_size]
-        segment_ids = segment_ids[:batch_size]
-        memory = memory[:, :batch_size]
-        sample_logits = lm_logits[:batch_size]
+        # input_ids = input_ids[:batch_size]
+        # segment_ids = segment_ids[:batch_size]
+        # memory = memory[:, :batch_size]
+        # sample_logits = lm_logits[:batch_size]
 
         # get the fake ids
         if debug:
             fake_ids = input_ids.clone()
         else:
             factored_probs = torch.softmax(
-                sample_logits.detach().float(), dim=-1
+                lm_logits.detach().float(), dim=-1
             ).view(-1, self.vocab_factor, self.vocab_chunk)
 
             outer_probs = factored_probs.sum(dim=-1)
@@ -418,11 +527,24 @@ class ArcLmModel(BaseModel):
             fake_ids = input_ids.clone()
             fake_ids[:, 1:] = sample[:, :-1]
 
+        # get the new mask
+        left_mask = torch.zeros_like(mask[:1])
+        left_mask.diagonal(dim1=-2, dim2=-1).fill_(float("-inf"))
+        left_mask = left_mask.detach() + mask
+
+        right_mask = torch.full_like(mask[:1], float("-inf"))
+        right_mask.diagonal(dim1=-2, dim2=-1).fill_(0)
+        right_mask = right_mask.detach() + mask
+
+        mask = torch.cat([left_mask, right_mask], dim=-1)
+
         # get fake outputs
-        fake_states, _ = self.model(
+        fake_states = self.model(
             fake_ids,
             segment_ids=segment_ids,
-            memory=memory,
+            attention_mask=mask,
+            cached_mask=True,
+            kv=kv
         )
 
         # get arc predictions

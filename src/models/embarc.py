@@ -7,11 +7,13 @@ import torch.nn.functional as F
 import math
 import numpy as np
 
+from transformers.cache_utils import DynamicCache
+
 from models.base import (
     BaseConfig,
     BaseModel,
+    BaseTransformer
 )
-from models.arc import ArcTransformer
 from utils.data_utils import DotDict
 from utils.logging_utils import log_print
 
@@ -22,7 +24,7 @@ class EmbArcLmModel(BaseModel):
         super().__init__(config)
 
         # transformer
-        self.model = ArcTransformer(config)
+        self.model = BaseTransformer(config)
 
         # lm modeling
         self.vocab_size = config.vocab_size
@@ -65,10 +67,17 @@ class EmbArcLmModel(BaseModel):
         """
         batch_size, seq_length = input_ids.shape
 
+        # get the simple mask and cache
+        mask = self.model._get_mask(input_ids, segment_ids=segment_ids)
+        kv = DynamicCache()
+
         # get transformer output
-        true_states, memory = self.model(
+        true_states = self.model(
             input_ids,
             segment_ids=segment_ids,
+            attention_mask=mask,
+            cached_mask=True,
+            kv=kv
         )
 
         # get lm logits
@@ -94,11 +103,24 @@ class EmbArcLmModel(BaseModel):
             fake_ids = input_ids.clone()
             fake_ids[:, 1:] = sample[:, :-1]
 
+        # get the new mask
+        left_mask = torch.zeros_like(mask[:1])
+        left_mask.diagonal(dim1=-2, dim2=-1).fill_(float("-inf"))
+        left_mask = left_mask.detach() + mask
+
+        right_mask = torch.full_like(mask[:1], float("-inf"))
+        right_mask.diagonal(dim1=-2, dim2=-1).fill_(0)
+        right_mask = right_mask.detach() + mask
+
+        mask = torch.cat([left_mask, right_mask], dim=-1)
+
         # get fake outputs
-        fake_states, _ = self.model(
+        fake_states = self.model(
             fake_ids,
             segment_ids=segment_ids,
-            memory=memory,
+            attention_mask=mask,
+            cached_mask=True,
+            kv=kv
         )
 
         # get arc predictions

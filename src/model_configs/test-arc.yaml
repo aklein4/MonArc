@@ -23,5 +23,3 @@ max_position_embeddings: 128
 
 _attn_implementation: eager
 _gradient_checkpointing: False
-
-arc_divisor: 2

@@ -243,11 +243,11 @@ class MonArcLmModel(BaseModel):
         )[0].chunk(2, dim=0)
 
         # get the true and fake logits
-        true_logits = torch.bmm(
+        true_arc = torch.bmm(
             self.arc_head.weight[true_labels.view(-1)].unsqueeze(-2),
             true_states.view(-1, true_states.shape[-1]).unsqueeze(-1)
         )[:, 0, 0]
-        fake_logits = torch.bmm(
+        fake_arc = torch.bmm(
             self.arc_head.weight[fake_labels.view(-1)].unsqueeze(-2),
             fake_states.view(-1, fake_states.shape[-1]).unsqueeze(-1)
         )[:, 0, 0]

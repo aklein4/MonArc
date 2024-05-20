@@ -1,0 +1,19 @@
+trainer_type: XLAArcTrainer
+
+start_lr: 0.0003
+end_lr: 0.00003
+
+bs: 512
+mini_bs: 4
+
+beta1: 0.9
+beta2: 0.95
+eps: 0.00000001
+weight_decay: 0.1
+
+warmup_steps: 500
+lr_steps: 100000
+
+checkpoint_interval: 5000
+
+w_arc: 1.0

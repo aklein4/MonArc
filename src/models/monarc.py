@@ -141,6 +141,9 @@ class MonArcLmModel(BaseModel):
         self.pad_token_id = config.pad_token_id
         self.lm_head = nn.Linear(config.hidden_size, config.vocab_size, bias=False)
 
+        # arc modeling
+        self.arc_head = nn.Linear(config.hidden_size, config.vocab_size, bias=False)
+
         # fast sampling info
         self.vocab_factor = int(np.round(np.sqrt(self.vocab_size)))
         while self.vocab_size % self.vocab_factor != 0:
@@ -241,24 +244,24 @@ class MonArcLmModel(BaseModel):
 
         # get the true and fake logits
         true_logits = torch.bmm(
-            self.lm_head.weight[true_labels.view(-1)].unsqueeze(-2),
+            self.arc_head.weight[true_labels.view(-1)].unsqueeze(-2),
             true_states.view(-1, true_states.shape[-1]).unsqueeze(-1)
         )[:, 0, 0]
         fake_logits = torch.bmm(
-            self.lm_head.weight[fake_labels.view(-1)].unsqueeze(-2),
+            self.arc_head.weight[fake_labels.view(-1)].unsqueeze(-2),
             fake_states.view(-1, fake_states.shape[-1]).unsqueeze(-1)
         )[:, 0, 0]
 
-        # get arc outputs
-        ar = torch.arange(batch_size*seq_length, device=input_ids.device, dtype=torch.long)
-        tmp_lm_logits = lm_logits.view(-1, lm_logits.shape[-1]).detach()
+        # # get arc outputs
+        # ar = torch.arange(batch_size*seq_length, device=input_ids.device, dtype=torch.long)
+        # tmp_lm_logits = lm_logits.view(-1, lm_logits.shape[-1]).detach()
 
-        true_arc = true_logits - tmp_lm_logits[ar, true_labels.view(-1)]
-        fake_arc = fake_logits - tmp_lm_logits[ar, fake_labels.view(-1)]
+        # true_arc = true_logits - tmp_lm_logits[ar, true_labels.view(-1)]
+        # fake_arc = fake_logits - tmp_lm_logits[ar, fake_labels.view(-1)]
 
-        # flip sign so higher = lower residual = more likely
-        true_arc = -true_arc.view(batch_size, seq_length)
-        fake_arc = -fake_arc.view(batch_size, seq_length)
+        # # flip sign so higher = lower residual = more likely
+        # true_arc = -true_arc.view(batch_size, seq_length)
+        # fake_arc = -fake_arc.view(batch_size, seq_length)
 
         # final processing
         lm_logits = F.log_softmax(lm_logits, dim=-1)

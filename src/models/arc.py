@@ -272,7 +272,7 @@ class ArcAttention(StableLmAttention):
         use_cache: bool = False,
     ):
         if memory is not None:
-            return self.fast_forward(
+            return self.arc_forward(
                 hidden_states,
                 memory,
                 attention_mask,

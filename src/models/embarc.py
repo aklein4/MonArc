@@ -109,8 +109,8 @@ class EmbArcLmModel(BaseModel):
         true_arc = torch.zeros(batch_size, seq_length, dtype=forward_embs.dtype, device=input_ids.device)
         fake_arc = torch.zeros(batch_size, seq_length, dtype=forward_embs.dtype, device=input_ids.device)
 
-        true_arc[:, :-1] = (forward_embs * backward_true).sum(dim=-1)
-        fake_arc[:, :-1] = (forward_embs * backward_fake).sum(dim=-1)
+        true_arc[:, :-1] = (forward_embs * backward_true).sum(dim=-1) / np.sqrt(self.config.hidden_size)
+        fake_arc[:, :-1] = (forward_embs * backward_fake).sum(dim=-1) / np.sqrt(self.config.hidden_size)
 
         return (
             lm_logits,

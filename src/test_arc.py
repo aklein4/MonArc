@@ -8,7 +8,7 @@ from utils.config_utils import load_model_config
 import utils.constants as constants
 
 
-ARC_CONFIG = "test-lm"
+ARC_CONFIG = "test-arc"
 BASE_CONFIG = "test-lm"
 
 

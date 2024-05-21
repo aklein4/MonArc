@@ -107,6 +107,9 @@ class BaseXLATrainer:
             end_factor=1.0,
             total_iters=self.warmup_steps
         )
+        if self.lr_steps is None:
+            return warmup_scheduler
+        
         cosine_scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(
             optimizer,
             self.lr_steps - self.warmup_steps,

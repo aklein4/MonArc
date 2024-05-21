@@ -5,6 +5,7 @@ import torch_xla.distributed.xla_multiprocessing as xmp
 
 import os
 import argparse
+import huggingface_hub as hf
 
 from transformers import AutoTokenizer
 
@@ -36,14 +37,30 @@ def _mp_fn(index, args):
     train_config = load_train_config(args.train_config)
 
     seq_length = model_config["max_position_embeddings"]
+    start_seq_ind = train_config.get("start_seq_ind", 0)
 
     log_print("Loading model...")
     model_type = model_config.pop("model_type")
     model_type_config = CONFIG_DICT[model_type](**model_config)
     model = MODEL_DICT[model_type](model_type_config).to(xm.xla_device())
     
-    # broadcast with bfloat16 for speed
-    if not args.debug:
+    if args.checkpoint is not None:
+        log_print("Loading checkpoint...")
+
+        repo, name = tuple(args.checkpoint.split("/"))
+        checkpoint_local_dir = os.path.join(constants.LOCAL_DATA_PATH, "checkpoint")
+        checkpoint_path = hf.hf_hub_download(
+            f"{constants.HF_ID}/{repo}",
+            subfolder=f"{name}/model",
+            filename="state_dict.pt",
+            local_dir=checkpoint_local_dir
+        )
+
+        checkpoint = torch.load(checkpoint_path, map_location=xm.xla_device())
+        model.load_state_dict(checkpoint["model"])
+
+    elif not args.debug:
+        # broadcast with bfloat16 for speed
         log_print("Syncing model...")
         model = model.to(torch.bfloat16)
         xm.broadcast_master_param(model)
@@ -59,7 +76,8 @@ def _mp_fn(index, args):
         tokenizer.pad_token_id,
         seq_length,
         train_config["bs"],
-        train_config["mini_bs"]
+        train_config["mini_bs"],
+        start_seq_ind=start_seq_ind
     )
 
     log_print("Train!")
@@ -91,6 +109,7 @@ if __name__ == '__main__':
     args.add_argument("--train_config", type=str, required=True)
     args.add_argument("--dataset", type=str, required=True)
     args.add_argument("--debug", action="store_true")
+    args.add_argument("--checkpoint", type=str, default=None)
     args = args.parse_args()
 
     xmp.spawn(_mp_fn, args=(args,))

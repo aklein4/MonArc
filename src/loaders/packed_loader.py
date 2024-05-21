@@ -8,6 +8,7 @@ import torch_xla.distributed.parallel_loader as pl
 import io
 import numpy as np
 import datasets
+import huggingface_hub as hf
 
 import utils.constants as constants
 
@@ -104,7 +105,8 @@ class PackedCollator:
     
 
 def _get_data_files(
-    name: str
+    name: str,
+    start_seq_ind: int = 0,
 ) -> Dict[str, str]:
     """ Get datafile urls for the given dataset name.
      - see example at https://huggingface.co/docs/hub/en/datasets-webdataset 
@@ -112,15 +114,33 @@ def _get_data_files(
      
     Args:
         name (str): name of the repo to load
+        start_seq_ind (int): index to start at. Default 0.
 
     Returns:
         Dict[str, str]: dict of splits and their urls
     """
+    fs = hf.HfFileSystem()
+
     data_files = {}
     for split in ["train", "val", "test"]:
 
-        data_files[split] = f"https://huggingface.co/datasets/{constants.HF_ID}/{name}/resolve/main/{split}/*"
-    
+        if split == "train" and start_seq_ind != 0:
+            avail_files = fs.ls(f"datasets/{constants.HF_ID}/{name}/{split}", detail=False)
+
+            out = []
+            for f in avail_files:
+
+                num = int(f.split("/")[-1].split(".")[0])
+                if num >= (start_seq_ind/1000000)*1.2:
+                    
+                    fname = f.split("/")[-1]
+                    out.append(f"https://huggingface.co/datasets/{constants.HF_ID}/{name}/resolve/main/{split}/{fname}")
+            
+            data_files[split] = out
+
+        else:
+            data_files[split] = f"https://huggingface.co/datasets/{constants.HF_ID}/{name}/resolve/main/{split}/*"
+
     return data_files
 
 
@@ -131,6 +151,7 @@ def get_packed_loader(
     seq_length: int,
     bs: int,
     mini_bs: int,
+    start_seq_ind: int = 0
 ):
     """ Get an xla token dataloader for the given wds dataset split.
 
@@ -141,7 +162,8 @@ def get_packed_loader(
         max_length (int): fixed sequence length
         bs (int): batch size
         mini_bs (int): mini batch size
-
+        start_seq_ind (int): index to start at. Default 0.
+        
     Returns:
         pl.ParallelLoader: xla dataloader
     """
@@ -155,7 +177,7 @@ def get_packed_loader(
     # get streaming dataset
     dataset = datasets.load_dataset(
         "webdataset",
-        data_files=_get_data_files(name),
+        data_files=_get_data_files(name, start_seq_ind),
         split=split, streaming=True
     )
 

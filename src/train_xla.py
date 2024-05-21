@@ -58,7 +58,7 @@ def _mp_fn(index, args):
         )
 
         checkpoint = torch.load(checkpoint_path, map_location=xm.xla_device())
-        model.load_state_dict(checkpoint["model"])
+        model.load_state_dict(checkpoint, strict=True)
         del checkpoint
 
     elif not args.debug:

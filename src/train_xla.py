@@ -15,7 +15,7 @@ from trainers import TRAINER_DICT
 
 import utils.constants as constants
 from utils.config_utils import load_model_config, load_train_config
-from utils.logging_utils import log_print
+from utils.logging_utils import log_print, log_master_print
 
 
 def _mp_fn(index, args):
@@ -62,7 +62,9 @@ def _mp_fn(index, args):
             try:
                 model.load_state_dict(checkpoint, strict=True)
             except Exception as e:
-                print(e)
+                missing = e.args[0].split("state_dict: ")[1]
+                log_master_print(f"Loading checkpoint with missing keys: {missing}")
+
                 model.load_state_dict(checkpoint, strict=False)
         else:
             model.load_state_dict(checkpoint, strict=False)

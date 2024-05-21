@@ -58,7 +58,14 @@ def _mp_fn(index, args):
         )
 
         checkpoint = torch.load(checkpoint_path)
-        model.load_state_dict(checkpoint, strict=True)
+        if constants.XLA_MAIN():
+            try:
+                model.load_state_dict(checkpoint, strict=True)
+            except Exception as e:
+                print(e)
+                model.load_state_dict(checkpoint, strict=False)
+        else:
+            model.load_state_dict(checkpoint, strict=False)
         del checkpoint
 
         model = model.to(constants.XLA_DEVICE())

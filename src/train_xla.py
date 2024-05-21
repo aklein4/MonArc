@@ -43,7 +43,7 @@ def _mp_fn(index, args):
     log_print("Loading model...")
     model_type = model_config.pop("model_type")
     model_type_config = CONFIG_DICT[model_type](**model_config)
-    model = MODEL_DICT[model_type](model_type_config).to(xm.xla_device())
+    model = MODEL_DICT[model_type](model_type_config)
     
     if checkpoint is not None:
         log_print("Loading checkpoint...")
@@ -57,13 +57,18 @@ def _mp_fn(index, args):
             local_dir=checkpoint_local_dir
         )
 
-        checkpoint = torch.load(checkpoint_path, map_location=xm.xla_device())
+        checkpoint = torch.load(checkpoint_path)
         model.load_state_dict(checkpoint, strict=True)
         del checkpoint
+
+        model = model.to(constants.XLA_DEVICE())
 
     elif not args.debug:
         # broadcast with bfloat16 for speed
         log_print("Syncing model...")
+
+        model = model.to(constants.XLA_DEVICE())
+
         model = model.to(torch.bfloat16)
         xm.broadcast_master_param(model)
         model = model.to(torch.float32)

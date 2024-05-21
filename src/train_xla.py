@@ -38,16 +38,17 @@ def _mp_fn(index, args):
 
     seq_length = model_config["max_position_embeddings"]
     start_seq_ind = train_config.get("start_seq_ind", 0)
+    checkpoint = train_config.get("checkpoint", None)
 
     log_print("Loading model...")
     model_type = model_config.pop("model_type")
     model_type_config = CONFIG_DICT[model_type](**model_config)
     model = MODEL_DICT[model_type](model_type_config).to(xm.xla_device())
     
-    if args.checkpoint is not None:
+    if checkpoint is not None:
         log_print("Loading checkpoint...")
 
-        repo, name = tuple(args.checkpoint.split("/"))
+        repo, name = tuple(checkpoint.split("/"))
         checkpoint_local_dir = os.path.join(constants.LOCAL_DATA_PATH, "checkpoint")
         checkpoint_path = hf.hf_hub_download(
             f"{constants.HF_ID}/{repo}",
@@ -110,7 +111,6 @@ if __name__ == '__main__':
     args.add_argument("--train_config", type=str, required=True)
     args.add_argument("--dataset", type=str, required=True)
     args.add_argument("--debug", action="store_true")
-    args.add_argument("--checkpoint", type=str, default=None)
     args = args.parse_args()
 
     xmp.spawn(_mp_fn, args=(args,))

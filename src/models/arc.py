@@ -388,6 +388,7 @@ class ArcLmModel(BaseModel):
         true_states: torch.Tensor,
         fake_states: torch.Tensor,
         input_ids: Optional[torch.LongTensor]=None,
+        fake_ids: Optional[torch.LongTensor]=None,
         lm_logits: Optional[torch.Tensor]=None,
     ):
         true_states = self.arc_norm(true_states)
@@ -405,16 +406,22 @@ class ArcLmModel(BaseModel):
         fake_arc[:, :-1] = (forward_embs * backward_fake).sum(dim=-1) / np.sqrt(self.config.hidden_size)
         
         if self.reparam_arc:
-            assert input_ids is not None and lm_logits is not None, "Need input_ids and lm_logits for reparameterization!"
+            assert input_ids is not None and fake_ids is not None and lm_logits is not None, "Need input_ids and lm_logits for reparameterization!"
             batch_size, seq_len = input_ids.shape
 
             lm_logits = F.log_softmax(lm_logits, dim=-1)
+            
+            offset_inputs = input_ids.clone()
+            offset_inputs[:, :-1] = input_ids[:, 1:]
+            offset_fakes = fake_ids.clone()
+            offset_fakes[:, :-1] = fake_ids[:, 1:]
 
             ar = torch.arange(batch_size*seq_len, device=input_ids.device, dtype=input_ids.dtype)
-            baseline = lm_logits.detach().view(-1, lm_logits.shape[-1])[ar, input_ids.view(-1)].view(batch_size, seq_len)
+            baseline_true = lm_logits.detach().view(-1, lm_logits.shape[-1])[ar, offset_inputs.view(-1)].view(batch_size, seq_len)
+            baseline_fake = lm_logits.detach().view(-1, lm_logits.shape[-1])[ar, offset_fakes.view(-1)].view(batch_size, seq_len)
 
-            true_arc = true_arc + self.reparam_z*baseline
-            fake_arc = fake_arc + self.reparam_z*baseline
+            true_arc = true_arc + self.reparam_z*baseline_true
+            fake_arc = fake_arc + self.reparam_z*baseline_fake
 
         return true_arc, fake_arc
 
@@ -458,7 +465,7 @@ class ArcLmModel(BaseModel):
         # get arc predictions
         true_arc, fake_arc = self._get_arc_outputs(
             true_states, fake_states,
-            lm_logits=lm_logits, input_ids=input_ids
+            lm_logits=lm_logits, input_ids=input_ids, fake_ids=fake_ids
         )
 
         return (
@@ -535,7 +542,7 @@ class ArcLmModel(BaseModel):
         # get arc predictions
         true_arc, fake_arc = self._get_arc_outputs(
             true_states, fake_states,
-            lm_logits=lm_logits, input_ids=input_ids
+            lm_logits=lm_logits, input_ids=input_ids, fake_ids=fake_ids
         )
 
         return (

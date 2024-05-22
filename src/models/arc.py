@@ -399,7 +399,7 @@ class ArcLmModel(BaseModel):
         true_arc[:, :-1] = (forward_embs * backward_true).sum(dim=-1) / np.sqrt(self.config.hidden_size)
         fake_arc[:, :-1] = (forward_embs * backward_fake).sum(dim=-1) / np.sqrt(self.config.hidden_size)
         
-        if self.reparm_arc:
+        if self.reparam_arc:
             assert input_ids is not None and lm_logits is not None, "Need input_ids and lm_logits for reparameterization!"
             batch_size, seq_len = input_ids.shape
 

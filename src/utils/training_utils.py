@@ -127,4 +127,4 @@ def arc_adj(true_arc, fake_arc, input_ids, ignore_index):
     mask = input_ids != ignore_index
     adj = torch.masked_fill(adj, ~mask, 0.0)
 
-    return adj/mask.float().sum()
+    return adj.sum()/mask.float().sum()

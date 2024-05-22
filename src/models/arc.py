@@ -452,7 +452,7 @@ class ArcLmModel(BaseModel):
 
         # get arc predictions
         true_arc, fake_arc = self._get_arc_outputs(
-            true_states, fake_states
+            true_states, fake_states,
             lm_logits=lm_logits, input_ids=input_ids
         )
 

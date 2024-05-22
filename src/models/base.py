@@ -4,23 +4,17 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
+# constants handles import error warning
 try:
     from torch_xla.utils.checkpoint import checkpoint as xla_checkpoint_fn
-    from torch_xla.experimental.custom_kernel import flash_attention as flash_attn_xla
 except ImportError:
     pass
 
 import functools
 
 from transformers.modeling_utils import PreTrainedModel
+from transformers.models.stablelm.modeling_stablelm import StableLmDecoderLayer
 from transformers.models.stablelm.configuration_stablelm import StableLmConfig
-from transformers.models.stablelm.modeling_stablelm import (
-    StableLmAttention,
-    StableLmSdpaAttention,
-    StableLmFlashAttention2,
-    StableLmMLP,
-    StableLmDecoderLayer
-)
 from transformers.cache_utils import Cache
 
 from utils.data_utils import DotDict
@@ -35,14 +29,15 @@ class BaseConfig(StableLmConfig):
     def __init__(
         self,
         *args,
-        gradient_checkpointing_layers=1_000_000,
+        gradient_checkpointing_layers: int=1_000_000,
         **kwargs
     ):
 
+        # custom args
+        self.gradient_checkpointing_layers = gradient_checkpointing_layers
+
         # backward compatibility
         kwargs["use_parallel_residual"] = kwargs.get("use_parallel_residual", False)
-        
-        self.gradient_checkpointing_layers = gradient_checkpointing_layers
 
         # init with work arounds
         gradient_checkpointing = kwargs.pop("gradient_checkpointing", False)
@@ -94,66 +89,21 @@ class BaseModel(PreTrainedModel):
         log_print("Gradient checkpointing enabled!")
 
 
-class StableLmFlashAttention2XLA(StableLmFlashAttention2):
-
-    def _flash_attention_forward(
-        self, query_states, key_states, value_states, attention_mask, query_length, dropout=0.0, softmax_scale=None
-    ):
-
-        # We won't support attention mask
-        if attention_mask is not None:
-            raise ValueError("Attention mask is not supported for Flash Attention 2 on XLA!")
-
-        return flash_attn_xla(
-            query_states,  # [batch_size, num_heads, q_seq_len, d_model]
-            key_states,  # [batch_size, num_heads, kv_seq_len, d_model]
-            value_states,  # [batch_size, num_heads, kv_seq_len, d_model]
-            causal=True # only support causal
-        )
-
-
-ATTENTION_CLASSES = {
-    "eager": StableLmAttention,
-    "sdpa": StableLmSdpaAttention,
-    "flash_attention_2": StableLmFlashAttention2,
-    "flash_attention_2_xla": StableLmFlashAttention2XLA,
-}
-
-
-class BaseDecoderLayer(StableLmDecoderLayer):
-
-    # copied from StableLM with new ATTENTION_CLASSES
-    def __init__(self, config: StableLmConfig, layer_idx: int):
-        nn.Module.__init__(self)
-        self.use_parallel_residual = config.use_parallel_residual
-        self.hidden_size = config.hidden_size
-        self.self_attn = ATTENTION_CLASSES[config._attn_implementation](config, layer_idx=layer_idx)
-        self.mlp = StableLmMLP(config)
-        self.input_layernorm = nn.LayerNorm(config.hidden_size, eps=config.layer_norm_eps)
-        self.post_attention_layernorm = None
-        if not self.use_parallel_residual:
-            self.post_attention_layernorm = nn.LayerNorm(config.hidden_size, eps=config.layer_norm_eps)
-        self.dropout = nn.Dropout(config.hidden_dropout)
-
-
 class BaseTransformer(BaseModel):
 
-    def __init__(self, config: BaseConfig, disable_norm=False):
+    def __init__(self, config: BaseConfig):
         super().__init__(config)
 
         # info
         self.padding_idx = config.pad_token_id
         self.vocab_size = config.vocab_size
-        self.disable_norm = disable_norm
 
         # weights
         self.embed_tokens = nn.Embedding(config.vocab_size, config.hidden_size, self.padding_idx)
         self.layers = nn.ModuleList(
-            [BaseDecoderLayer(config, layer_idx) for layer_idx in range(config.num_hidden_layers)]
+            [StableLmDecoderLayer(config, layer_idx) for layer_idx in range(config.num_hidden_layers)]
         )
-
-        # optionally disable norm
-        self.norm = nn.Identity() if disable_norm else nn.LayerNorm(config.hidden_size, eps=config.layer_norm_eps)
+        self.norm = nn.LayerNorm(config.hidden_size, eps=config.layer_norm_eps)
 
         # Compute configuration
         self._attn_implementation = config._attn_implementation
@@ -259,6 +209,7 @@ class BaseTransformer(BaseModel):
         segment_ids: Optional[torch.LongTensor]=None,
         cached_mask=False,
         kv: Optional[Cache]=None,
+        disable_norm=False,
     ) -> DotDict:
         """ Forward pass of the LM
 
@@ -306,6 +257,8 @@ class BaseTransformer(BaseModel):
                     use_cache=(kv is not None),
                 )[0]
 
+        if disable_norm:
+            return hidden_states
         return self.norm(hidden_states)
 
 

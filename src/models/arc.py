@@ -24,24 +24,6 @@ from utils.model_utils import EfficientSampler
 from utils.logging_utils import log_print
 
 
-class ArcConfig(BaseConfig):
-
-    model_type = "arc"
-
-    def __init__(
-        self,
-        *args,
-        reparam_arc: bool = False,
-        mem_efficient_cross_attn: bool = True,
-        **kwargs
-    ):
-        
-        self.reparam_arc = reparam_arc
-        self.mem_efficient_cross_attn = mem_efficient_cross_attn
-
-        super().__init__(*args, **kwargs)
-
-
 class ArcAttention(StableLmAttention):
 
     def cross_forward(
@@ -362,12 +344,7 @@ class ArcLmModel(BaseModel):
         self.sampler = EfficientSampler(self.vocab_size)
 
         # reparameterization
-        self.reparam_arc = config.reparam_arc
-        if self.reparam_arc:
-            self.reparam_z = nn.Parameter(torch.zeros(1))
-
-        # compute settings
-        self.mem_efficient_cross_attn = config.mem_efficient_cross_attn
+        self.reparam_z = nn.Parameter(torch.zeros(1))
 
         # Initialize weights and apply final processing
         self.post_init()
@@ -385,9 +362,9 @@ class ArcLmModel(BaseModel):
         self,
         true_states: torch.Tensor,
         fake_states: torch.Tensor,
-        input_ids: Optional[torch.LongTensor]=None,
-        fake_ids: Optional[torch.LongTensor]=None,
-        lm_logits: Optional[torch.Tensor]=None,
+        input_ids,
+        fake_ids,
+        lm_logits,
     ):
         true_states = self.arc_norm(true_states)
         fake_states = self.arc_norm(fake_states)
@@ -402,29 +379,28 @@ class ArcLmModel(BaseModel):
         # pred[i] = pred for next token, similar to standard LM
         true_arc[:, :-1] = (forward_embs * backward_true).sum(dim=-1) / np.sqrt(self.config.hidden_size)
         fake_arc[:, :-1] = (forward_embs * backward_fake).sum(dim=-1) / np.sqrt(self.config.hidden_size)
+
+        # handle reparam        
+        batch_size, seq_len = input_ids.shape
+
+        lm_logits = F.log_softmax(lm_logits, dim=-1)
         
-        if self.reparam_arc:
-            assert input_ids is not None and fake_ids is not None and lm_logits is not None, "Need input_ids and lm_logits for reparameterization!"
-            batch_size, seq_len = input_ids.shape
+        offset_inputs = input_ids.clone()
+        offset_inputs[:, :-1] = input_ids[:, 1:]
+        offset_fakes = fake_ids.clone()
+        offset_fakes[:, :-1] = fake_ids[:, 1:]
 
-            lm_logits = F.log_softmax(lm_logits, dim=-1)
-            
-            offset_inputs = input_ids.clone()
-            offset_inputs[:, :-1] = input_ids[:, 1:]
-            offset_fakes = fake_ids.clone()
-            offset_fakes[:, :-1] = fake_ids[:, 1:]
+        ar = torch.arange(batch_size*seq_len, device=input_ids.device, dtype=input_ids.dtype)
+        baseline_true = lm_logits.detach().view(-1, lm_logits.shape[-1])[ar, offset_inputs.view(-1)].view(batch_size, seq_len)
+        baseline_fake = lm_logits.detach().view(-1, lm_logits.shape[-1])[ar, offset_fakes.view(-1)].view(batch_size, seq_len)
 
-            ar = torch.arange(batch_size*seq_len, device=input_ids.device, dtype=input_ids.dtype)
-            baseline_true = lm_logits.detach().view(-1, lm_logits.shape[-1])[ar, offset_inputs.view(-1)].view(batch_size, seq_len)
-            baseline_fake = lm_logits.detach().view(-1, lm_logits.shape[-1])[ar, offset_fakes.view(-1)].view(batch_size, seq_len)
-
-            true_arc = true_arc + self.reparam_z*baseline_true
-            fake_arc = fake_arc + self.reparam_z*baseline_fake
+        true_arc = true_arc + self.reparam_z*baseline_true
+        fake_arc = fake_arc + self.reparam_z*baseline_fake
 
         return true_arc, fake_arc
 
 
-    def mem_efficient_forward(
+    def forward(
         self,
         input_ids: torch.LongTensor,
         segment_ids: Optional[torch.LongTensor]=None,
@@ -471,81 +447,3 @@ class ArcLmModel(BaseModel):
             true_arc,
             fake_arc
         )
-
-
-    def forward(
-        self,
-        input_ids: torch.LongTensor,
-        segment_ids: Optional[torch.LongTensor]=None,
-        debug=False
-    ):
-        if self.mem_efficient_cross_attn:
-            return self.mem_efficient_forward(
-                input_ids,
-                segment_ids,
-                debug
-            )
-
-        # get the simple mask
-        mask = self.model._get_mask(input_ids, segment_ids=segment_ids)
-        pos_ids = self.model._get_position_ids(input_ids)
-
-        # logits for sampling
-        sample_states = self.model(
-            input_ids,
-            position_ids=pos_ids,
-            attention_mask=mask,
-            cached_mask=True,
-        )[0].detach()
-        sample_logits = self._get_lm_logits(sample_states)
-
-        # get the fake ids
-        if debug:
-            fake_ids = input_ids.clone()
-        else:
-            sample = self.sampler(sample_logits)
-            fake_ids = input_ids.clone()
-            fake_ids[:, 1:] = sample[:, :-1]
-
-        # update inputs for full pass
-        input_ids = torch.cat([input_ids, fake_ids], dim=1)
-        pos_ids = torch.cat([pos_ids, pos_ids], dim=1)
-
-        nw = mask.clone()
-        ne = torch.full_like(mask, float("-inf"))
-        sw = mask.clone()
-        sw.diagonal(dim1=-2, dim2=-1).fill_(float("-inf"))
-        se = torch.full_like(mask, float("-inf"))
-        se.diagonal(dim1=-2, dim2=-1).fill_(0)
-        mask = torch.cat(
-            [
-                torch.cat([nw, ne], dim=-1),
-                torch.cat([sw, se], dim=-1)
-            ],
-            dim=-2
-        )
-
-        # get fake outputs
-        hidden_states = self.model(
-            input_ids,
-            position_ids=pos_ids,
-            attention_mask=mask,
-            cached_mask=True,
-        )[0]
-        true_states, fake_states = hidden_states.chunk(2, dim=-2)
-
-        # get lm logits
-        lm_logits = self._get_lm_logits(true_states)
-
-        # get arc predictions
-        true_arc, fake_arc = self._get_arc_outputs(
-            true_states, fake_states,
-            lm_logits=lm_logits, input_ids=input_ids, fake_ids=fake_ids
-        )
-
-        return (
-            lm_logits,
-            true_arc,
-            fake_arc
-        )
-    

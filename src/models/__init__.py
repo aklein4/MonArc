@@ -1,11 +1,11 @@
 """ Models """
 
 from models.base import BaseConfig, BaseLmModel
-from models.arc import ArcConfig, ArcLmModel
+from models.arc import ArcLmModel
 
 CONFIG_DICT = {
     "base": BaseConfig,
-    "arc": ArcConfig,
+    "arc": BaseConfig,
 }
 
 MODEL_DICT = {

@@ -21,8 +21,8 @@ from models.base import (
     BaseTransformer,
 )
 from utils.data_utils import DotDict
+from utils.model_utils import EfficientSampler
 from utils.logging_utils import log_print
-
 
 
 class ArcConfig(BaseConfig):
@@ -32,18 +32,18 @@ class ArcConfig(BaseConfig):
     def __init__(
         self,
         *args,
-        arc_divisor: int = 1,
+        mem_efficient_cross_attn: bool = False,
         **kwargs
     ):
-        self.arc_divisor = arc_divisor
+        
+        self.mem_efficient_cross_attn = mem_efficient_cross_attn
 
         super().__init__(*args, **kwargs)
 
 
 class ArcAttention(StableLmAttention):
 
-
-    def arc_forward(
+    def cross_forward(
         self,
         hidden_states: torch.Tensor,
         memory: torch.Tensor,
@@ -161,105 +161,6 @@ class ArcAttention(StableLmAttention):
         return attn_output, attn_weights, past_key_value
 
 
-    def fast_forward(
-        self,
-        hidden_states: torch.Tensor,
-        memory: torch.Tensor,
-        attention_mask: Optional[torch.Tensor] = None,
-        position_ids: Optional[torch.LongTensor] = None,
-        past_key_value = None,
-        output_attentions: bool = False,
-        use_cache: bool = False,
-    ):
-        # apply memory
-        hidden_states = torch.cat([memory, hidden_states], dim=1)
-        position_ids = torch.cat([position_ids, position_ids], dim=1)
-        bsz, q_len, _ = hidden_states.size()
-
-        query_states = self.q_proj(hidden_states)
-        key_states = self.k_proj(hidden_states)
-        value_states = self.v_proj(hidden_states)
-
-        query_states = query_states.view(bsz, q_len, self.num_heads, self.head_dim).transpose(1, 2)
-        key_states = key_states.view(bsz, q_len, self.num_key_value_heads, self.head_dim).transpose(1, 2)
-        value_states = value_states.view(bsz, q_len, self.num_key_value_heads, self.head_dim).transpose(1, 2)
-
-        kv_seq_len = key_states.shape[-2]
-        if past_key_value is not None:
-            raise NotImplementedError("Cache not supported for ArcAttention!")
-        cos, sin = self.rotary_emb(value_states, seq_len=kv_seq_len)
-
-        # Partial rotary embedding
-        query_rot, query_pass = (
-            query_states[..., : self.rotary_emb.dim],
-            query_states[..., self.rotary_emb.dim :],
-        )
-        key_rot, key_pass = (
-            key_states[..., : self.rotary_emb.dim],
-            key_states[..., self.rotary_emb.dim :],
-        )
-        # [batch_size, seq_length, num_heads, head_dim // config.partial_rotary_factor]
-        query_rot, key_rot = apply_rotary_pos_emb(query_rot, key_rot, cos, sin, position_ids)
-
-        # [batch_size, seq_length, num_heads, head_dim]
-        query_states = torch.cat((query_rot, query_pass), dim=-1)
-        key_states = torch.cat((key_rot, key_pass), dim=-1)
-
-        # Repeat k/v heads if n_kv_heads < n_heads
-        key_states = repeat_kv(key_states, self.num_key_value_groups)
-        value_states = repeat_kv(value_states, self.num_key_value_groups)
-
-        # remove memory from query_states
-        query_states = query_states[:, :, memory.shape[1]:]
-
-        # apply attention
-        attn_weights = torch.matmul(query_states, key_states.transpose(2, 3)) / math.sqrt(self.head_dim)
-
-        # check sizes
-        if attn_weights.size() != (bsz, self.num_heads, q_len//2, kv_seq_len):
-            raise ValueError(
-                f"Attention weights should be of size {(bsz, self.num_heads, q_len, kv_seq_len)}, but is"
-                f" {attn_weights.size()}"
-            )
-
-        # apply mask with memory
-        left_mask = torch.zeros_like(attention_mask)
-        left_mask.diagonal(dim1=-2, dim2=-1).fill_(float("-inf"))
-        left_mask = left_mask.detach() + attention_mask
-
-        right_mask = torch.full_like(attention_mask, float("-inf"))
-        right_mask.diagonal(dim1=-2, dim2=-1).fill_(0)
-        right_mask = right_mask.detach() + attention_mask
-
-        attention_mask = torch.cat([left_mask, right_mask], dim=-1)
-
-        attn_weights = attn_weights + attention_mask
-
-        # get attention for all, with self at front
-        # upcast attention to fp32
-        attn_weights = nn.functional.softmax(attn_weights, dtype=torch.float32, dim=-1).to(query_states.dtype)
-        attn_weights = self.attention_dropout(attn_weights) 
-
-        # apply attention to values
-        attn_output = torch.matmul(attn_weights, value_states)
-
-        if attn_output.size() != (bsz, self.num_heads, q_len//2, self.head_dim):
-            raise ValueError(
-                f"`attn_output` should be of size {(bsz, self.num_heads, q_len, self.head_dim)}, but is"
-                f" {attn_output.size()}"
-            )
-
-        attn_output = attn_output.transpose(1, 2).contiguous()
-        attn_output = attn_output.reshape(bsz, q_len//2, self.hidden_size)
-
-        attn_output = self.o_proj(attn_output)
-
-        if not output_attentions:
-            attn_weights = None
-
-        return attn_output, attn_weights, past_key_value
-
-
     # copied from StableLmAttention, added memory
     def forward(
         self,
@@ -272,7 +173,7 @@ class ArcAttention(StableLmAttention):
         use_cache: bool = False,
     ):
         if memory is not None:
-            return self.arc_forward(
+            return self.cross_forward(
                 hidden_states,
                 memory,
                 attention_mask,
@@ -356,7 +257,7 @@ class ArcDecoderLayer(nn.Module):
 
 class ArcTransformer(BaseTransformer):
 
-    def __init__(self, config: BaseConfig):
+    def __init__(self, config: BaseConfig, disable_norm=False):
         super().__init__(config)
 
         # vocab info
@@ -370,6 +271,9 @@ class ArcTransformer(BaseTransformer):
         )
         self.norm = nn.LayerNorm(config.hidden_size, eps=config.layer_norm_eps)
 
+        # more config
+        self.disable_norm = disable_norm
+
         # Compute configuration
         self._attn_implementation = config._attn_implementation
         self.gradient_checkpointing_layers = config.gradient_checkpointing_layers
@@ -381,7 +285,7 @@ class ArcTransformer(BaseTransformer):
 
     def forward(
         self,
-        input_ids: Optional[torch.LongTensor]=None,
+        input_ids,
         memory: Optional[torch.Tensor]=None,
         position_ids: Optional[torch.LongTensor]=None,
         attention_mask: Optional[torch.BoolTensor]=None,
@@ -430,7 +334,11 @@ class ArcTransformer(BaseTransformer):
                     use_cache=(kv is not None),
                 )[0]
 
-        return self.norm(hidden_states), torch.stack(mem_out, dim=0)
+        # apply final norm
+        if not self.disable_norm:
+            hidden_states = self.norm(hidden_states)
+
+        return hidden_states, torch.stack(mem_out, dim=0)
 
 
 class ArcLmModel(BaseModel):
@@ -439,7 +347,7 @@ class ArcLmModel(BaseModel):
         super().__init__(config)
 
         # transformer
-        self.model = BaseTransformer(config)
+        self.model = ArcTransformer(config, disable_norm=True)
 
         # lm modeling
         self.vocab_size = config.vocab_size
@@ -447,17 +355,92 @@ class ArcLmModel(BaseModel):
         self.lm_head = nn.Linear(config.hidden_size, config.vocab_size, bias=False)
         
         # arc modeling
-        self.arc_head = nn.Linear(config.hidden_size, 1, bias=False)
-        self.arc_divisor = config.arc_divisor
+        self.arc_norm = nn.LayerNorm(config.hidden_size, eps=config.layer_norm_eps)
+        self.forward_head = nn.Linear(config.hidden_size, config.hidden_size, bias=True)
+        self.backward_head = nn.Linear(config.hidden_size, config.hidden_size, bias=True)
+        self.sampler = EfficientSampler(self.vocab_size)
 
-        # fast sampling info
-        self.vocab_factor = int(np.round(np.sqrt(self.vocab_size)))
-        while self.vocab_size % self.vocab_factor != 0:
-            self.vocab_factor += 1
-        self.vocab_chunk = self.vocab_size // self.vocab_factor
+        # compute settings
+        self.mem_efficient_cross_attn = config.mem_efficient_cross_attn
 
         # Initialize weights and apply final processing
         self.post_init()
+
+
+    def _get_lm_logits(
+        self,
+        hidden_states: torch.Tensor,
+    ):
+        lm_logits = self.lm_head(self.model.norm(hidden_states))
+        return F.log_softmax(lm_logits, dim=-1)
+
+
+    def _get_arc_outputs(
+        self,
+        true_states: torch.Tensor,
+        fake_states: torch.Tensor,
+    ):
+        true_states = self.arc_norm(true_states)
+        fake_states = self.arc_norm(fake_states)
+
+        forward_embs = self.forward_head(true_states[:, :-1])
+        backward_true = self.backward_head(true_states[:, 1:])
+        backward_fake = self.backward_head(fake_states[:, 1:])
+
+        true_arc = torch.zeros_like(true_states[:, :, 0])
+        fake_arc = torch.zeros_like(true_states[:, :, 0])
+
+        # pred[i] = pred for next token, similar to standard LM
+        true_arc[:, :-1] = (forward_embs * backward_true).sum(dim=-1) / np.sqrt(self.config.hidden_size)
+        fake_arc[:, :-1] = (forward_embs * backward_fake).sum(dim=-1) / np.sqrt(self.config.hidden_size)
+        
+        return true_arc, fake_arc
+
+
+    def mem_efficient_forward(
+        self,
+        input_ids: torch.LongTensor,
+        segment_ids: Optional[torch.LongTensor]=None,
+        debug=False
+    ):
+
+        # get the simple mask and cache
+        mask = self.model._get_mask(input_ids, segment_ids=segment_ids)
+
+        # get transformer output
+        true_states, memory = self.model(
+            input_ids,
+            attention_mask=mask,
+            cached_mask=True,
+        )
+
+        # get lm logits
+        lm_logits = self._get_lm_logits(true_states)
+
+        # get the fake ids
+        if debug:
+            fake_ids = input_ids.clone()
+        else:
+            sample = self.sampler(lm_logits)
+            fake_ids = input_ids.clone()
+            fake_ids[:, 1:] = sample[:, :-1]
+
+        # get fake outputs
+        fake_states = self.model(
+            fake_ids,
+            memory=memory,
+            attention_mask=mask,
+            cached_mask=True,
+        )[0]
+
+        # get arc predictions
+        true_arc, fake_arc = self._get_arc_outputs(true_states, fake_states)
+
+        return (
+            lm_logits,
+            true_arc,
+            fake_arc
+        )
 
 
     def forward(
@@ -465,98 +448,71 @@ class ArcLmModel(BaseModel):
         input_ids: torch.LongTensor,
         segment_ids: Optional[torch.LongTensor]=None,
         debug=False
-    ) -> DotDict:
-        """ Forward pass of the LM for training. 
-         - creates negative samples
-         - returns lm logits and arc predictions
-         - 1 in arc predictions is fake, 0 is real, -1 is padding
-         
-        Args:
-            input_ids (torch.LongTensor): input token ids [bs, seq_length].
+    ):
+        if self.mem_efficient_cross_attn:
+            return self.mem_efficient_forward(
+                input_ids,
+                segment_ids,
+                debug
+            )
 
-        Returns:
-            DotDict:
-                torch.Tensor: log-softmaxed logits [bs, seq_length, vocab_size]
-                torch.Tensor: arc predictions [bs, seq_length-2]
-                torch.Tensor: arc targets [bs, seq_length-2]
-        """
-        batch_size, seq_length = input_ids.shape
-
-        # get the simple mask and cache
+        # get the simple mask
         mask = self.model._get_mask(input_ids, segment_ids=segment_ids)
-        kv = DynamicCache()
+        pos_ids = self.model._get_position_ids(input_ids)
 
-        # get transformer output
-        true_states = self.model(
+        # logits for sampling
+        sample_states = self.model(
             input_ids,
-            segment_ids=segment_ids,
+            position_ids=pos_ids,
             attention_mask=mask,
             cached_mask=True,
-            kv=kv
-        )
-
-        # get lm logits
-        lm_logits = self.lm_head(true_states)
-        lm_logits = F.log_softmax(lm_logits, dim=-1)
-
-        # # apply the arc divisor
-        # assert batch_size % self.arc_divisor == 0, f"Batch size {batch_size} must be divisible by {self.arc_divisor}!"
-        # batch_size = batch_size // self.arc_divisor
-
-        # input_ids = input_ids[:batch_size]
-        # segment_ids = segment_ids[:batch_size]
-        # memory = memory[:, :batch_size]
-        # sample_logits = lm_logits[:batch_size]
+        )[0].detach()
+        sample_logits = self._get_lm_logits(sample_states)
 
         # get the fake ids
         if debug:
             fake_ids = input_ids.clone()
         else:
-            factored_probs = torch.softmax(
-                lm_logits.detach().float(), dim=-1
-            ).view(-1, self.vocab_factor, self.vocab_chunk)
-
-            outer_probs = factored_probs.sum(dim=-1)
-            outer_sample = torch.multinomial(outer_probs, 1, True)[:, 0]
-
-            ar = torch.arange(batch_size*seq_length, device=input_ids.device, dtype=torch.long)
-            inner_probs = factored_probs[ar, outer_sample]
-            inner_sample = torch.multinomial(inner_probs, 1, True)[:, 0]
-
-            sample = (self.vocab_chunk*outer_sample + inner_sample).view(batch_size, seq_length)
+            sample = self.sampler(sample_logits)
             fake_ids = input_ids.clone()
             fake_ids[:, 1:] = sample[:, :-1]
 
-        # get the new mask
-        left_mask = torch.zeros_like(mask[:1])
-        left_mask.diagonal(dim1=-2, dim2=-1).fill_(float("-inf"))
-        left_mask = left_mask.detach() + mask
+        # update inputs for full pass
+        input_ids = torch.cat([input_ids, fake_ids], dim=1)
+        pos_ids = torch.cat([pos_ids, pos_ids], dim=1)
 
-        right_mask = torch.full_like(mask[:1], float("-inf"))
-        right_mask.diagonal(dim1=-2, dim2=-1).fill_(0)
-        right_mask = right_mask.detach() + mask
-
-        mask = torch.cat([left_mask, right_mask], dim=-1)
-
-        # get fake outputs
-        fake_states = self.model(
-            fake_ids,
-            segment_ids=segment_ids,
-            attention_mask=mask,
-            cached_mask=True,
-            kv=kv
+        nw = mask.clone()
+        ne = torch.full_like(mask, float("-inf"))
+        sw = mask.clone()
+        sw.diagonal(dim1=-2, dim2=-1).fill_(float("-inf"))
+        se = torch.full_like(mask, float("-inf"))
+        se.diagonal(dim1=-2, dim2=-1).fill_(0)
+        mask = torch.cat(
+            [
+                torch.cat([nw, ne], dim=-1),
+                torch.cat([sw, se], dim=-1)
+            ],
+            dim=-2
         )
 
-        # get arc predictions
-        true_arc = self.arc_head(true_states)[:, :, 0]
-        fake_arc = self.arc_head(fake_states)[:, :, 0]
+        # get fake outputs
+        hidden_states = self.model(
+            input_ids,
+            position_ids=pos_ids,
+            attention_mask=mask,
+            cached_mask=True,
+        )[0]
+        true_states, fake_states = hidden_states.chunk(2, dim=-2)
 
-        # shift predictions to account for later shift in loss
-        true_arc[:, :-1] = true_arc[:, 1:]
-        fake_arc[:, :-1] = fake_arc[:, 1:]
+        # get lm logits
+        lm_logits = self._get_lm_logits(true_states)
+
+        # get arc predictions
+        true_arc, fake_arc = self._get_arc_outputs(true_states, fake_states)
 
         return (
             lm_logits,
             true_arc,
             fake_arc
         )
+    

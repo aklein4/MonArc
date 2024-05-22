@@ -209,7 +209,6 @@ class BaseTransformer(BaseModel):
         segment_ids: Optional[torch.LongTensor]=None,
         cached_mask=False,
         kv: Optional[Cache]=None,
-        disable_norm=False,
     ) -> DotDict:
         """ Forward pass of the LM
 
@@ -257,8 +256,6 @@ class BaseTransformer(BaseModel):
                     use_cache=(kv is not None),
                 )[0]
 
-        if disable_norm:
-            return hidden_states
         return self.norm(hidden_states)
 
 

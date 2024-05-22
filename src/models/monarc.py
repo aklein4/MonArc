@@ -4,23 +4,16 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
-import math
 import numpy as np
-
-from transformers.models.stablelm.modeling_stablelm import (
-    StableLmAttention,
-    StableLmMLP,
-    apply_rotary_pos_emb,
-    repeat_kv
-)
 
 from models.base import (
     BaseConfig,
-    BaseModel,
     BaseTransformer,
+    BaseModel
 )
 from models.arc import ArcDecoderLayer
 from utils.data_utils import DotDict
+from utils.model_utils import EfficientSampler
 from utils.logging_utils import log_print
 
 
@@ -33,17 +26,16 @@ class MonArcConfig(BaseConfig):
         *args,
         num_head_layers=4,
         control=False,
-        head_gradient_checkpointing=False,
         **kwargs
     ):
+        
         self.num_head_layers = num_head_layers
         self.control = control
-        self.head_gradient_checkpointing = head_gradient_checkpointing
 
         super().__init__(*args, **kwargs)
 
 
-class MonArcHeadTransformer(BaseTransformer):
+class MonArcTransformer(BaseTransformer):
 
     def __init__(self, config: MonArcConfig):
         super().__init__(config)
@@ -55,13 +47,19 @@ class MonArcHeadTransformer(BaseTransformer):
         # weights
         self.embed_tokens = nn.Embedding(config.vocab_size, config.hidden_size, self.padding_idx)
         self.layers = nn.ModuleList(
-            [ArcDecoderLayer(config, layer_idx) for layer_idx in range(config.num_head_layers)]
+            [ArcDecoderLayer(config, layer_idx) for layer_idx in range(config.num_hidden_layers)]
         )
         self.norm = nn.LayerNorm(config.hidden_size, eps=config.layer_norm_eps)
 
+        # indices for the head
+        assert config.num_head_layers <= config.num_hidden_layers
+        self.num_hidden_layers = config.num_hidden_layers
+        self.num_head_layers = config.num_head_layers
+        self.hidden_layer_ids = list(range(config.num_hidden_layers-config.num_head_layers))
+        self.head_layer_ids = list(range(config.num_hidden_layers-config.num_head_layers, config.num_hidden_layers))
+
         # Compute configuration
         self._attn_implementation = config._attn_implementation
-        self.head_gradient_checkpointing = config.head_gradient_checkpointing
         self.gradient_checkpointing = False
 
         # Initialize weights and apply final processing
@@ -70,7 +68,7 @@ class MonArcHeadTransformer(BaseTransformer):
 
     def forward(
         self,
-        hidden_states: torch.Tensor,
+        hidden_states: Optional[torch.Tensor]=None,
         input_ids: Optional[torch.LongTensor]=None,
         memory: Optional[torch.Tensor]=None,
         position_ids: Optional[torch.LongTensor]=None,
@@ -79,24 +77,30 @@ class MonArcHeadTransformer(BaseTransformer):
         cached_mask=False,
         kv=None,
     ) -> DotDict:
-
-        # get inputs
-        if input_ids is not None:
-            hidden_states = hidden_states + self._get_tokens(input_ids)
-        else:
+        assert hidden_states is not None or input_ids is not None
+        assert not (hidden_states is not None and input_ids is not None)
+        
+        head = hidden_states is not None
+        if head:
             input_ids = torch.zeros(hidden_states.shape[:-1], dtype=torch.long, device=hidden_states.device)
+        else:
+            hidden_states = self._get_tokens(input_ids)
         attention_mask = self._get_mask(input_ids, attention_mask, segment_ids, cached_mask)
         position_ids = self._get_position_ids(input_ids, position_ids)
 
         # run transformer
         mem_out = []
-        for layer_idx, decoder_layer in enumerate(self.layers):
+        layer_list = self.head_layer_ids if head else self.hidden_layer_ids
+        raw_idx = -1
+        for layer_idx in layer_list:
+            decoder_layer = self.layers[layer_idx]
+            raw_idx += 1
 
             mem_out.append(hidden_states)
             if memory is None:
                 mem_in = None
             else:
-                mem_in = memory[layer_idx]
+                mem_in = memory[raw_idx]
 
             if self.gradient_checkpointing and self.training and self.head_gradient_checkpointing:
                 if kv is not None:
@@ -124,7 +128,15 @@ class MonArcHeadTransformer(BaseTransformer):
                     use_cache=(kv is not None),
                 )[0]
 
-        return self.norm(hidden_states), torch.stack(mem_out, dim=0)
+        if head:
+            hidden_states = self.norm(hidden_states)
+
+        if len(mem_out) > 0:
+            mem_out = torch.stack(mem_out, dim=0)
+        else:
+            mem_out = None
+
+        return hidden_states, mem_out
 
 
 class MonArcLmModel(BaseModel):
@@ -133,8 +145,7 @@ class MonArcLmModel(BaseModel):
         super().__init__(config)
 
         # transformer
-        self.model = BaseTransformer(config, disable_norm=True)
-        self.head_model = MonArcHeadTransformer(config)
+        self.model = MonArcTransformer(config)
 
         # lm modeling
         self.vocab_size = config.vocab_size
@@ -142,21 +153,17 @@ class MonArcLmModel(BaseModel):
         self.lm_head = nn.Linear(config.hidden_size, config.vocab_size, bias=False)
 
         # arc modeling
-        self.arc_head = nn.Linear(config.hidden_size, config.vocab_size, bias=False)
-
-        # fast sampling info
-        self.vocab_factor = int(np.round(np.sqrt(self.vocab_size)))
-        while self.vocab_size % self.vocab_factor != 0:
-            self.vocab_factor += 1
-        self.vocab_chunk = self.vocab_size // self.vocab_factor
+        self.embed_conds = nn.Embedding(config.vocab_size, config.hidden_size, self.pad_token_id)
+        self.sampler = EfficientSampler(config.vocab_size)
 
         # extras
         self.control = config.control
-        if self.control:
-            log_print("MonArc control mode enabled!")
 
         # Initialize weights and apply final processing
         self.post_init()
+
+        # init conds to zero
+        self.embed_conds.weight.data.zero_()
 
 
     def forward(
@@ -165,20 +172,6 @@ class MonArcLmModel(BaseModel):
         segment_ids: Optional[torch.LongTensor]=None,
         debug=False
     ) -> DotDict:
-        """ Forward pass of the LM for training. 
-         - creates negative samples
-         - returns lm logits and arc predictions
-         - 1 in arc predictions is fake, 0 is real, -1 is padding
-         
-        Args:
-            input_ids (torch.LongTensor): input token ids [bs, seq_length].
-
-        Returns:
-            DotDict:
-                torch.Tensor: log-softmaxed logits [bs, seq_length, vocab_size]
-                torch.Tensor: arc predictions [bs, seq_length-2]
-                torch.Tensor: arc targets [bs, seq_length-2]
-        """
         batch_size, seq_length = input_ids.shape
 
         # reuse the attention mask
@@ -186,85 +179,73 @@ class MonArcLmModel(BaseModel):
 
         # get transformer output
         hidden_states = self.model(
-            input_ids,
+            input_ids=input_ids,
             attention_mask=attention_mask,
             cached_mask=True
-        )
+        )[0]
 
         # get the lm logits
-        lm_states, memory = self.head_model(
-            hidden_states,
+        lm_states, memory = self.model(
+            hidden_states=hidden_states,
             memory=None,
             attention_mask=attention_mask,
             cached_mask=True
         )
         lm_logits = self.lm_head(lm_states)
+        lm_logits = F.log_softmax(lm_logits, dim=-1)
 
-        # get the true labels
-        # the last token is discarded later in the loss
-        true_labels = input_ids.clone()
-        true_labels[:, :-1] = input_ids[:, 1:]
-
-        # get the fake labels
-        fake_labels = input_ids.clone()
-
-        factored_probs = torch.softmax(
-            lm_logits.detach().float(), dim=-1
-        ).view(-1, self.vocab_factor, self.vocab_chunk)
-
-        outer_probs = factored_probs.sum(dim=-1)
-        outer_sample = torch.multinomial(outer_probs, 1, True)[:, 0]
-
-        ar = torch.arange(batch_size*seq_length, device=input_ids.device, dtype=torch.long)
-        inner_probs = factored_probs[ar, outer_sample]
-        inner_sample = torch.multinomial(inner_probs, 1, True)[:, 0]
-
-        sample = (self.vocab_chunk*outer_sample + inner_sample).view(batch_size, seq_length)
-        fake_labels[:, :-1] = sample[:, :-1]
+        # get the fake ids
+        if debug:
+            fake_ids = input_ids.clone()
+        else:
+            sample = self.sampler(lm_logits)
+            fake_ids = input_ids.clone()
+            fake_ids[:, 1:] = sample[:, :-1]
 
         # get the input tokens for the head
-        if debug:
-            true_tokens = None
-            fake_tokens = None
-        elif self.control:
-            true_tokens = torch.zeros_like(true_labels)
-            fake_tokens = torch.zeros_like(fake_labels)
-        else:
-            true_tokens = true_labels
-            fake_tokens = fake_labels
+        true_tokens = torch.zeros_like(input_ids)
+        fake_tokens = torch.zeros_like(fake_ids)
+        if not self.control:
+            true_tokens[:, :-1] = input_ids[:, 1:]
+            fake_tokens[:, :-1] = fake_ids[:, 1:]
+
+        true_states = hidden_states + self.embed_conds(true_tokens)
+        fake_states = hidden_states + self.embed_conds(fake_tokens)
 
         # get the true fake head outputs
-        true_states, fake_states = self.head_model(
-            torch.cat([hidden_states, hidden_states], dim=0),
-            input_ids=(None if debug else torch.cat([true_tokens, fake_tokens], dim=0)),
+        true_states, fake_states = self.model(
+            hidden_states=torch.cat([true_states, fake_states], dim=0),
             memory=torch.cat([memory, memory], dim=1),
             attention_mask=torch.cat([attention_mask, attention_mask], dim=0),
             cached_mask=True
         )[0].chunk(2, dim=0)
 
         # get the true and fake logits
-        true_arc = torch.bmm(
-            self.arc_head.weight[true_labels.view(-1)].unsqueeze(-2),
-            true_states.view(-1, true_states.shape[-1]).unsqueeze(-1)
-        )[:, 0, 0].reshape(batch_size, seq_length)
-        fake_arc = torch.bmm(
-            self.arc_head.weight[fake_labels.view(-1)].unsqueeze(-2),
-            fake_states.view(-1, fake_states.shape[-1]).unsqueeze(-1)
-        )[:, 0, 0].reshape(batch_size, seq_length)
+        true_logits = self.lm_head(true_states)
+        true_logits = F.log_softmax(true_logits, dim=-1)
+
+        fake_logits = self.lm_head(fake_states)
+        fake_logits = F.log_softmax(fake_logits, dim=-1)
 
         # # get arc outputs
-        # ar = torch.arange(batch_size*seq_length, device=input_ids.device, dtype=torch.long)
-        # tmp_lm_logits = lm_logits.view(-1, lm_logits.shape[-1]).detach()
+        offset_true = torch.zeros_like(input_ids)
+        offset_true[:, :-1] = input_ids[:, 1:]
+        offset_fake = torch.zeros_like(fake_ids)
+        offset_fake[:, :-1] = fake_ids[:, 1:]
 
-        # true_arc = true_logits - tmp_lm_logits[ar, true_labels.view(-1)]
-        # fake_arc = fake_logits - tmp_lm_logits[ar, fake_labels.view(-1)]
+        ar = torch.arange(batch_size*seq_length, device=input_ids.device, dtype=torch.long)
+        true_lm_select = lm_logits.detach().view(-1, lm_logits.shape[-1])[ar, offset_true.view(-1)]
+        fake_lm_select = lm_logits.detach().view(-1, lm_logits.shape[-1])[ar, offset_fake.view(-1)]
+        
+        true_arc_select = true_logits.view(-1, true_logits.shape[-1])[ar, offset_true.view(-1)]
+        fake_arc_select = fake_logits.view(-1, fake_logits.shape[-1])[ar, offset_fake.view(-1)]
 
-        # # flip sign so higher = lower residual = more likely
-        # true_arc = -true_arc.view(batch_size, seq_length)
-        # fake_arc = -fake_arc.view(batch_size, seq_length)
+        # negative because lower energy = more likely
+        true_arc = -(true_arc_select - true_lm_select)
+        fake_arc = -(fake_arc_select - fake_lm_select)
 
-        # final processing
-        lm_logits = F.log_softmax(lm_logits, dim=-1)
+        true_arc = true_arc.view(batch_size, seq_length)
+        fake_arc = fake_arc.view(batch_size, seq_length)
 
         return (
             lm_logits,

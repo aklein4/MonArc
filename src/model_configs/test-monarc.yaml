@@ -1,7 +1,7 @@
 
-model_type: arc
+model_type: monarc
 architectures: [
-    ArcLmModel
+    MonArcLmModel
 ]
 
 hidden_act: silu
@@ -23,3 +23,6 @@ max_position_embeddings: 128
 
 _attn_implementation: eager
 gradient_checkpointing: False
+
+num_head_layers: 2
+control: False

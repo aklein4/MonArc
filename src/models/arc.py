@@ -31,7 +31,7 @@ class ArcConfig(BaseConfig):
     def __init__(
         self,
         *args,
-        mem_efficient_cross_attn: bool = False,
+        mem_efficient_cross_attn: bool = True,
         **kwargs
     ):
         

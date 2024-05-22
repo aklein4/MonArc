@@ -1,0 +1,21 @@
+trainer_type: XLAArcTrainer
+
+start_lr: 0.00003
+
+bs: 512
+mini_bs: 4
+
+beta1: 0.9
+beta2: 0.95
+eps: 0.00000001
+weight_decay: 0.1
+
+warmup_steps: 500
+lr_steps: null
+
+checkpoint_interval: 2000
+
+w_arc: 10.0
+
+start_seq_ind: 51200000
+checkpoint: Arc-packed_med-lm/000000100000

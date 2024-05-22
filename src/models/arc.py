@@ -406,7 +406,7 @@ class ArcLmModel(BaseModel):
             lm_logits = F.log_softmax(lm_logits, dim=-1)
 
             ar = torch.arange(batch_size*seq_len, device=input_ids.device, dtype=input_ids.dtype)
-            baseline = lm_logits.detach().view(-1)[ar, input_ids.view(-1)].view(batch_size, seq_len)
+            baseline = lm_logits.detach().view(-1, lm_logits.shape[-1])[ar, input_ids.view(-1)].view(batch_size, seq_len)
 
             true_arc = -(true_arc - baseline)
             fake_arc = -(fake_arc - baseline)

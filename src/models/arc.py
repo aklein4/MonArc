@@ -361,7 +361,12 @@ class ArcLmModel(BaseModel):
         self.backward_head = nn.Linear(config.hidden_size, config.hidden_size, bias=True)
         self.sampler = EfficientSampler(self.vocab_size)
 
+        # reparameterization
         self.reparam_arc = config.reparam_arc
+        if self.reparam_arc:
+            self.reparam_z = nn.Parameter(torch.zeros(1))
+        else:
+            self.reparam_z = None
 
         # compute settings
         self.mem_efficient_cross_attn = config.mem_efficient_cross_attn
@@ -408,8 +413,8 @@ class ArcLmModel(BaseModel):
             ar = torch.arange(batch_size*seq_len, device=input_ids.device, dtype=input_ids.dtype)
             baseline = lm_logits.detach().view(-1, lm_logits.shape[-1])[ar, input_ids.view(-1)].view(batch_size, seq_len)
 
-            true_arc = -(true_arc - baseline)
-            fake_arc = -(fake_arc - baseline)
+            true_arc = true_arc + self.reparam_z*baseline
+            fake_arc = fake_arc + self.reparam_z*baseline
 
         return true_arc, fake_arc
 

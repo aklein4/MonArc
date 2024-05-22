@@ -18,4 +18,4 @@ checkpoint_interval: 2500
 w_arc: 1.0
 
 start_seq_ind: 51200000
-checkpoint: 'Arc-packed_med-lm/000000100000'
+checkpoint: Arc-packed_med-lm/000000100000

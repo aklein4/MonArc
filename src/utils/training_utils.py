@@ -121,7 +121,7 @@ def arc_adj(true_arc, fake_arc, input_ids, ignore_index):
     fake_arc = fake_arc[:, :-1].view(-1)
     input_ids = input_ids[:, 1:].view(-1)
 
-    # appriximate log prob gain when z=0
+    # appriximate log prob gain when z=1
     adj = -true_arc
 
     mask = input_ids != ignore_index

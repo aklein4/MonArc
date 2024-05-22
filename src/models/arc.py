@@ -13,7 +13,6 @@ from transformers.models.stablelm.modeling_stablelm import (
     apply_rotary_pos_emb,
     repeat_kv
 )
-from transformers.cache_utils import DynamicCache
 
 from models.base import (
     BaseConfig,

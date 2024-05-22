@@ -1,7 +1,6 @@
 trainer_type: XLAArcTrainer
 
-start_lr: 0.0006
-end_lr: 0.00006
+start_lr: 0.00006
 
 bs: 512
 mini_bs: 8
@@ -12,11 +11,11 @@ eps: 0.00000001
 weight_decay: 0.1
 
 warmup_steps: 500
-lr_steps: 100000
+lr_steps: null
 
-checkpoint_interval: 5000
+checkpoint_interval: 2500
 
 w_arc: 1.0
 
 start_seq_ind: 51200000
-checkpoint: Arc-packed_mini-lm/000000050000
+checkpoint: Arc-packed_mini-lm/000000100000

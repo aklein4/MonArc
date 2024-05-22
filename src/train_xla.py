@@ -82,6 +82,9 @@ def _mp_fn(index, args):
         xm.broadcast_master_param(model)
         model = model.to(torch.float32)
     
+    else:
+        model = model.to(constants.XLA_DEVICE())
+    
     # log_print("Compiling model...")
     # model.model = torch.compile(model.model, backend='openxla')
 

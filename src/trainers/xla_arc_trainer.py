@@ -34,4 +34,10 @@ class XLAArcTrainer(BaseXLATrainer):
         # a little extra, as a treat
         results.lm_loss_adj = results.lm_loss.detach() - results.arc_adj
 
+        # track internal parameters
+        try:
+            results.reparam_z = model.reparam_z.data.detach()
+        except AttributeError:
+            pass
+
         return results

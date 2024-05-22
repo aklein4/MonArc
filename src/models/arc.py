@@ -365,8 +365,6 @@ class ArcLmModel(BaseModel):
         self.reparam_arc = config.reparam_arc
         if self.reparam_arc:
             self.reparam_z = nn.Parameter(torch.zeros(1))
-        else:
-            self.reparam_z = None
 
         # compute settings
         self.mem_efficient_cross_attn = config.mem_efficient_cross_attn

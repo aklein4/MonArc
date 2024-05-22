@@ -23,3 +23,5 @@ max_position_embeddings: 1024
 
 _attn_implementation: eager
 gradient_checkpointing: False
+
+mem_efficient_cross_attn: True

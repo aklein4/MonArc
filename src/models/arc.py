@@ -31,10 +31,12 @@ class ArcConfig(BaseConfig):
     def __init__(
         self,
         *args,
+        reparam_arc: bool = False,
         mem_efficient_cross_attn: bool = True,
         **kwargs
     ):
         
+        self.reparam_arc = reparam_arc
         self.mem_efficient_cross_attn = mem_efficient_cross_attn
 
         super().__init__(*args, **kwargs)
@@ -359,6 +361,8 @@ class ArcLmModel(BaseModel):
         self.backward_head = nn.Linear(config.hidden_size, config.hidden_size, bias=True)
         self.sampler = EfficientSampler(self.vocab_size)
 
+        self.reparam_arc = config.reparam_arc
+
         # compute settings
         self.mem_efficient_cross_attn = config.mem_efficient_cross_attn
 
@@ -378,6 +382,8 @@ class ArcLmModel(BaseModel):
         self,
         true_states: torch.Tensor,
         fake_states: torch.Tensor,
+        input_ids: Optional[torch.LongTensor]=None,
+        lm_logits: Optional[torch.Tensor]=None,
     ):
         true_states = self.arc_norm(true_states)
         fake_states = self.arc_norm(fake_states)
@@ -393,6 +399,18 @@ class ArcLmModel(BaseModel):
         true_arc[:, :-1] = (forward_embs * backward_true).sum(dim=-1) / np.sqrt(self.config.hidden_size)
         fake_arc[:, :-1] = (forward_embs * backward_fake).sum(dim=-1) / np.sqrt(self.config.hidden_size)
         
+        if self.reparm_arc:
+            assert input_ids is not None and lm_logits is not None, "Need input_ids and lm_logits for reparameterization!"
+            batch_size, seq_len = input_ids.shape
+
+            lm_logits = F.log_softmax(lm_logits, dim=-1)
+
+            ar = torch.arange(batch_size*seq_len, device=input_ids.device, dtype=input_ids.dtype)
+            baseline = lm_logits.detach().view(-1)[ar, input_ids.view(-1)].view(batch_size, seq_len)
+
+            true_arc = -(true_arc - baseline)
+            fake_arc = -(fake_arc - baseline)
+
         return true_arc, fake_arc
 
 
@@ -433,7 +451,10 @@ class ArcLmModel(BaseModel):
         )[0]
 
         # get arc predictions
-        true_arc, fake_arc = self._get_arc_outputs(true_states, fake_states)
+        true_arc, fake_arc = self._get_arc_outputs(
+            true_states, fake_states
+            lm_logits=lm_logits, input_ids=input_ids
+        )
 
         return (
             lm_logits,
@@ -507,7 +528,10 @@ class ArcLmModel(BaseModel):
         lm_logits = self._get_lm_logits(true_states)
 
         # get arc predictions
-        true_arc, fake_arc = self._get_arc_outputs(true_states, fake_states)
+        true_arc, fake_arc = self._get_arc_outputs(
+            true_states, fake_states,
+            lm_logits=lm_logits, input_ids=input_ids
+        )
 
         return (
             lm_logits,

@@ -362,11 +362,12 @@ class ArcLmModel(BaseModel):
         self.sampler = EfficientSampler(self.vocab_size)
 
         # reparameterization
-        self.reparam_z = nn.Parameter(torch.zeros(1))
         self.z_scale = config.z_scale
         self.const_z = config.const_z
         if self.const_z:
             self.reparam_z = 1
+        else:
+            self.reparam_z = nn.Parameter(torch.zeros(1))
 
         # Initialize weights and apply final processing
         self.post_init()

@@ -427,7 +427,8 @@ class ArcLmModel(BaseModel):
         self,
         input_ids: torch.LongTensor,
         segment_ids: Optional[torch.LongTensor]=None,
-        debug=False
+        debug=False,
+        return_dict=False
     ):
 
         # get the simple mask and cache
@@ -470,3 +471,50 @@ class ArcLmModel(BaseModel):
             true_arc,
             fake_arc
         )
+
+
+    @torch.no_grad()
+    def p_lm(
+        self,
+        input_ids
+    ):
+
+        # get transformer output
+        true_states, memory = self.model(
+            input_ids=input_ids,
+        )
+
+        # get lm logits
+        lm_logits = self._get_lm_logits(true_states)
+
+        return DotDict(
+            lm_logits=lm_logits,
+            true_states=true_states,
+            memory=memory
+        )
+    
+
+    @torch.no_grad()
+    def residuals(
+        self,
+        input_ids,
+        true_states,
+        memory,
+        lm_logits=None
+    ):
+
+        fake_states = self.model(
+            input_ids,
+            memory=memory,
+        )[0]
+
+        if lm_logits is None:
+            lm_logits = self._get_lm_logits(true_states)
+        
+        true_arc, fake_arc = self._get_arc_outputs(
+            true_states, fake_states,
+            lm_logits=lm_logits, input_ids=input_ids, fake_ids=input_ids
+        )
+
+        return fake_arc/4
+        

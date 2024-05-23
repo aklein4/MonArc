@@ -16,7 +16,7 @@ from utils.config_utils import load_model_config
 
 
 CHECKPOINT_REPO = "aklein4/Arc-packed_mini-arc-const-z"
-CHECKPOINT_SUBFOLDER = "000000005000/model"
+CHECKPOINT_SUBFOLDER = "000000020000/model"
 
 CONFIG = 'mini-arc'
 

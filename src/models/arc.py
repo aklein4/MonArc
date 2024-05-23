@@ -24,6 +24,22 @@ from utils.model_utils import EfficientSampler
 from utils.logging_utils import log_print
 
 
+class ArcConfig(BaseConfig):
+
+    model_type = "arc"
+
+    def __init__(
+        self,
+        *args,
+        z_scale: 1,
+        **kwargs
+    ):
+        
+        self.z_scale = z_scale
+
+        super().__init__(*args, **kwargs)
+
+
 class ArcAttention(StableLmAttention):
 
     def cross_forward(
@@ -345,6 +361,7 @@ class ArcLmModel(BaseModel):
 
         # reparameterization
         self.reparam_z = nn.Parameter(torch.zeros(1))
+        self.z_scale = config.z_scale
 
         # Initialize weights and apply final processing
         self.post_init()
@@ -394,8 +411,8 @@ class ArcLmModel(BaseModel):
         baseline_true = lm_logits.detach().view(-1, lm_logits.shape[-1])[ar, offset_inputs.view(-1)].view(batch_size, seq_len)
         baseline_fake = lm_logits.detach().view(-1, lm_logits.shape[-1])[ar, offset_fakes.view(-1)].view(batch_size, seq_len)
 
-        true_arc = true_arc + self.reparam_z*baseline_true
-        fake_arc = fake_arc + self.reparam_z*baseline_fake
+        true_arc = true_arc + self.z_scale*self.reparam_z * baseline_true
+        fake_arc = fake_arc + self.z_scale*self.reparam_z * baseline_fake
 
         return true_arc, fake_arc
 

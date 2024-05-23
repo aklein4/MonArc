@@ -36,7 +36,7 @@ class XLAArcTrainer(BaseXLATrainer):
 
         # track internal parameters
         try:
-            results.reparam_z = model.reparam_z.data.detach()
+            results.reparam_z = model.z_scale * model.reparam_z.data.detach()
         except AttributeError:
             pass
 

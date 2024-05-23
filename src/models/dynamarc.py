@@ -78,7 +78,8 @@ class DynamArcLmModel(ArcLmModel):
         backward_fake = self.backward_head(fake_states[:, 1:])
 
         # 3. project baseline into embedding space
-        forward_embs = forward_embs + self.baseline_forward_head(baseline_true[:, :-1])
+        forward_embs_true = forward_embs + self.baseline_forward_head(baseline_true[:, :-1])
+        forward_embs_fake = forward_embs + self.baseline_forward_head(baseline_fake[:, :-1])
         backward_true = backward_true + self.baseline_backward_head(baseline_true[:, :-1])
         backward_fake = backward_fake + self.baseline_backward_head(baseline_fake[:, :-1])
 
@@ -87,7 +88,7 @@ class DynamArcLmModel(ArcLmModel):
         fake_arc = torch.zeros_like(true_states[:, :, 0])
 
         # pred[i] = pred for next token, similar to standard LM
-        true_arc[:, :-1] = (forward_embs * backward_true).sum(dim=-1) / np.sqrt(self.config.hidden_size)
-        fake_arc[:, :-1] = (forward_embs * backward_fake).sum(dim=-1) / np.sqrt(self.config.hidden_size)
+        true_arc[:, :-1] = (forward_embs_true * backward_true).sum(dim=-1) / np.sqrt(self.config.hidden_size)
+        fake_arc[:, :-1] = (forward_embs_fake * backward_fake).sum(dim=-1) / np.sqrt(self.config.hidden_size)
 
         return true_arc, fake_arc

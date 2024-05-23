@@ -32,12 +32,12 @@ class ArcConfig(BaseConfig):
         self,
         *args,
         z_scale: 1,
-        fix_z: False,
+        const_z: False,
         **kwargs
     ):
         
         self.z_scale = z_scale
-        self.fix_z = fix_z
+        self.const_z = const_z
 
         super().__init__(*args, **kwargs)
 
@@ -364,8 +364,8 @@ class ArcLmModel(BaseModel):
         # reparameterization
         self.reparam_z = nn.Parameter(torch.zeros(1))
         self.z_scale = config.z_scale
-        self.fix_z = config.fix_z
-        if self.fix_z:
+        self.const_z = config.const_z
+        if self.const_z:
             self.reparam_z = 1
 
         # Initialize weights and apply final processing

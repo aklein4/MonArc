@@ -8,7 +8,7 @@ import math
 import numpy as np
 
 from models.base import (
-    BaseConfig,
+    BaseConfig, BaseModel
 )
 from models.arc import ArcTransformer, ArcLmModel
 from utils.data_utils import DotDict
@@ -19,7 +19,7 @@ from utils.logging_utils import log_print
 class DynamArcLmModel(ArcLmModel):
 
     def __init__(self, config: BaseConfig):
-        super().__init__(config)
+        BaseModel.__init__(self, config)
 
         # transformer
         self.model = ArcTransformer(config, disable_norm=True)

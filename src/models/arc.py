@@ -516,5 +516,5 @@ class ArcLmModel(BaseModel):
             lm_logits=lm_logits, input_ids=input_ids, fake_ids=input_ids
         )
 
-        return fake_arc/4
+        return fake_arc
         

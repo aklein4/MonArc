@@ -2,16 +2,16 @@
 
 from models.base import BaseConfig, BaseLmModel
 from models.arc import ArcConfig, ArcLmModel
-from models.monarc import MonArcConfig, MonArcLmModel
+from models.dynamarc import DynamArcLmModel
 
 CONFIG_DICT = {
     "base": BaseConfig,
     "arc": ArcConfig,
-    "monarc": MonArcConfig,
+    "dynamarc": BaseConfig
 }
 
 MODEL_DICT = {
     "base": BaseLmModel,
     "arc": ArcLmModel,
-    "monarc": MonArcLmModel
+    "dynamarc": DynamArcLmModel
 }

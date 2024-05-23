@@ -15,7 +15,7 @@ import utils.constants as constants
 from utils.config_utils import load_model_config
 
 
-CHECKPOINT_REPO = "aklein4/Arc-packed_mini-arc-const-z"
+CHECKPOINT_REPO = "aklein4/Arc-packed_mini-arc-reparam"
 CHECKPOINT_SUBFOLDER = "000000020000/model"
 
 CONFIG = 'mini-arc'
@@ -67,6 +67,9 @@ def main():
         memory=torch.cat([lm_out.memory]*NUM_SAMPLES, dim=1),
         lm_logits=torch.cat([lm_out.lm_logits]*NUM_SAMPLES, dim=0)
     )
+
+    print((true_residuals < 0).float().mean())
+    print((residuals > 0).float().mean())
 
     lower = torch.logsumexp(-residuals - np.log(residuals.shape[0]), 0)
 

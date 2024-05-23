@@ -16,11 +16,13 @@ hidden_size: 128
 intermediate_size: 256
 
 num_attention_heads: 2
-num_hidden_layers: 2
+num_hidden_layers: 4
 num_key_value_heads: 2
-num_head_layers: 2
 
 max_position_embeddings: 128
 
 _attn_implementation: eager
 gradient_checkpointing: False
+
+num_head_layers: 2
+control: False

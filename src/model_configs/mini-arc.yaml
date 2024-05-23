@@ -25,4 +25,4 @@ _attn_implementation: eager
 gradient_checkpointing: False
 
 z_scale: 1.0
-const_z: True
+const_z: False

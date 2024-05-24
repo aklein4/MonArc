@@ -31,13 +31,20 @@ class DynamArcLmModel(ArcLmModel):
         
         # arc modeling
         self.arc_norm = nn.LayerNorm(config.hidden_size, eps=config.layer_norm_eps)
-        self.forward_head = nn.Linear(config.hidden_size, config.hidden_size, bias=True)
-        self.backward_head = nn.Linear(config.hidden_size, config.hidden_size, bias=True)
+
+        # embedding projections (no bias)
+        self.forward_head = nn.Linear(config.hidden_size, config.hidden_size, bias=False)
+        self.backward_head = nn.Linear(config.hidden_size, config.hidden_size, bias=False)
+        
+        # linear heads on top of outputs (forward_bias contains global bias)
+        self.forward_bias = nn.Linear(config.hidden_size, 1, bias=True)
+        self.backward_bias = nn.Linear(config.hidden_size, 1, bias=False)
+
         self.sampler = EfficientSampler(self.vocab_size)
 
-        # reparameterization
-        self.baseline_forward_head = nn.Linear(1, config.hidden_size, bias=False)
-        self.baseline_backward_head = nn.Linear(1, config.hidden_size, bias=False)
+        # reparameterization (baseline_forward_head contains baseline bias)
+        self.baseline_forward_head = nn.Linear(config.hidden_size, 1, bias=True)
+        self.baseline_backward_head = nn.Linear(config.hidden_size, 1, bias=False)
 
         # Initialize weights and apply final processing
         self.post_init()
@@ -58,7 +65,8 @@ class DynamArcLmModel(ArcLmModel):
         batch_size, seq_len = input_ids.shape
         
         # 1. get baseline lm outputs
-        lm_logits = F.log_softmax(lm_logits, dim=-1)
+        # lm_logits should already be log_softmax!
+        # lm_logits = F.log_softmax(lm_logits, dim=-1)
         
         offset_inputs = input_ids.clone()
         offset_inputs[:, :-1] = input_ids[:, 1:]
@@ -73,22 +81,35 @@ class DynamArcLmModel(ArcLmModel):
         true_states = self.arc_norm(true_states)
         fake_states = self.arc_norm(fake_states)
 
+        # get embedddings
         forward_embs = self.forward_head(true_states[:, :-1])
-        backward_true = self.backward_head(true_states[:, 1:])
-        backward_fake = self.backward_head(fake_states[:, 1:])
+        backward_true_embs = self.backward_head(true_states[:, 1:])
+        backward_fake_embs = self.backward_head(fake_states[:, 1:])
 
-        # 3. project baseline into embedding space
-        forward_embs_true = forward_embs + self.baseline_forward_head(baseline_true[:, :-1])
-        forward_embs_fake = forward_embs + self.baseline_forward_head(baseline_fake[:, :-1])
-        backward_true = backward_true + self.baseline_backward_head(baseline_true[:, :-1])
-        backward_fake = backward_fake + self.baseline_backward_head(baseline_fake[:, :-1])
+        # get biases
+        forward_bias = self.forward_bias(true_states[:, :-1])[:, :, 0]
+        backward_true_bias = self.backward_bias(true_states[:, 1:])[:, :, 0]
+        backward_fake_bias = self.backward_bias(fake_states[:, 1:])[:, :, 0]
 
-        # 4. multiply embeddings to get arc outputs
+        # get baseline scales
+        forward_baseline = self.baseline_forward_head(true_states[:, :-1])[:, :, 0]
+        backward_true_baseline = self.baseline_backward_head(true_states[:, 1:])[:, :, 0]
+        backward_fake_baseline = self.baseline_backward_head(fake_states[:, 1:])[:, : 0]
+
+        # 4. combine embeddings to get arc outputs
         true_arc = torch.zeros_like(true_states[:, :, 0])
         fake_arc = torch.zeros_like(true_states[:, :, 0])
 
-        # pred[i] = pred for next token, similar to standard LM
-        true_arc[:, :-1] = (forward_embs_true * backward_true).sum(dim=-1) / np.sqrt(self.config.hidden_size)
-        fake_arc[:, :-1] = (forward_embs_fake * backward_fake).sum(dim=-1) / np.sqrt(self.config.hidden_size)
+        # dot product of embs
+        true_arc[:, :-1] = (forward_embs * backward_true_embs).sum(dim=-1) / np.sqrt(self.config.hidden_size)
+        fake_arc[:, :-1] = (forward_embs * backward_fake_embs).sum(dim=-1) / np.sqrt(self.config.hidden_size)
+
+        # biases
+        true_arc[:, :-1] = true_arc[:, :-1] + forward_bias + backward_true_bias
+        fake_arc[:, :-1] = fake_arc[:, :-1] + forward_bias + backward_fake_bias
+
+        # baseline
+        true_arc[:, :-1] = true_arc[:, :-1] + (forward_baseline + backward_true_baseline)*baseline_true[:, :-1]
+        fake_arc[:, :-1] = fake_arc[:, :-1] + (forward_baseline + backward_fake_baseline)*baseline_fake[:, :-1]
 
         return true_arc, fake_arc

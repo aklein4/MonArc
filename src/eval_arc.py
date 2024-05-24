@@ -9,16 +9,17 @@ from tqdm import tqdm
 import huggingface_hub as hf
 from transformers import AutoTokenizer
 
-from models.arc import ArcLmModel, ArcConfig
+from models.base import BaseConfig
+from models.dynamarc import DynamArcLmModel
 
 import utils.constants as constants
 from utils.config_utils import load_model_config
 
 
-CHECKPOINT_REPO = "aklein4/Arc-packed_mini-arc-reparam"
-CHECKPOINT_SUBFOLDER = "000000020000/model"
+CHECKPOINT_REPO = "aklein4/Arc-packed_mini-dynamarc"
+CHECKPOINT_SUBFOLDER = "000000005000/model"
 
-CONFIG = 'mini-arc'
+CONFIG = 'mini-lm'
 
 NUM_SAMPLES = 32
 
@@ -28,8 +29,8 @@ def main():
     tokenizer = AutoTokenizer.from_pretrained(constants.GPT2_TOKENIZER, resume_download=None)
     tokenizer.add_special_tokens({"pad_token": "[PAD]"})
 
-    config = ArcConfig(**load_model_config(CONFIG, tokenizer))
-    model = ArcLmModel(config)
+    config = BaseConfig(**load_model_config(CONFIG, tokenizer))
+    model = DynamArcLmModel(config)
 
     local_dir = os.path.join(constants.LOCAL_DATA_PATH, CHECKPOINT_REPO.split("/")[1])
     path = hf.hf_hub_download(
@@ -43,7 +44,7 @@ def main():
     x = tokenizer(
         [
             """
-            Whenever we do martial arts demonstrations for schools, we always encourage the children to ask questions. This can have mixed results. At one recent event, for instance, a school teacher came up to us afterwards and commented that the students seemed to be going out of their way to ask the most ridiculous questions possible. But this was not the case this week, when one group asked some quite insightful questions. Bear in mind also, that these were babies. Not literally babies, but very young students; grade three maximum, possibly grade one. I cannot say for certain, as all children look alike to me. But they were all quite young for their age. After showing some of our basic open hand techniques, one child asked, “If that is basic, what are your advanced techniques like?” Another asked what if your attacker also knows martial arts; I may have made some inappropriate and disparaging remarks about karate, but it was a good question, nevertheless. One wanted to know how we would deal with two attackers, one in front and one behind.
+            On January 27, Japan came to Japan with strong cold weather, and it snowed in Tokyo and around here. Our representative went to Japan to participate in the new year's Party of Kawasaki synthetic resin Co., Ltd. During the new year's party, I talked about the future development of Japanese executives, engineers, and people. We hope that we will be able to develop a friendly and friendly way to develop new business directions with the development of the age so that we can cooperate with us in 2018. On February 2, President Yokoi, Yokota, and Takao representative came to Japan. Our representative had a meeting for three hours with the customer. First, we introduced the present state of each other and the development direction of each other. Next, we talked about the customer's representatives and our engineers and future cooperation and development issues. After the meeting, we show that both companies will be able to develop more and more jointly.
             """
         ], return_tensors="pt", truncation=True, max_length=1024
     ).input_ids

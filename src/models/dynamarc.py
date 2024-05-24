@@ -97,8 +97,8 @@ class DynamArcLmModel(ArcLmModel):
         fake_arc = torch.zeros_like(true_states[:, :, 0])
 
         # dot product of embs
-        true_arc[:, :-1] = (forward_embs * backward_true_embs).sum(dim=-1) / np.sqrt(self.config.hidden_size)
-        fake_arc[:, :-1] = (forward_embs * backward_fake_embs).sum(dim=-1) / np.sqrt(self.config.hidden_size)
+        true_arc[:, :-1] = (forward_embs * backward_true_embs).sum(dim=-1)
+        fake_arc[:, :-1] = (forward_embs * backward_fake_embs).sum(dim=-1)
 
         # biases
         true_arc[:, :-1] = true_arc[:, :-1] + forward_bias + backward_true_bias
@@ -107,5 +107,9 @@ class DynamArcLmModel(ArcLmModel):
         # baseline
         true_arc[:, :-1] = true_arc[:, :-1] + (forward_baseline + backward_true_baseline)*baseline_true[:, :-1]
         fake_arc[:, :-1] = fake_arc[:, :-1] + (forward_baseline + backward_fake_baseline)*baseline_fake[:, :-1]
+
+        # apply scale
+        true_arc = true_arc  / np.sqrt(self.config.hidden_size)
+        fake_arc = fake_arc  / np.sqrt(self.config.hidden_size)
 
         return true_arc, fake_arc

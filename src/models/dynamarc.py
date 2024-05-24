@@ -105,6 +105,7 @@ class DynamArcLmModel(ArcLmModel):
         fake_arc[:, :-1] = fake_arc[:, :-1] + forward_bias + backward_fake_bias
 
         # baseline
+        log_print(true_arc.shape, forward_baseline.shape, backward_true_baseline.shape, baseline_true.shape)
         true_arc[:, :-1] = true_arc[:, :-1] + (forward_baseline + backward_true_baseline)*baseline_true[:, :-1]
         fake_arc[:, :-1] = fake_arc[:, :-1] + (forward_baseline + backward_fake_baseline)*baseline_fake[:, :-1]
 

@@ -90,7 +90,7 @@ class DynamArcLmModel(ArcLmModel):
         # get baseline scales
         forward_baseline = self.baseline_forward_head(true_states[:, :-1])[:, :, 0]
         backward_true_baseline = self.baseline_backward_head(true_states[:, 1:])[:, :, 0]
-        backward_fake_baseline = self.baseline_backward_head(fake_states[:, 1:])[:, : 0]
+        backward_fake_baseline = self.baseline_backward_head(fake_states[:, 1:])[:, :, 0]
 
         # 4. combine embeddings to get arc outputs
         true_arc = torch.zeros_like(true_states[:, :, 0])
@@ -105,7 +105,6 @@ class DynamArcLmModel(ArcLmModel):
         fake_arc[:, :-1] = fake_arc[:, :-1] + forward_bias + backward_fake_bias
 
         # baseline
-        log_print((fake_arc[:, :-1].shape, forward_baseline.shape, backward_fake_baseline.shape, baseline_fake[:, :-1].shape))
         true_arc[:, :-1] = true_arc[:, :-1] + (forward_baseline + backward_true_baseline)*baseline_true[:, :-1]
         fake_arc[:, :-1] = fake_arc[:, :-1] + (forward_baseline + backward_fake_baseline)*baseline_fake[:, :-1]
 

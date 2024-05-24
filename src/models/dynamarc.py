@@ -49,10 +49,6 @@ class DynamArcLmModel(ArcLmModel):
         # Initialize weights and apply final processing
         self.post_init()
 
-        # head bias is not init to zero
-        self.forward_head.bias.data.normal_(mean=0.0, std=config.initializer_range)
-        self.backward_head.bias.data.normal_(mean=0.0, std=config.initializer_range)
-
 
     def _get_arc_outputs(
         self,

@@ -70,8 +70,8 @@ class DynamArcLmModel(ArcLmModel):
         offset_fakes[:, :-1] = fake_ids[:, 1:]
 
         ar = torch.arange(batch_size*seq_len, device=input_ids.device, dtype=input_ids.dtype)
-        baseline_true = lm_logits.detach().view(-1, lm_logits.shape[-1])[ar, offset_inputs.view(-1)].view(batch_size, seq_len, 1)
-        baseline_fake = lm_logits.detach().view(-1, lm_logits.shape[-1])[ar, offset_fakes.view(-1)].view(batch_size, seq_len, 1)
+        baseline_true = lm_logits.detach().view(-1, lm_logits.shape[-1])[ar, offset_inputs.view(-1)].view(batch_size, seq_len)
+        baseline_fake = lm_logits.detach().view(-1, lm_logits.shape[-1])[ar, offset_fakes.view(-1)].view(batch_size, seq_len)
 
         # 2. get arc embeddings
         true_states = self.arc_norm(true_states)
@@ -105,7 +105,6 @@ class DynamArcLmModel(ArcLmModel):
         fake_arc[:, :-1] = fake_arc[:, :-1] + forward_bias + backward_fake_bias
 
         # baseline
-        log_print((true_arc.shape, forward_baseline.shape, backward_true_baseline.shape, baseline_true.shape))
         true_arc[:, :-1] = true_arc[:, :-1] + (forward_baseline + backward_true_baseline)*baseline_true[:, :-1]
         fake_arc[:, :-1] = fake_arc[:, :-1] + (forward_baseline + backward_fake_baseline)*baseline_fake[:, :-1]
 

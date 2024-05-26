@@ -16,10 +16,10 @@ import utils.constants as constants
 from utils.config_utils import load_model_config
 
 
-CHECKPOINT_REPO = "aklein4/Arc-packed_mini-dynamarc"
-CHECKPOINT_SUBFOLDER = "000000005000/model"
+CHECKPOINT_REPO = "aklein4/Arc-packed_mini-arc-50b"
+CHECKPOINT_SUBFOLDER = "000000030000/model"
 
-CONFIG = 'mini-lm'
+CONFIG = 'mini-dynamarc'
 
 NUM_SAMPLES = 32
 
@@ -44,7 +44,7 @@ def main():
     x = tokenizer(
         [
             """
-            On January 27, Japan came to Japan with strong cold weather, and it snowed in Tokyo and around here. Our representative went to Japan to participate in the new year's Party of Kawasaki synthetic resin Co., Ltd. During the new year's party, I talked about the future development of Japanese executives, engineers, and people. We hope that we will be able to develop a friendly and friendly way to develop new business directions with the development of the age so that we can cooperate with us in 2018. On February 2, President Yokoi, Yokota, and Takao representative came to Japan. Our representative had a meeting for three hours with the customer. First, we introduced the present state of each other and the development direction of each other. Next, we talked about the customer's representatives and our engineers and future cooperation and development issues. After the meeting, we show that both companies will be able to develop more and more jointly.
+            An evil sorcerer has cast a spell on the kingdom. The king has called upon the bravest knights to embark on a quest to defeat the sorcerer and save the kingdom. The knights must travel through the dark forest, cross the treacherous river, and climb the steep mountain to reach the sorcerer's castle. The knights must be brave and clever to defeat the sorcerer and save the kingdom.
             """
         ], return_tensors="pt", truncation=True, max_length=1024
     ).input_ids

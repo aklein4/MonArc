@@ -3,8 +3,10 @@ import os
 
 try:
     import torch_xla.core.xla_model as xm
+    XLA_AVAILABLE = True
 except ImportError:
     print("Warning: torch_xla not found", flush=True)
+    XLA_AVAILABLE = False
 
 # get the base path of src
 BASE_PATH = os.path.dirname( # src

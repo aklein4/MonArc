@@ -16,8 +16,8 @@ import utils.constants as constants
 from utils.config_utils import load_model_config
 
 
-CHECKPOINT_REPO = "aklein4/Arc-packed_mini-arc-50b"
-CHECKPOINT_SUBFOLDER = "000000030000/model"
+CHECKPOINT_REPO = "aklein4/Arc-packed_mini-lm"
+CHECKPOINT_SUBFOLDER = "000000010000/model"
 
 CONFIG = 'mini-dynamarc'
 
@@ -39,12 +39,12 @@ def main():
         filename="state_dict.pt",
         local_dir=local_dir
     )
-    model.load_state_dict(torch.load(path), strict=True)
+    model.load_state_dict(torch.load(path), strict=False)
 
     x = tokenizer(
         [
             """
-            An evil sorcerer has cast a spell on the kingdom. The king has called upon the bravest knights to embark on a quest to defeat the sorcerer and save the kingdom. The knights must travel through the dark forest, cross the treacherous river, and climb the steep mountain to reach the sorcerer's castle. The knights must be brave and clever to defeat the sorcerer and save the kingdom.
+            Decor Innovations is a leading supplier of millwork and decorative ornaments. With our extensive inventory and custom fabrication shop, we can meet your millwork needs quickly and cost effectively. Count on Decor Innovations to deliver the millwork you need, when you need it. Since ancient times, nothing has helped define spaces like the column. Its stately size and inherent strength imply a longstanding permanence to any structure - whether a single family home or a commercial building. Distinctive Rail understands the importance of selecting the right column for the right application, so whatever your project calls for, trust Distinctive Rail to have exactly what you need. Distinctive Rail is a leading provider of railing systems.
             """
         ], return_tensors="pt", truncation=True, max_length=1024
     ).input_ids

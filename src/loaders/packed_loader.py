@@ -3,7 +3,10 @@ from typing import List, Dict
 import torch
 import torch.nn.functional as F
 
-import torch_xla.distributed.parallel_loader as pl
+try:
+    import torch_xla.distributed.parallel_loader as pl
+except ImportError:
+    pass
 
 import io
 import numpy as np
@@ -169,10 +172,13 @@ def get_packed_loader(
     """
 
     # prepare batch sizes
-    total_mini_bs = mini_bs * constants.NUM_XLA_DEVICES()
-    if bs % total_mini_bs != 0:
-        raise ValueError(f"Batch size {bs} not divisible by total mini batch size {total_mini_bs}")
-    sample_size = mini_bs * (bs // total_mini_bs)
+    if constants.XLA_AVAILABLE:
+        total_mini_bs = mini_bs * constants.NUM_XLA_DEVICES()
+        if bs % total_mini_bs != 0:
+            raise ValueError(f"Batch size {bs} not divisible by total mini batch size {total_mini_bs}")
+        sample_size = mini_bs * (bs // total_mini_bs)
+    else:
+        sample_size = bs
 
     # get streaming dataset
     dataset = datasets.load_dataset(
@@ -189,6 +195,9 @@ def get_packed_loader(
         collate_fn=collator,
         drop_last=True
     )
+
+    if not constants.XLA_AVAILABLE:
+        return loader
 
     # wrap with xla loader
     wrapper_type = pl.MpDeviceLoader if constants.NUM_XLA_DEVICES() > 1 else pl.ParallelLoader

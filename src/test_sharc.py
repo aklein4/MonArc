@@ -38,11 +38,12 @@ def main():
     base_model = BaseLmModel(base_config)
 
     print("copying weights...")
-    arc_model.load_state_dict(base_model.state_dict(), strict=False)
+    base_model.load_state_dict(arc_model.state_dict(), strict=False)
 
     base_out = base_model(x, segment_ids=seg_ids)
     arc_out, debug_true, debug_false = arc_model(x, segment_ids=seg_ids, debug=True)
     arc_out, sample_true, sample_false = arc_model(x, segment_ids=seg_ids, debug=False)
+    arc_out = arc_model.p_lm(x, segment_ids=seg_ids).lm_logits
 
     diff = torch.abs(base_out - arc_out).max()
     print(f"Arc LM vs Base LM: {diff}")

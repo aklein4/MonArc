@@ -15,8 +15,7 @@ BASE_PATH = os.path.dirname( # src
     )
 )
 
-# best device
-DEVICE = "cpu" # torch.device("cuda" if torch.cuda.is_available() else "cpu")
+# ddevice of current process
 XLA_DEVICE = lambda: xm.xla_device()
 
 # id of the current device

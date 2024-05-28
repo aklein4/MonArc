@@ -1,9 +1,27 @@
+from typing import Optional
+
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
 
-def loss(logits, x, ignore_index):
+def loss(
+    logits: torch.Tensor,
+    x: torch.LongTensor,
+    ignore_index: Optional[int]=-1
+) -> torch.Tensor:
+    """ Standard cross-entropy loss for language modeling.
+     - applies offset so that logits_{t} predicts x_{t+1}
+     - ignores padding tokens and last logits
+     
+    Args:
+        logits (torch.Tensor): token logits from model [B, T, V]
+        x (torch.LongTensor): target tokens [B, T]
+        ignore_index (Optional[int], optional): Paddding token to ignore. Defaults to -1.
+
+    Returns:
+        torch.Tensor: cross-entropy loss [nats]
+    """
     x, logits = x[:, 1:], logits[:, :-1]
 
     return F.cross_entropy(
@@ -14,7 +32,22 @@ def loss(logits, x, ignore_index):
 
 
 @torch.no_grad()
-def ppl(logits, x, ignore_index):
+def ppl(
+    logits: torch.Tensor,
+    x: torch.LongTensor,
+    ignore_index: Optional[int]=-1
+) -> torch.Tensor:
+    """ Compute perplexity of the model.
+     - uses same data logic as loss()
+
+    Args:
+        logits (torch.Tensor): token logits from model [B, T, V]
+        x (torch.LongTensor): target tokens [B, T]
+        ignore_index (Optional[int], optional): Paddding token to ignore. Defaults to -1.
+
+    Returns:
+        torch.Tensor: Perplexity [nats]
+    """
     x = x[:, 1:]
     logits = logits[:, :-1]
     mask = x != ignore_index
@@ -32,7 +65,22 @@ def ppl(logits, x, ignore_index):
 
 
 @torch.no_grad()
-def acc(logits, x, ignore_index):
+def acc(
+    logits: torch.Tensor,
+    x: torch.LongTensor,
+    ignore_index: Optional[int]=-1
+) -> torch.Tensor:
+    """ Compute top-1 next-token accuracy of the model.
+     - uses same data logic as loss()
+    
+    Args:
+        logits (torch.Tensor): logits from model [B, T, V]
+        x (torch.LongTensor): target tokens [B, T]
+        ignore_index (Optional[int], optional): Paddding token to ignore. Defaults to -1.
+
+    Returns:
+        torch.Tensor: top-1 token accuracy
+    """
     x, logits = x[:, 1:], logits[:, :-1]
     mask = x != ignore_index
 
@@ -44,7 +92,23 @@ def acc(logits, x, ignore_index):
 
 
 @torch.no_grad()
-def pcorr(logits, x, ignore_index):
+def pcorr(
+    logits: torch.Tensor,
+    x: torch.LongTensor,
+    ignore_index: Optional[int]=-1
+) -> torch.Tensor:
+    """ Compute token prediction probability of the model.
+     - measures probability that a token sampled from logits is equal to target token
+     - uses same data logic as loss()
+
+    Args:
+        logits (torch.Tensor): logits from model [B, T, V]
+        x (torch.LongTensor): target tokens [B, T]
+        ignore_index (Optional[int], optional): Paddding token to ignore. Defaults to -1.
+
+    Returns:
+        torch.Tensor: next-token prediction probability
+    """
     x = x[:, 1:].contiguous().view(-1)
     logits = logits[:, :-1].contiguous().view(-1, logits.shape[-1])
     mask = x != ignore_index
@@ -59,7 +123,27 @@ def pcorr(logits, x, ignore_index):
     return p.sum() / (mask).float().sum()
 
 
-def arc_loss(true_arc, fake_arc, input_ids, ignore_index):
+def arc_loss(
+    true_arc: torch.Tensor,
+    fake_arc: torch.Tensor,
+    input_ids: torch.LongTensor,
+    ignore_index: Optional[int]=-1
+) -> torch.Tensor:
+    """ Compute the loss for arc models.
+     - uses contrastive noise estimation loss
+     - negative arc = more likely to be true example
+     - arc_{t} is ignored if input_ids_{t+1} is padding token
+     - last item in sequence is ignored
+
+    Args:
+        true_arc (torch.Tensor): arc values for true examples [B, T, 1]
+        fake_arc (torch.Tensor): arc values for fake examples [B, T, 1]
+        input_ids (torch.LongTensor): target tokens [B, T]
+        ignore_index (Optional[int], optional): Paddding token to ignore. Defaults to -1.
+
+    Returns:
+        torch.Tensor: noise contrastive loss [nats]
+    """
     true_arc = true_arc[:, :-1].view(-1)
     fake_arc = fake_arc[:, :-1].view(-1)
     input_ids = input_ids[:, 1:].view(-1)
@@ -78,7 +162,25 @@ def arc_loss(true_arc, fake_arc, input_ids, ignore_index):
 
 
 @torch.no_grad()
-def arc_acc(true_arc, fake_arc, input_ids, ignore_index):
+def arc_acc(
+    true_arc: torch.Tensor,
+    fake_arc: torch.Tensor,
+    input_ids: torch.LongTensor,
+    ignore_index: Optional[int]=-1
+) -> torch.Tensor:
+    """ Compute the arc prediction accuracy.
+     - accurate if true_arc < 0 and fake_arc >= 0
+     - uses same data logic as arc_loss()
+
+    Args:
+        true_arc (torch.Tensor): arc values for true examples [B, T, 1]
+        fake_arc (torch.Tensor): arc values for fake examples [B, T, 1]
+        input_ids (torch.LongTensor): target tokens [B, T]
+        ignore_index (Optional[int], optional): Paddding token to ignore. Defaults to -1.
+
+    Returns:
+        torch.Tensor: arc descriminator accuracy
+    """
     true_arc = true_arc[:, :-1].view(-1)
     fake_arc = fake_arc[:, :-1].view(-1)
     input_ids = input_ids[:, 1:].view(-1)
@@ -97,7 +199,25 @@ def arc_acc(true_arc, fake_arc, input_ids, ignore_index):
 
 
 @torch.no_grad()
-def arc_pcorr(true_arc, fake_arc, input_ids, ignore_index):
+def arc_pcorr(
+    true_arc: torch.Tensor,
+    fake_arc: torch.Tensor,
+    input_ids: torch.LongTensor,
+    ignore_index: Optional[int]=-1
+) -> torch.Tensor:
+    """ Compute the correct arc prediction probability.
+     - measures probability that a true/false value sampled from descriminator is correct
+     - uses same data logic as arc_loss()
+
+    Args:
+        true_arc (torch.Tensor): arc values for true examples [B, T, 1]
+        fake_arc (torch.Tensor): arc values for fake examples [B, T, 1]
+        input_ids (torch.LongTensor): target tokens [B, T]
+        ignore_index (Optional[int], optional): Paddding token to ignore. Defaults to -1.
+
+    Returns:
+        torch.Tensor: arc descriminator prediction probability
+    """
     true_arc = true_arc[:, :-1].view(-1)
     fake_arc = fake_arc[:, :-1].view(-1)
     input_ids = input_ids[:, 1:].view(-1)
@@ -116,7 +236,25 @@ def arc_pcorr(true_arc, fake_arc, input_ids, ignore_index):
 
 
 @torch.no_grad()
-def arc_adj(true_arc, fake_arc, input_ids, ignore_index):
+def arc_adj(
+    true_arc: torch.Tensor,
+    fake_arc: torch.Tensor,
+    input_ids: torch.LongTensor,
+    ignore_index: Optional[int]=-1
+) -> torch.Tensor:
+    """ Estimate of the average log probability gain when z=1, in nats. (higher better)
+     - only accurate in ideal z=1 case, which occurs with a perfect descriminator
+     - uses same data logic as arc_loss()
+
+    Args:
+        true_arc (torch.Tensor): arc values for true examples [B, T, 1]
+        fake_arc (torch.Tensor): arc values for fake examples [B, T, 1]
+        input_ids (torch.LongTensor): target tokens [B, T]
+        ignore_index (Optional[int], optional): Paddding token to ignore. Defaults to -1.
+
+    Returns:
+        torch.Tensor: log probability gain when z=1 (higher  better)
+    """
     true_arc = true_arc[:, :-1].view(-1)
     fake_arc = fake_arc[:, :-1].view(-1)
     input_ids = input_ids[:, 1:].view(-1)

@@ -476,12 +476,14 @@ class ArcLmModel(BaseModel):
     @torch.no_grad()
     def p_lm(
         self,
-        input_ids
+        input_ids,
+        segment_ids=None,
     ):
 
         # get transformer output
         true_states, memory = self.model(
             input_ids=input_ids,
+            segment_ids=segment_ids,
         )
 
         # get lm logits

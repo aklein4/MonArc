@@ -1,3 +1,5 @@
+from typing import Optional
+
 import torch
 
 import torch_xla.core.xla_model as xm
@@ -18,11 +20,19 @@ class BaseXLATrainer:
 
     def __init__(
         self,
-        project,
-        name,
-        config,
-        debug=False
+        project: str,
+        name: str,
+        config: dict,
+        debug: Optional[bool] = False
     ):
+        """ A trainer to train on TPU devices using PyTorch XLA.
+
+        Args:
+            project (str): name of the project to save to
+            name (str): name of the run in the project
+            config (dict): configuration for the trainer
+            debug (bool, optional): Whether to disable saving. Defaults to False.
+        """
         self.project = project
         self.name = name
         self.config = config

@@ -7,18 +7,33 @@ import numpy as np
 
 class EfficientSampler(nn.Module):
 
-    def __init__(self, vocab_size):
+    def __init__(self, vocab_size: int):
+        """ A more efficient sampler for large vocabularies.
+         - uses two-stage hierarchical sampling to reduce computation
+
+        Args:
+            vocab_size (int): size of the vocabulary
+        """
         super().__init__()
 
         self.vocab_size = vocab_size
         
+        # break vocab into factors
         self.vocab_factor = int(np.round(np.sqrt(self.vocab_size)))
         while self.vocab_size % self.vocab_factor != 0:
             self.vocab_factor += 1
         self.vocab_chunk = self.vocab_size // self.vocab_factor
 
     
-    def forward(self, logits):
+    def forward(self, logits: torch.Tensor) -> torch.LongTensor:
+        """ Sample from the logits using the efficient sampler.
+
+        Args:
+            logits (torch.Tensor): logits from the model [B, T, V]
+
+        Returns:
+            torch.Tensor: sampledd tokens [B, T]
+        """
         assert logits.dim() == 3
         assert logits.size()[-1] == self.vocab_size
         batch_size, seq_length = logits.shape[:2]

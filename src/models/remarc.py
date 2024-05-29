@@ -49,6 +49,7 @@ class RemArcTransformer(ArcTransformer):
         self.post_init()
 
 
+# changed to remarc transformer
 class RemArcLmModel(ShArcLmModel):
 
     def __init__(self, config: ShArcConfig):
@@ -83,6 +84,7 @@ class RemArcLmModel(ShArcLmModel):
         self.down_proj.weight.data.zero_()
 
 
+    # both true and fake idsd need extra pass
     def forward(
         self,
         input_ids: torch.LongTensor,

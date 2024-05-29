@@ -84,7 +84,7 @@ class RemArcLmModel(ShArcLmModel):
         self.down_proj.weight.data.zero_()
 
 
-    # both true and fake idsd need extra pass
+    # both true and fake ids need extra pass
     def forward(
         self,
         input_ids: torch.LongTensor,

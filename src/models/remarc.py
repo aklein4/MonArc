@@ -9,7 +9,6 @@ from transformers.activations import ACT2FN
 from models.base import BaseModel
 from models.arc import (
     ArcTransformer, 
-    ArcDecoderLayer
 )
 from models.sharc import (
     ShArcConfig,
@@ -20,43 +19,13 @@ from utils.model_utils import EfficientSampler
 from utils.logging_utils import log_print
 
 
-# changed vocab size of embed_tokens to 2*config.vocab_size
-class RemArcTransformer(ArcTransformer):
-
-    def __init__(self, config, disable_norm=False):
-        super().__init__(config)
-
-        # vocab info
-        self.padding_idx = config.pad_token_id
-        self.vocab_size = config.vocab_size
-
-        # weights
-        self.embed_tokens = nn.Embedding(2*config.vocab_size, config.hidden_size, self.padding_idx)
-        self.layers = nn.ModuleList(
-            [ArcDecoderLayer(config, layer_idx) for layer_idx in range(config.num_hidden_layers)]
-        )
-        self.norm = nn.LayerNorm(config.hidden_size, eps=config.layer_norm_eps)
-
-        # more config
-        self.disable_norm = disable_norm
-
-        # Compute configuration
-        self._attn_implementation = config._attn_implementation
-        self.gradient_checkpointing_layers = config.gradient_checkpointing_layers
-        self.gradient_checkpointing = False
-
-        # Initialize weights and apply final processing
-        self.post_init()
-
-
-# changed to remarc transformer
 class RemArcLmModel(ShArcLmModel):
 
     def __init__(self, config: ShArcConfig):
         BaseModel.__init__(self, config)
 
         # transformer
-        self.model = RemArcTransformer(config, disable_norm=False)
+        self.model = ArcTransformer(config, disable_norm=False)
 
         # lm modeling
         self.vocab_size = config.vocab_size
@@ -72,6 +41,9 @@ class RemArcLmModel(ShArcLmModel):
         self.up_proj = nn.Linear(1+(3*config.hidden_size), config.sharc_size, bias=False)
         self.down_proj = nn.Linear(config.sharc_size, 1, bias=False)
         self.act_fn = ACT2FN[config.hidden_act]
+
+        # extra remarc embedding
+        self.embed_remarc = nn.Embedding(2, config.hidden_size)
 
         # helpers
         self.sampler = EfficientSampler(self.vocab_size)
@@ -101,6 +73,7 @@ class RemArcLmModel(ShArcLmModel):
             input_ids,
             attention_mask=mask,
             cached_mask=True,
+            extra_states=self.embed_remarc(torch.zeros_like(input_ids))
         )
 
         # get lm logits
@@ -117,9 +90,10 @@ class RemArcLmModel(ShArcLmModel):
         # get fake outputs
         true_states, fake_states = self.model(
             torch.cat([input_ids, fake_ids], dim=0) + self.vocab_size,
-            memory=torch.cat([memory, memory], dim=1),
-            attention_mask=torch.cat([mask, mask], dim=0),
+            memory=torch.cat([memory]*2, dim=1),
+            attention_mask=torch.cat([mask]*2, dim=0),
             cached_mask=True,
+            extra_states=torch.cat([self.embed_remarc(torch.ones_like(input_ids))]*2, dim=0)
         )[0].chunk(2, dim=0)
 
         # get arc predictions

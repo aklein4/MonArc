@@ -293,12 +293,17 @@ class ArcTransformer(BaseTransformer):
         segment_ids: Optional[torch.LongTensor]=None,
         cached_mask=False,
         kv=None,
+        extra_states=None,
     ) -> DotDict:
 
         # get inputs
         hidden_states = self._get_tokens(input_ids)
         attention_mask = self._get_mask(input_ids, attention_mask, segment_ids, cached_mask)
         position_ids = self._get_position_ids(input_ids, position_ids)
+
+        # add extras
+        if extra_states is not None:
+            hidden_states = hidden_states + extra_states
 
         # run transformer
         mem_out = []

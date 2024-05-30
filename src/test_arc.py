@@ -39,17 +39,24 @@ def main():
     arc_model.load_state_dict(base_model.state_dict(), strict=False)
 
     base_out = base_model(x, segment_ids=seg_ids)
-    arc_out, debug_true, debug_false = arc_model(x, segment_ids=seg_ids, debug=True)
-    arc_out, sample_true, sample_false = arc_model(x, segment_ids=seg_ids, debug=False)
+    for mess in ["zeroed", "random"]:
+        print(f" === {mess} === ")
 
-    diff = torch.abs(base_out - arc_out).max()
-    print(f"Arc LM vs Base LM: {diff}")
+        arc_out, debug_true, debug_false = arc_model(x, segment_ids=seg_ids, debug=True)
+        arc_out, sample_true, sample_false = arc_model(x, segment_ids=seg_ids, debug=False)
 
-    diff = torch.abs(debug_true - debug_false).max()
-    print(f"Debug true vs false: {diff}")
+        diff = torch.abs(base_out - arc_out).max()
+        print(f"Arc LM vs Base LM: {diff}")
 
-    diff = torch.abs(sample_true - sample_false).max()
-    print(f"Sample true vs false: {diff}")
+        diff = torch.abs(debug_true - debug_false).max()
+        print(f"Debug true vs false: {diff}")
+
+        diff = torch.abs(sample_true - sample_false).max()
+        print(f"Sample true vs false: {diff}")
+
+        arc_model.forward_head.weight.data.normal_()
+        arc_model.l_forward_head.weight.data.normal_()
+        arc_model.l_backward_head.weight.data.normal_()
     
 
 if __name__ == '__main__':

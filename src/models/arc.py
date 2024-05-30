@@ -395,10 +395,10 @@ class ArcLmModel(BaseModel):
         baseline_true = lm_logits.detach().view(-1, lm_logits.shape[-1])[ar, offset_inputs.view(-1)].view(batch_size, seq_len, 1)
         baseline_fake = lm_logits.detach().view(-1, lm_logits.shape[-1])[ar, offset_fakes.view(-1)].view(batch_size, seq_len, 1)
 
-        forward_true = forward_embs + self.l_forward_head(baseline_true)
-        forward_fake = forward_embs + self.l_forward_head(baseline_fake)
-        backward_true = backward_true + self.l_backward_head(baseline_true)
-        backward_fake = backward_fake + self.l_backward_head(baseline_fake)
+        forward_true = forward_embs + self.l_forward_head(baseline_true)[:, :-1]
+        forward_fake = forward_embs + self.l_forward_head(baseline_fake)[:, :-1]
+        backward_true = backward_true + self.l_backward_head(baseline_true)[:, :-1]
+        backward_fake = backward_fake + self.l_backward_head(baseline_fake)[:, :-1]
 
         # pred[i] = pred for next token, similar to standard LM
         true_arc = torch.zeros_like(true_states[:, :, 0])

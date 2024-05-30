@@ -152,7 +152,7 @@ class ReaperLmModel(BaseModel):
         )[0]
 
         # get arc predictions
-        true_res, fake_res = self._get_arc_outputs(
+        true_res, fake_res = self._get_residuals(
             true_states, fake_states,
             lm_logits=lm_logits, input_ids=input_ids, fake_ids=fake_ids
         )

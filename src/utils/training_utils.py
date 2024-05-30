@@ -266,3 +266,89 @@ def arc_adj(
     adj = torch.masked_fill(adj, ~mask, 0.0)
 
     return adj.sum()/mask.float().sum()
+
+
+def reaper_phi_loss(
+    true_res,
+    fake_res,
+    z,
+    input_ids,
+    ignore_index=-1
+):
+    true_res = true_res[:, :-1].view(-1)
+    fake_res = fake_res[:, :-1].view(-1)
+    input_ids = input_ids[:, 1:].view(-1)
+    z = z[:, :-1].view(-1)
+
+    loss = -true_res - (1/z.detach()) * torch.exp(-fake_res)
+
+    mask = input_ids != ignore_index
+    loss = torch.masked_fill(loss, ~mask, 0.0)
+
+    return -loss.sum()/mask.float().sum()
+
+
+def reaper_z_loss(
+    true_res,
+    fake_res,
+    z,
+    input_ids,
+    ignore_index=-1
+):
+    true_res = true_res[:, :-1].view(-1)
+    fake_res = fake_res[:, :-1].view(-1)
+    input_ids = input_ids[:, 1:].view(-1)
+    z = z[:, :-1].view(-1)
+
+    loss = (z - torch.exp(-fake_res).detach()).pow(2)
+
+    mask = input_ids != ignore_index
+    loss = torch.masked_fill(loss, ~mask, 0.0)
+
+    return loss.sum()/mask.float().sum()
+
+
+def reaper_penalty(
+    true_res,
+    fake_res,
+    z,
+    input_ids,
+    ignore_index=-1
+):
+    true_res = true_res[:, :-1].view(-1)
+    fake_res = fake_res[:, :-1].view(-1)
+    input_ids = input_ids[:, 1:].view(-1)
+    z = z[:, :-1].view(-1)
+
+    z_reparam = (
+        z.detach() +
+        torch.exp(-fake_res) -
+        torch.exp(-fake_res).detach()
+    )
+    loss = torch.log(z_reparam) ** 2
+
+    mask = input_ids != ignore_index
+    loss = torch.masked_fill(loss, ~mask, 0.0)
+
+    return loss.sum()/mask.float().sum()
+
+
+@torch.no_grad()
+def reaper_adj(
+    true_res,
+    fake_res,
+    z,
+    input_ids,
+    ignore_index=-1
+):
+    true_res = true_res[:, :-1].view(-1)
+    fake_res = fake_res[:, :-1].view(-1)
+    input_ids = input_ids[:, 1:].view(-1)
+    z = z[:, :-1].view(-1)
+
+    adj = -true_res - torch.log(z)
+
+    mask = input_ids != ignore_index
+    adj = torch.masked_fill(adj, ~mask, 0.0)
+
+    return adj.sum()/mask.float().sum()

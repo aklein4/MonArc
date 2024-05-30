@@ -116,7 +116,6 @@ class AnnelidLmModel(BaseModel):
         # get lm predictions
         out = self.model(
             input_ids=annelid_ids,
-            position_ids=annelid_ids,
             attention_mask=annelid_mask,
             position_ids=pos_ids,
             extra_states=extra_states,

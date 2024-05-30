@@ -1,4 +1,4 @@
-trainer_type: XLAArcTrainer
+trainer_type: XLAReaperTrainer
 
 start_lr: 0.00030
 end_lr: 0.00006
@@ -16,7 +16,9 @@ lr_steps: 20000
 
 checkpoint_interval: 2000
 
-w_arc: 1.0
+w_phi: 1.0
+w_z: 1.0
+w_penalty: 1.0
 
 start_seq_ind: 51200000
 checkpoint: Arc-packed_mini-lm/000000100000

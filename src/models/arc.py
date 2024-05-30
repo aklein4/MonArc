@@ -259,7 +259,7 @@ class ArcDecoderLayer(nn.Module):
 class ArcTransformer(BaseTransformer):
 
     def __init__(self, config: BaseConfig, disable_norm=False):
-        super().__init__(config)
+        BaseModel.__init__(self, config)
 
         # vocab info
         self.padding_idx = config.pad_token_id
@@ -282,8 +282,6 @@ class ArcTransformer(BaseTransformer):
 
         # Initialize weights and apply final processing
         self.post_init()
-
-        log_print(f"Debug for {self.__class__.__name__}: {self.gradient_checkpointing}")
 
 
     def forward(

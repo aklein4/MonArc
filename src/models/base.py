@@ -78,16 +78,6 @@ class BaseModel(PreTrainedModel):
                 module.weight.data[module.padding_idx].zero_()
 
 
-    def post_init(self):
-        """
-        A method executed at the end of each Transformer model initialization, to execute code that needs the model's
-        modules properly initialized (such as weight initialization).
-        """
-        self.init_weights()
-        self._backward_compatibility_gradient_checkpointing()
-        log_print(f"fuck {self.__class__.__name__}: {self.gradient_checkpointing}")
-
-
     # converted from torch to torch xla
     def gradient_checkpointing_enable(self, gradient_checkpointing_kwargs={}):
         if not self.supports_gradient_checkpointing:

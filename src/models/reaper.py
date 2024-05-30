@@ -112,7 +112,8 @@ class ReaperLmModel(BaseModel):
         self,
         hidden_states: torch.Tensor,
     ):
-        return self.z_head(self.z_norm(hidden_states))
+        logz = self.z_head(self.z_norm(hidden_states))
+        return torch.exp(logz)
 
 
     def forward(

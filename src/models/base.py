@@ -86,7 +86,7 @@ class BaseModel(PreTrainedModel):
         gradient_checkpointing_func = functools.partial(xla_checkpoint_fn, **gradient_checkpointing_kwargs)
         self._set_gradient_checkpointing(enable=True, gradient_checkpointing_func=gradient_checkpointing_func)
         
-        log_print(f"Gradient checkpointing enabled for {__name__(self)}: {self.gradient_checkpointing}")
+        log_print(f"Gradient checkpointing enabled for {self.__class__.__name__}: {self.gradient_checkpointing}")
 
 
 class BaseTransformer(BaseModel):

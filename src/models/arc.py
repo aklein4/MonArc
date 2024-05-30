@@ -315,6 +315,7 @@ class ArcTransformer(BaseTransformer):
             else:
                 mem_in = memory[layer_idx]
 
+            log_print(f"{self.gradient_checkpointing}, {self.training}, {layer_idx}, {self.gradient_checkpointing_layers}")
             if self.gradient_checkpointing and self.training and layer_idx < self.gradient_checkpointing_layers:
                 if kv is not None:
                     raise ValueError("Gradient checkpointing is not compatible with cache!")

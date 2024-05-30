@@ -1,6 +1,6 @@
 trainer_type: XLAReaperTrainer
 
-start_lr: 0.00018
+start_lr: 0.00030
 end_lr: 0.00006
 
 bs: 512

@@ -283,6 +283,8 @@ class ArcTransformer(BaseTransformer):
         # Initialize weights and apply final processing
         self.post_init()
 
+        log_print(f"Debug: {self.gradient_checkpointing}")
+
 
     def forward(
         self,

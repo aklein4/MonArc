@@ -11,7 +11,7 @@ from  utils.training_utils import (
 )
 
 
-class XLAArcTrainer(BaseXLATrainer):
+class XLAReaperTrainer(BaseXLATrainer):
 
     def train_step(self, model, x, seg_ids, tokenizer):
         ignore_index = tokenizer.pad_token_id

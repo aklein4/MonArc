@@ -319,7 +319,6 @@ class ArcTransformer(BaseTransformer):
                 if kv is not None:
                     raise ValueError("Gradient checkpointing is not compatible with cache!")
 
-                log_print(f"Using gradient checkpointing for layer {layer_idx}")
                 hidden_states = self._gradient_checkpointing_func(
                     decoder_layer.__call__,
                     hidden_states,

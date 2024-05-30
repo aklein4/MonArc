@@ -16,27 +16,45 @@ def main():
     true_loss.backward()
     print(phi.grad)
 
+    prev_grad = phi.grad.detach().clone()
     phi.grad = None
 
     # get reparam loss
-    loss = 1000*phi[0]
-    z = (torch.exp(logp_lm + phi)).sum().detach()
+    grad_accum = torch.zeros_like(phi)
+    counts = torch.zeros_like(phi)
+    for _ in range(10000):
 
-    print(torch.softmax(logp_lm, dim=-1))
-    counts = torch.zeros_like(logp_lm)
-    for _ in range(1000):
-        sample = torch.multinomial(torch.exp(logp), 1).item()
+        loss = phi[0]
+        z = torch.exp(logp_lm + phi).sum().detach()
 
-        reparam = z.detach() + torch.exp(phi[sample]) - torch.exp(phi[sample]).detach()
-        loss = loss - torch.log(reparam)
+        sample = torch.multinomial(torch.softmax(logp_lm, dim=-1), 1).item()
+        loss = loss - (1/z) * torch.exp(phi[sample]) / torch.exp(logp_lm).sum()
+        # loss = loss - (1/z) * (torch.exp(logp_lm) * torch.exp(phi)).sum()
+
+        loss = -loss
+        loss.backward()
+
+        grad_accum += phi.grad
+        phi.grad = None
 
         counts[sample] += 1
-    print(counts/1000)
     
-    loss = -loss/1000
-    loss.backward()
+    # loss = phi[0]
+    # # print(torch.softmax(logp_lm, dim=-1))
+    # # print(counts/10000)
+    # loss = loss - (1/z) * ((counts/10000) * torch.exp(phi)).mean()
 
-    print(phi.grad)
+    # loss = -loss
+    # loss.backward()
+
+    # print(phi.grad)
+    # return
+
+    print(grad_accum/10000)
+    print(((grad_accum/10000) / prev_grad))
+    # print(torch.softmax(logp_lm, dim=-1))
+    # print(torch.softmax(phi, dim=-1))
+    # print(torch.softmax(logp_lm + phi, dim=-1))
 
 
 if __name__ == '__main__':

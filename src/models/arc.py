@@ -24,24 +24,6 @@ from utils.model_utils import EfficientSampler
 from utils.logging_utils import log_print
 
 
-class ArcConfig(BaseConfig):
-
-    model_type = "arc"
-
-    def __init__(
-        self,
-        *args,
-        z_scale: 1,
-        const_z: False,
-        **kwargs
-    ):
-        
-        self.z_scale = z_scale
-        self.const_z = const_z
-
-        super().__init__(*args, **kwargs)
-
-
 class ArcAttention(StableLmAttention):
 
     def cross_forward(
@@ -364,18 +346,17 @@ class ArcLmModel(BaseModel):
         self.arc_norm = nn.LayerNorm(config.hidden_size, eps=config.layer_norm_eps)
         self.forward_head = nn.Linear(config.hidden_size, config.hidden_size, bias=True)
         self.backward_head = nn.Linear(config.hidden_size, config.hidden_size, bias=True)
+        self.l_forward_head = nn.Linear(1, config.hidden_size, bias=False)
+        self.l_backward_head = nn.Linear(1, config.hidden_size, bias=False)
         self.sampler = EfficientSampler(self.vocab_size)
-
-        # reparameterization
-        self.z_scale = config.z_scale
-        self.const_z = config.const_z
-        if self.const_z:
-            self.reparam_z = 1
-        else:
-            self.reparam_z = nn.Parameter(torch.zeros(1))
 
         # Initialize weights and apply final processing
         self.post_init()
+
+        # special initialization
+        self.forward_head.weight.data.zero_()
+        self.l_forward_head.weight.data.zero_()
+        self.l_backward_head.weight.data.zero_()
 
 
     def _get_lm_logits(
@@ -394,6 +375,9 @@ class ArcLmModel(BaseModel):
         fake_ids,
         lm_logits,
     ):
+        batch_size, seq_len = input_ids.shape
+
+        # get state contributions
         true_states = self.arc_norm(true_states)
         fake_states = self.arc_norm(fake_states)
 
@@ -401,29 +385,28 @@ class ArcLmModel(BaseModel):
         backward_true = self.backward_head(true_states[:, 1:])
         backward_fake = self.backward_head(fake_states[:, 1:])
 
-        true_arc = torch.zeros_like(true_states[:, :, 0])
-        fake_arc = torch.zeros_like(true_states[:, :, 0])
-
-        # pred[i] = pred for next token, similar to standard LM
-        true_arc[:, :-1] = (forward_embs * backward_true).sum(dim=-1) / np.sqrt(self.config.hidden_size)
-        fake_arc[:, :-1] = (forward_embs * backward_fake).sum(dim=-1) / np.sqrt(self.config.hidden_size)
-
-        # handle reparam        
-        batch_size, seq_len = input_ids.shape
-
-        lm_logits = F.log_softmax(lm_logits, dim=-1)
-        
+        # get baseline (logits must be log_softmax!)
         offset_inputs = input_ids.clone()
         offset_inputs[:, :-1] = input_ids[:, 1:]
         offset_fakes = fake_ids.clone()
         offset_fakes[:, :-1] = fake_ids[:, 1:]
 
         ar = torch.arange(batch_size*seq_len, device=input_ids.device, dtype=input_ids.dtype)
-        baseline_true = lm_logits.detach().view(-1, lm_logits.shape[-1])[ar, offset_inputs.view(-1)].view(batch_size, seq_len)
-        baseline_fake = lm_logits.detach().view(-1, lm_logits.shape[-1])[ar, offset_fakes.view(-1)].view(batch_size, seq_len)
+        baseline_true = lm_logits.detach().view(-1, lm_logits.shape[-1])[ar, offset_inputs.view(-1)].view(batch_size, seq_len, 1)
+        baseline_fake = lm_logits.detach().view(-1, lm_logits.shape[-1])[ar, offset_fakes.view(-1)].view(batch_size, seq_len, 1)
 
-        true_arc = true_arc + self.z_scale*self.reparam_z * baseline_true
-        fake_arc = fake_arc + self.z_scale*self.reparam_z * baseline_fake
+        forward_true = forward_embs + self.l_forward_head(baseline_true)
+        forward_fake = forward_embs + self.l_forward_head(baseline_fake)
+        backward_true = backward_true + self.l_backward_head(baseline_true)
+        backward_fake = backward_fake + self.l_backward_head(baseline_fake)
+
+        # pred[i] = pred for next token, similar to standard LM
+        true_arc = torch.zeros_like(true_states[:, :, 0])
+        fake_arc = torch.zeros_like(true_states[:, :, 0])
+
+        # dot product of embs
+        true_arc[:, :-1] = (forward_true * backward_true).sum(dim=-1) / np.sqrt(self.config.hidden_size)
+        fake_arc[:, :-1] = (forward_fake * backward_fake).sum(dim=-1) / np.sqrt(self.config.hidden_size)
 
         return true_arc, fake_arc
 
@@ -433,7 +416,6 @@ class ArcLmModel(BaseModel):
         input_ids: torch.LongTensor,
         segment_ids: Optional[torch.LongTensor]=None,
         debug=False,
-        return_dict=False
     ):
 
         # get the simple mask and cache

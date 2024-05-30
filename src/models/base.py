@@ -30,11 +30,13 @@ class BaseConfig(StableLmConfig):
         self,
         *args,
         gradient_checkpointing_layers: int=1_000_000,
+        disable_segment_ids: bool=False,
         **kwargs
     ):
 
         # custom args
         self.gradient_checkpointing_layers = gradient_checkpointing_layers
+        self.disable_segment_ids = disable_segment_ids
 
         # backward compatibility
         kwargs["use_parallel_residual"] = kwargs.get("use_parallel_residual", False)
@@ -277,6 +279,9 @@ class BaseLmModel(BaseModel):
         self.pad_token_id = config.pad_token_id
         self.lm_head = nn.Linear(config.hidden_size, config.vocab_size, bias=False)
 
+        # extras
+        self.disable_segment_ids = config.disable_segment_ids
+
         # Initialize weights and apply final processing
         self.post_init()
 
@@ -301,6 +306,8 @@ class BaseLmModel(BaseModel):
             DotDict:
                 lm_logits: log-softmaxed token probs [bs, seq_length, vocab_size]
         """
+        if self.disable_segment_ids:
+            segment_ids = None
 
         # get lm predictions
         out = self.model(

@@ -301,7 +301,7 @@ def reaper_z_loss(
     input_ids = input_ids[:, 1:].view(-1)
     z = z[:, :-1].view(-1)
 
-    targ = torch.exp(-true_res).detach()
+    targ = torch.exp(-fake_res).detach()
     if targ_clip is not None:
         targ = torch.clamp(targ, max=targ_clip).detach()
 

@@ -293,14 +293,19 @@ def reaper_z_loss(
     fake_res,
     z,
     input_ids,
-    ignore_index=-1
+    ignore_index=-1,
+    targ_clip=None
 ):
     true_res = true_res[:, :-1].view(-1)
     fake_res = fake_res[:, :-1].view(-1)
     input_ids = input_ids[:, 1:].view(-1)
     z = z[:, :-1].view(-1)
 
-    loss = (z - torch.exp(-fake_res).detach()).pow(2) / z.detach().pow(2)
+    targ = torch.exp(-true_res).detach()
+    if targ_clip is not None:
+        targ = torch.clamp(targ, max=targ_clip).detach()
+
+    loss = (z - targ).pow(2) / z.detach().pow(2)
 
     mask = input_ids != ignore_index
     loss = torch.masked_fill(loss, ~mask, 0.0)
@@ -366,7 +371,7 @@ def reaper_z_var(
     out = torch.log(z).pow(2)
 
     mask = input_ids != ignore_index
-    loss = torch.masked_fill(loss, ~mask, 0.0)
+    loss = torch.masked_fill(out, ~mask, 0.0)
 
     return out.sum()/mask.float().sum()
 

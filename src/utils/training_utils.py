@@ -390,4 +390,4 @@ def reaper_sample_var(
     mask = input_ids != ignore_index
     out = torch.masked_fill(out, ~mask, 0.0)
 
-    return out.var()
+    return out.sum()/mask.float().sum()

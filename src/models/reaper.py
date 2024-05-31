@@ -185,10 +185,14 @@ class ReaperLmModel(BaseModel):
         # get lm logits
         lm_logits = self._get_lm_logits(true_states)
 
+        # get z estimate
+        z = self._get_z(true_states)
+
         return DotDict(
             lm_logits=lm_logits,
             true_states=true_states,
-            memory=memory
+            memory=memory,
+            z=z
         )
     
 

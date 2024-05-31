@@ -167,3 +167,54 @@ class ReaperLmModel(BaseModel):
             fake_res,
             z
         )
+
+
+    @torch.no_grad()
+    def logp_lm(
+        self,
+        input_ids,
+        segment_ids=None,
+    ):
+
+        # get transformer output
+        true_states, memory = self.model(
+            input_ids=input_ids,
+            segment_ids=segment_ids,
+        )
+
+        # get lm logits
+        lm_logits = self._get_lm_logits(true_states)
+
+        return DotDict(
+            lm_logits=lm_logits,
+            true_states=true_states,
+            memory=memory
+        )
+    
+
+    @torch.no_grad()
+    def residuals(
+        self,
+        input_ids,
+        true_states,
+        memory,
+        segment_ids=None,
+        lm_logits=None
+    ):
+
+        fake_states = self.model(
+            input_ids,
+            memory=memory,
+            segment_ids=segment_ids,
+        )[0]
+
+        if lm_logits is None:
+            lm_logits = self._get_lm_logits(true_states)
+        
+        true_res, fake_res = self._get_residuals(
+            true_states, fake_states,
+            lm_logits=lm_logits, input_ids=input_ids, fake_ids=input_ids
+        )
+
+        return fake_res
+        

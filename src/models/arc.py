@@ -461,7 +461,7 @@ class ArcLmModel(BaseModel):
 
 
     @torch.no_grad()
-    def p_lm(
+    def logp_lm(
         self,
         input_ids,
         segment_ids=None,

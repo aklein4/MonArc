@@ -7,7 +7,8 @@ from utils.data_utils import DotDict
 from  utils.training_utils import (
     loss, ppl, acc, pcorr,
     reaper_phi_loss, reaper_z_loss,
-    reaper_penalty, reaper_adj
+    reaper_penalty, reaper_adj,
+    reaper_z_var, reaper_sample_var
 )
 
 
@@ -25,9 +26,11 @@ class XLAReaperTrainer(BaseXLATrainer):
             lm_pcorr=pcorr(lm_logits, x, ignore_index),
 
             reaper_phi_loss=reaper_phi_loss(true_res, fake_res, z, x, ignore_index),
-            reaper_z_loss=reaper_z_loss(true_res, fake_res, z, x, ignore_index),
+            reaper_z_loss=reaper_z_loss(true_res, fake_res, z, x, ignore_index, std_clip=self.z_std_clip),
             reaper_penalty=reaper_penalty(true_res, fake_res, z, x, ignore_index),
             arc_adj=reaper_adj(true_res, fake_res, z, x, ignore_index),
+            reaper_z_var=reaper_z_var(z, x, ignore_index),
+            reaper_sample_var=reaper_sample_var(fake_res, x, ignore_index)
         )
         results.loss = (
             results.lm_loss +

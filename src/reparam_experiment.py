@@ -91,24 +91,26 @@ def prototype():
     plt.show()
 
 
-def cross_entropy_loss(phi, lm, targ_sample, z_est):
+def cross_entropy_loss(phi, lm, targ_sample, mu, sigma):
     return -(torch.log_softmax(lm - phi, dim=-1)[targ_sample])
 
 
-def arc_loss(phi, lm, targ_sample, z_est):
+def arc_loss(phi, lm, targ_sample, mu, sigma):
     lm_sample = torch.multinomial(torch.softmax(lm, dim=-1), 1).item()
     
-    loss = -(-phi[targ_sample] - torch.exp(-phi[lm_sample])/z_est.detach())
+    logz = mu + sigma.exp().pow(2)/2
+    loss = -(
+        -phi[targ_sample] -
+        torch.exp(-phi[lm_sample] - logz).detach() * (-phi[lm_sample])
+    )
 
-    loss = loss + (z_est - torch.exp(-phi[lm_sample]).detach()) ** 2
-
-    z_reparam = z_est.detach() + torch.exp(-phi[lm_sample]) - torch.exp(-phi[lm_sample]).detach()
-    loss = loss + torch.log(z_reparam) ** 2
+    dist = torch.distributions.Normal(mu, sigma.exp())
+    loss = loss - dist.log_prob(-phi[lm_sample].detach()).mean()
 
     return loss
 
 
-def cne_loss(phi, lm, targ_sample, z_est):
+def cne_loss(phi, lm, targ_sample, mu, sigma):
     lm_sample = torch.multinomial(torch.softmax(lm, dim=-1), 1).item()
 
     return -F.logsigmoid(-phi[targ_sample]) - F.logsigmoid(phi[lm_sample])
@@ -116,10 +118,10 @@ def cne_loss(phi, lm, targ_sample, z_est):
 
 def comparison():
 
-    logp_targ = 2*torch.randn(128)
+    logp_targ = torch.randn(64)
     logp_targ = torch.sort(logp_targ, descending=True)[0]
 
-    logp_lm = logp_targ + torch.randn(128)
+    logp_lm = logp_targ + torch.randn(64)
 
     kl_dict = {}
     z_dict = {}
@@ -130,20 +132,21 @@ def comparison():
         ("cne", cne_loss)
     ]:
 
-        z_est = nn.Parameter(torch.ones(1))
-        phi = nn.Parameter(torch.zeros(128))
+        mu = nn.Parameter(torch.zeros(1))
+        sigma = nn.Parameter(torch.zeros(1)-3)
+        phi = nn.Parameter(torch.zeros(64))
 
-        optimizer = torch.optim.Adam([z_est, phi], lr=1e-3)
+        optimizer = torch.optim.Adam([mu, sigma, phi], lr=1e-3)
 
         kls = []
         zs = []
         est_zs = []
-        for _ in tqdm(range(50000)):
+        for _ in tqdm(range(5000)):
 
             loss = loss_fn(
                 phi, logp_lm,
                 torch.multinomial(torch.softmax(logp_targ, dim=-1), 1).item(),
-                z_est
+                mu, sigma
             )
 
             optimizer.zero_grad()
@@ -158,7 +161,8 @@ def comparison():
                 kls.append(kl)
 
                 zs.append(torch.log((torch.softmax(logp_lm, dim=-1) * torch.exp(-phi)).sum()).item())
-                est_zs.append(torch.log(z_est).item())
+                logz = mu + sigma.exp().pow(2)/2
+                est_zs.append(logz.item())
 
         kl_dict[name] = kls
         z_dict[name] = zs

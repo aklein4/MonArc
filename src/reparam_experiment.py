@@ -125,7 +125,7 @@ def comparison():
     logp_targ = torch.randn(64)
     logp_targ = torch.sort(logp_targ, descending=True)[0]
 
-    logp_lm = logp_targ + (2*torch.rand(64))-1
+    logp_lm = logp_targ + torch.randn(64)
 
     kl_dict = {}
     z_dict = {}
@@ -138,14 +138,14 @@ def comparison():
 
         mu = nn.Parameter(torch.zeros(1))
         sigma = nn.Parameter(torch.zeros(1))
-        phi = nn.Parameter(torch.zeros(64))
+        phi = nn.Parameter(torch.randn(64))
 
         optimizer = torch.optim.Adam([mu, sigma, phi], lr=1e-3)
 
         kls = []
         zs = []
         est_zs = []
-        for _ in tqdm(range(10000)):
+        for _ in tqdm(range(5000)):
 
             loss = loss_fn(
                 phi, logp_lm,

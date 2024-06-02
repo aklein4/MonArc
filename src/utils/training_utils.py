@@ -329,6 +329,40 @@ def reaper_z_loss(
     return loss.sum()/mask.float().sum()
 
 
+def reaper_penalty(
+    lm_logits,
+    true_res,
+    fake_res,
+    logz,
+    input_ids,
+    fake_ids,
+    ignore_index=-1
+):
+    lm_logits = lm_logits[:, :-1].view(-1, lm_logits.shape[-1])
+    true_res = true_res[:, :-1].view(-1)
+    fake_res = fake_res[:, :-1].view(-1)
+    input_ids = input_ids[:, 1:].view(-1)
+    fake_ids = fake_ids[:, 1:].view(-1)
+    logz = logz[:, :-1].view(-1)
+
+    # true z is at least p_lm(x)*exp(-phi(x))
+    logp = -F.cross_entropy(
+        lm_logits,
+        fake_ids,
+        reduction='none'
+    )
+    logz_min = logp + (-fake_res)
+    logz = torch.max(logz, logz_min)
+
+    logz_reparam = logz.detach() + torch.exp(-fake_res) - torch.exp(-fake_res).detach()
+    loss = logz_reparam.pow(2)
+
+    mask = input_ids != ignore_index
+    loss = torch.masked_fill(loss, ~mask, 0.0)
+
+    return loss.sum()/mask.float().sum()
+
+
 @torch.no_grad()
 def reaper_adj(
     lm_logits,

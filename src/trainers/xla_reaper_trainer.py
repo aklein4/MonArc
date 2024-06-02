@@ -27,6 +27,7 @@ class XLAReaperTrainer(BaseXLATrainer):
 
             reaper_phi_loss=reaper_phi_loss(lm_logits, true_res, fake_res, logz, x, fake_ids, ignore_index),
             reaper_z_loss=reaper_z_loss(true_res, fake_res, mu, sigma, x, ignore_index),
+            reaper_penalty=reaper_phi_loss(lm_logits, true_res, fake_res, logz, x, fake_ids, ignore_index),
             arc_adj=reaper_adj(lm_logits, true_res, fake_res, logz, x, fake_ids, ignore_index),
             reaper_sample_abs=reaper_sample_abs(fake_res, x, ignore_index),
             reaper_mu_abs=reaper_mu_abs(mu, x, ignore_index),
@@ -38,7 +39,8 @@ class XLAReaperTrainer(BaseXLATrainer):
         results.loss = (
             results.lm_loss +
             self.w_phi * results.reaper_phi_loss +
-            self.w_z * results.reaper_z_loss
+            self.w_z * results.reaper_z_loss +
+            self.w_penalty * results.reaper_penalty
         )
 
         # a little extra, as a treat

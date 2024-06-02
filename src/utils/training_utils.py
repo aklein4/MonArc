@@ -465,8 +465,6 @@ def reaper_check(
     fake_ids = fake_ids[:, 1:].view(-1)
     logz = logz[:, :-1].view(-1)
 
-    fake_res = fake_res - 10
-
     # use the same z_min logic as reaper_phi_loss
     logp = -F.cross_entropy(
         lm_logits,

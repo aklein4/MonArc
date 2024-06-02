@@ -25,13 +25,13 @@ class XLAReaperTrainer(BaseXLATrainer):
             lm_acc=acc(lm_logits, x, ignore_index),
             lm_pcorr=pcorr(lm_logits, x, ignore_index),
 
-            reaper_phi_loss=reaper_phi_loss(true_res, fake_res, logz, x, ignore_index),
+            reaper_phi_loss=reaper_phi_loss(lm_logits, true_res, fake_res, logz, x, ignore_index),
             reaper_z_loss=reaper_z_loss(true_res, fake_res, mu, sigma, x, ignore_index),
-            arc_adj=reaper_adj(true_res, fake_res, logz, x, ignore_index),
+            arc_adj=reaper_adj(lm_logits, true_res, fake_res, logz, x, ignore_index),
             reaper_sample_abs=reaper_sample_abs(fake_res, x, ignore_index),
             reaper_mu_abs=reaper_mu_abs(mu, x, ignore_index),
             reaper_sigma=reaper_sigma(sigma, x, ignore_index),
-            reaper_check=reaper_check(true_res, fake_res, logz, x, ignore_index),
+            reaper_check=reaper_check(lm_logits, true_res, fake_res, logz, x, ignore_index),
             reaper_sample=reaper_sample(fake_res, x, ignore_index),
             reaper_mu=reaper_mu(mu, x, ignore_index),
         )

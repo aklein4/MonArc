@@ -269,16 +269,27 @@ def arc_adj(
 
 
 def reaper_phi_loss(
+    lm_logits,
     true_res,
     fake_res,
     logz,
     input_ids,
     ignore_index=-1
 ):
+    lm_logits = lm_logits[:, :-1].view(-1, lm_logits.shape[-1])
     true_res = true_res[:, :-1].view(-1)
     fake_res = fake_res[:, :-1].view(-1)
     input_ids = input_ids[:, 1:].view(-1)
     logz = logz[:, :-1].view(-1)
+
+    # true z is at least p_lm(x)*exp(-phi(x))
+    logp = -F.cross_entropy(
+        lm_logits,
+        input_ids,
+        reduction='none'
+    )
+    logz_min = logp + (-fake_res)
+    logz = torch.max(logz, logz_min)
 
     loss = (
         (-true_res) -
@@ -316,16 +327,27 @@ def reaper_z_loss(
 
 @torch.no_grad()
 def reaper_adj(
+    lm_logits,
     true_res,
     fake_res,
     logz,
     input_ids,
     ignore_index=-1
 ):
+    lm_logits = lm_logits[:, :-1].view(-1, lm_logits.shape[-1])
     true_res = true_res[:, :-1].view(-1)
     fake_res = fake_res[:, :-1].view(-1)
     input_ids = input_ids[:, 1:].view(-1)
     logz = logz[:, :-1].view(-1)
+
+    # use the same z_min logic as reaper_phi_loss
+    logp = -F.cross_entropy(
+        lm_logits,
+        input_ids,
+        reduction='none'
+    )
+    logz_min = logp + (-true_res)
+    logz = torch.max(logz, logz_min)
 
     adj = -true_res - logz
 
@@ -388,16 +410,27 @@ def reaper_sigma(
 
 @torch.no_grad()
 def reaper_check(
+    lm_logits,
     true_res,
     fake_res,
     logz,
     input_ids,
     ignore_index=-1
 ):
+    lm_logits = lm_logits[:, :-1].view(-1, lm_logits.shape[-1])
     true_res = true_res[:, :-1].view(-1)
     fake_res = fake_res[:, :-1].view(-1)
     input_ids = input_ids[:, 1:].view(-1)
     logz = logz[:, :-1].view(-1)
+
+    # use the same z_min logic as reaper_phi_loss
+    logp = -F.cross_entropy(
+        lm_logits,
+        input_ids,
+        reduction='none'
+    )
+    logz_min = logp + (-fake_res)
+    logz = torch.max(logz, logz_min)
 
     check = torch.exp(-fake_res - logz)
 
@@ -405,7 +438,6 @@ def reaper_check(
     check = torch.masked_fill(check, ~mask, 0.0)
 
     return check.sum()/mask.float().sum()
-
 
 
 @torch.no_grad()

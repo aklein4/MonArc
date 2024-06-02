@@ -99,6 +99,10 @@ def arc_loss(phi, lm, targ_sample, mu, sigma):
     lm_sample = torch.multinomial(torch.softmax(lm, dim=-1), 1).item()
     
     logz = mu + sigma.exp().pow(2)/2
+    
+    min_logz = F.log_softmax(lm, -1)[lm_sample] + (-phi[lm_sample])
+    logz = max(logz, min_logz)
+    
     loss = -(
         -phi[targ_sample] -
         torch.exp(-phi[lm_sample] - logz).detach() * (-phi[lm_sample])
@@ -121,7 +125,7 @@ def comparison():
     logp_targ = torch.randn(64)
     logp_targ = torch.sort(logp_targ, descending=True)[0]
 
-    logp_lm = logp_targ + (2*torch.rand(64)) - 1
+    logp_lm = logp_targ + (2*torch.rand(64))-1
 
     kl_dict = {}
     z_dict = {}
@@ -133,7 +137,7 @@ def comparison():
     ]:
 
         mu = nn.Parameter(torch.zeros(1))
-        sigma = nn.Parameter(torch.zeros(1)-3)
+        sigma = nn.Parameter(torch.zeros(1))
         phi = nn.Parameter(torch.zeros(64))
 
         optimizer = torch.optim.Adam([mu, sigma, phi], lr=1e-3)

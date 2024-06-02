@@ -287,7 +287,7 @@ def reaper_phi_loss(
     # true z is at least p_lm(x)*exp(-phi(x))
     logp = -F.cross_entropy(
         lm_logits,
-        fake_ids
+        fake_ids,
         reduction='none'
     )
     logz_min = logp + (-fake_res)

@@ -16,7 +16,7 @@ def main():
     targ = nn.Parameter(torch.zeros(1))
     est = nn.Parameter(torch.ones(1))
 
-    optimizer = torch.optim.AdamW([targ, est], lr=LR)
+    optimizer = torch.optim.SGD([targ, est], lr=LR)
 
     targs = [targ.item()]
     ests = [est.item()]

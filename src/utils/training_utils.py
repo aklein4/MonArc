@@ -477,8 +477,6 @@ def reaper_check(
     logz = torch.max(logz, logz_min)
 
     check = torch.exp(-fake_res - logz)
-    log_master_print(check.mean())
-    log_master_print((torch.softmax(lm_logits, -1) * torch.exp(-lm_logits)).sum(-1).mean())
 
     mask = input_ids != ignore_index
     check = torch.masked_fill(check, ~mask, 0.0)

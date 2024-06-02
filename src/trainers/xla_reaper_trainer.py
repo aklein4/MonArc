@@ -8,7 +8,7 @@ from  utils.training_utils import (
     loss, ppl, acc, pcorr,
     reaper_phi_loss, reaper_z_loss, reaper_adj,
     reaper_sample_abs, reaper_mu_abs, reaper_sigma,
-    reaper_check
+    reaper_check, reaper_sample, reaper_mu
 )
 
 
@@ -31,7 +31,9 @@ class XLAReaperTrainer(BaseXLATrainer):
             reaper_sample_abs=reaper_sample_abs(fake_res, x, ignore_index),
             reaper_mu_abs=reaper_mu_abs(mu, x, ignore_index),
             reaper_sigma=reaper_sigma(sigma, x, ignore_index),
-            reaper_check=reaper_check(true_res, fake_res, logz, x, ignore_index)
+            reaper_check=reaper_check(true_res, fake_res, logz, x, ignore_index),
+            reaper_sample=reaper_sample(fake_res, x, ignore_index),
+            reaper_mu=reaper_mu(mu, x, ignore_index),
         )
         results.loss = (
             results.lm_loss +

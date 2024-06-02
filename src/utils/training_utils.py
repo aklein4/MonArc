@@ -405,3 +405,38 @@ def reaper_check(
     check = torch.masked_fill(check, ~mask, 0.0)
 
     return check.sum()/mask.float().sum()
+
+
+
+@torch.no_grad()
+def reaper_sample(
+    fake_res,
+    input_ids,
+    ignore_index=-1
+):
+    fake_res = fake_res[:, :-1].view(-1)
+    input_ids = input_ids[:, 1:].view(-1)
+
+    out = fake_res.clone()
+
+    mask = input_ids != ignore_index
+    out = torch.masked_fill(out, ~mask, 0.0)
+
+    return out.sum()/mask.float().sum()
+
+
+@torch.no_grad()
+def reaper_mu(
+    mu,
+    input_ids,
+    ignore_index=-1
+):
+    mu = mu[:, :-1].view(-1)
+    input_ids = input_ids[:, 1:].view(-1)
+
+    out = mu.clone()
+
+    mask = input_ids != ignore_index
+    out = torch.masked_fill(out, ~mask, 0.0)
+
+    return out.sum()/mask.float().sum()

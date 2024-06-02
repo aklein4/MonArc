@@ -431,17 +431,20 @@ def reaper_check(
     fake_ids = fake_ids[:, 1:].view(-1)
     logz = logz[:, :-1].view(-1)
 
+    fake_res = fake_res - 10
+
     # use the same z_min logic as reaper_phi_loss
     logp = -F.cross_entropy(
         lm_logits,
         fake_ids,
         reduction='none'
     )
-    log_master_print(logp)
     logz_min = logp + (-fake_res)
     logz = torch.max(logz, logz_min)
 
     check = torch.exp(-fake_res - logz)
+    log_master_print(check.mean())
+    log_master_print((torch.softmax(lm_logits) * torch.exp(-lm_logits)).sum(-1).mean())
 
     mask = input_ids != ignore_index
     check = torch.masked_fill(check, ~mask, 0.0)

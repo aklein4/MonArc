@@ -121,7 +121,7 @@ def comparison():
     logp_targ = torch.randn(64)
     logp_targ = torch.sort(logp_targ, descending=True)[0]
 
-    logp_lm = logp_targ + torch.randn(64)
+    logp_lm = logp_targ + (2*torch.rand(64)) - 1
 
     kl_dict = {}
     z_dict = {}
@@ -141,7 +141,7 @@ def comparison():
         kls = []
         zs = []
         est_zs = []
-        for _ in tqdm(range(5000)):
+        for _ in tqdm(range(10000)):
 
             loss = loss_fn(
                 phi, logp_lm,

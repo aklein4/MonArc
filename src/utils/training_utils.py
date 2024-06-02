@@ -384,3 +384,24 @@ def reaper_sigma(
     out = torch.masked_fill(out, ~mask, 0.0)
 
     return out.sum()/mask.float().sum()
+
+
+@torch.no_grad()
+def reaper_check(
+    true_res,
+    fake_res,
+    logz,
+    input_ids,
+    ignore_index=-1
+):
+    true_res = true_res[:, :-1].view(-1)
+    fake_res = fake_res[:, :-1].view(-1)
+    input_ids = input_ids[:, 1:].view(-1)
+    logz = logz[:, :-1].view(-1)
+
+    check = torch.exp(-fake_res - logz)
+
+    mask = input_ids != ignore_index
+    check = torch.masked_fill(check, ~mask, 0.0)
+
+    return check.sum()/mask.float().sum()

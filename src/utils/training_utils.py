@@ -4,6 +4,8 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
+from utils.logging_utils import log_master_print
+
 
 def loss(
     logits: torch.Tensor,
@@ -435,6 +437,7 @@ def reaper_check(
         fake_ids,
         reduction='none'
     )
+    log_master_print(logp)
     logz_min = logp + (-fake_res)
     logz = torch.max(logz, logz_min)
 

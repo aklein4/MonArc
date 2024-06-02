@@ -437,6 +437,7 @@ def reaper_check(
         fake_ids,
         reduction='none'
     )
+    lm_logits = F.log_softmax(lm_logits, dim=-1)
     log_master_print(torch.max(lm_logits, dim=-1))
     logz_min = logp + (-fake_res)
     logz = torch.max(logz, logz_min)

@@ -449,7 +449,7 @@ def reaper_sample(
     fake_res = fake_res[:, :-1].view(-1)
     input_ids = input_ids[:, 1:].view(-1)
 
-    out = fake_res.clone()
+    out = -fake_res.clone()
 
     mask = input_ids != ignore_index
     out = torch.masked_fill(out, ~mask, 0.0)

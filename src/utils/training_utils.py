@@ -274,18 +274,20 @@ def reaper_phi_loss(
     fake_res,
     logz,
     input_ids,
+    fake_ids,
     ignore_index=-1
 ):
     lm_logits = lm_logits[:, :-1].view(-1, lm_logits.shape[-1])
     true_res = true_res[:, :-1].view(-1)
     fake_res = fake_res[:, :-1].view(-1)
     input_ids = input_ids[:, 1:].view(-1)
+    fake_ids = fake_ids[:, 1:].view(-1)
     logz = logz[:, :-1].view(-1)
 
     # true z is at least p_lm(x)*exp(-phi(x))
     logp = -F.cross_entropy(
         lm_logits,
-        input_ids,
+        fake_ids
         reduction='none'
     )
     logz_min = logp + (-fake_res)
@@ -332,18 +334,20 @@ def reaper_adj(
     fake_res,
     logz,
     input_ids,
+    fake_ids,
     ignore_index=-1
 ):
     lm_logits = lm_logits[:, :-1].view(-1, lm_logits.shape[-1])
     true_res = true_res[:, :-1].view(-1)
     fake_res = fake_res[:, :-1].view(-1)
     input_ids = input_ids[:, 1:].view(-1)
+    fake_ids = fake_ids[:, 1:].view(-1)
     logz = logz[:, :-1].view(-1)
 
     # use the same z_min logic as reaper_phi_loss
     logp = -F.cross_entropy(
         lm_logits,
-        input_ids,
+        fake_ids,
         reduction='none'
     )
     logz_min = logp + (-true_res)
@@ -415,18 +419,20 @@ def reaper_check(
     fake_res,
     logz,
     input_ids,
+    fake_ids,
     ignore_index=-1
 ):
     lm_logits = lm_logits[:, :-1].view(-1, lm_logits.shape[-1])
     true_res = true_res[:, :-1].view(-1)
     fake_res = fake_res[:, :-1].view(-1)
     input_ids = input_ids[:, 1:].view(-1)
+    fake_ids = fake_ids[:, 1:].view(-1)
     logz = logz[:, :-1].view(-1)
 
     # use the same z_min logic as reaper_phi_loss
     logp = -F.cross_entropy(
         lm_logits,
-        input_ids,
+        fake_ids,
         reduction='none'
     )
     logz_min = logp + (-fake_res)

@@ -17,7 +17,7 @@ class XLAReaperTrainer(BaseXLATrainer):
     def train_step(self, model, x, seg_ids, tokenizer):
         ignore_index = tokenizer.pad_token_id
         
-        lm_logits, true_res, fake_res, mu, sigma, logz = model.forward(x, segment_ids=seg_ids)
+        lm_logits, true_res, fake_res, mu, sigma, logz, fake_ids = model.forward(x, segment_ids=seg_ids)
 
         results = DotDict(
             lm_loss=loss(lm_logits, x, ignore_index),
@@ -25,13 +25,13 @@ class XLAReaperTrainer(BaseXLATrainer):
             lm_acc=acc(lm_logits, x, ignore_index),
             lm_pcorr=pcorr(lm_logits, x, ignore_index),
 
-            reaper_phi_loss=reaper_phi_loss(lm_logits, true_res, fake_res, logz, x, ignore_index),
+            reaper_phi_loss=reaper_phi_loss(lm_logits, true_res, fake_res, logz, x, fake_ids, ignore_index),
             reaper_z_loss=reaper_z_loss(true_res, fake_res, mu, sigma, x, ignore_index),
-            arc_adj=reaper_adj(lm_logits, true_res, fake_res, logz, x, ignore_index),
+            arc_adj=reaper_adj(lm_logits, true_res, fake_res, logz, x, fake_ids, ignore_index),
             reaper_sample_abs=reaper_sample_abs(fake_res, x, ignore_index),
             reaper_mu_abs=reaper_mu_abs(mu, x, ignore_index),
             reaper_sigma=reaper_sigma(sigma, x, ignore_index),
-            reaper_check=reaper_check(lm_logits, true_res, fake_res, logz, x, ignore_index),
+            reaper_check=reaper_check(lm_logits, true_res, fake_res, logz, x, fake_ids, ignore_index),
             reaper_sample=reaper_sample(fake_res, x, ignore_index),
             reaper_mu=reaper_mu(mu, x, ignore_index),
         )

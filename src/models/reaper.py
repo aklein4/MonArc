@@ -193,6 +193,7 @@ class ReaperLmModel(BaseModel):
             mu,
             sigma,
             logz,
+            fake_ids
         )
 
 

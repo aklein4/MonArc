@@ -193,6 +193,33 @@ def comparison():
     plt.show()
 
 
+def penalty_test():
+    
+    logz = 3*torch.randn(1)
+    phi = nn.Parameter(torch.randn(1))
+    logz += phi.detach()
+
+    logz_reparam = torch.log(
+        logz.exp().detach() +
+        torch.exp(-phi) -
+        torch.exp(-phi).detach()
+    )
+    base_loss = logz_reparam.pow(2)
+    base_loss.backward()
+
+    print("Base Grad:", phi.grad)   
+    phi.grad = None
+
+    logz_reparam = (
+        logz.detach() +
+        torch.logsumexp(logz, -phi).detach() * (-phi)
+    )
+    reparam_loss = logz_reparam.pow(2)
+    reparam_loss.backward()
+
+    print("Reparam Grad:", phi.grad)
+    
+
 if __name__ == '__main__':
 
     import os
@@ -200,4 +227,5 @@ if __name__ == '__main__':
 
     # main()
     # prototype()
-    comparison()
+    # comparison()
+    penalty_test()

@@ -27,10 +27,14 @@ class ReaperConfig(BaseConfig):
         self,
         *args,
         z_mixture_n: int=2,
+        main_mask: int=0,
+        main_bias: float=0.0,
         **kwargs,
     ):
         
         self.z_mixture_n = z_mixture_n
+        self.main_mask = main_mask
+        self.main_bias = main_bias
 
         super().__init__(*args, **kwargs)
 
@@ -57,7 +61,7 @@ class ReaperLmModel(BaseModel):
 
         # z prediction
         self.z_norm = nn.LayerNorm(config.hidden_size, eps=config.layer_norm_eps)
-        self.z_mix = LogMixture(config.hidden_size, config.z_mixture_n)
+        self.z_mix = LogMixture(config.hidden_size, config.z_mixture_n, bias=config.main_bias, mask=config.main_mask)
 
         # extras
         self.sampler = EfficientSampler(self.vocab_size)
@@ -66,8 +70,12 @@ class ReaperLmModel(BaseModel):
         self.post_init()
 
         # special initialization
+        self.forward_head.weight.data.zero_()
         self.l_forward_head.weight.data.zero_()
         self.l_backward_head.weight.data.zero_()
+        self.z_mix.mu.weight.data[0].zero_()
+        self.z_mix.sigma.weight.data[0].zero_()
+        self.z_mix.pi.weight.data.zero_()
 
 
     def _get_lm_logits(

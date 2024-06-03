@@ -59,11 +59,13 @@ class EfficientSampler(nn.Module):
 
 class LogMixture(nn.Module):
 
-    def __init__(self, hidden_size, n):
+    def __init__(self, hidden_size, n, bias=0.0, mask=0.0):
         super().__init__()
 
         self.hidden_size = hidden_size
         self.n = n
+        self.bias = bias
+        self.mask = mask
 
         self.mu = nn.Linear(hidden_size, n, bias=True)
         self.sigma = nn.Linear(hidden_size, n, bias=True)
@@ -72,9 +74,13 @@ class LogMixture(nn.Module):
 
     def forward(self, hidden_states):
         mu = self.mu(hidden_states)
-        sigma = self.sigma(hidden_states).exp()
+        sigma = self.sigma(hidden_states)
         pi = self.pi(hidden_states)
         
+        sigma[..., 0] = sigma[..., 0] + self.bias
+        pi[..., 0] = pi[..., 0] + self.mask
+
+        sigma = sigma.exp()
         return LogMixtureDistribution(self.n, mu, sigma, pi)
 
 

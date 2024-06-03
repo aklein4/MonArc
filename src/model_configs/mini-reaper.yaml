@@ -26,4 +26,4 @@ gradient_checkpointing: False
 
 z_mixture_n: 8
 main_mask: 6.541
-main_bias: -3.0
+main_bias: -2.3

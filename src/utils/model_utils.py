@@ -93,13 +93,10 @@ class LogMixtureDistribution(nn.Module):
         self.sigma = sigma
         self.pi = pi
 
-        print(self.log_mean())
-
 
     def log_mean(self):
         means = self.mu + self.sigma.pow(2)/2
         scales = torch.softmax(self.pi, -1)
-        print(scales)
 
         return (means * scales).sum(-1)
     

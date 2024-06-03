@@ -212,7 +212,7 @@ def penalty_test():
 
     logz_reparam = (
         logz.detach() +
-        torch.logsumexp(logz, -phi).detach() * (-phi)
+        torch.exp(-phi - logz).detach() * ((-phi) - (-phi).detach())
     )
     reparam_loss = logz_reparam.pow(2)
     reparam_loss.backward()

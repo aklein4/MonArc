@@ -104,9 +104,9 @@ class LogMixtureDistribution(nn.Module):
             sigma = sigma[:, :-1]
             pi = pi[:, :-1]
 
-        mu = mu.view(x.shape, self.n)
-        sigma = sigma.view(x.shape, self.n)
-        pi = pi.view(x.shape, self.n)
+        mu = mu.view(*x.shape, self.n)
+        sigma = sigma.view(*x.shape, self.n)
+        pi = pi.view(*x.shape, self.n)
 
         dist = torch.distributions.Normal(mu, sigma)
         logp = dist.log_prob(x.unsqueeze(-1))

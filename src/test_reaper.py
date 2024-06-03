@@ -8,8 +8,8 @@ from utils.config_utils import load_model_config
 import utils.constants as constants
 
 
-ARC_CONFIG = "test-lm"
-BASE_CONFIG = "test-lm"
+ARC_CONFIG = "mini-reaper"
+BASE_CONFIG = "mini-lm"
 
 
 def main():

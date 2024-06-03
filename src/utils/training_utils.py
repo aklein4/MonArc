@@ -282,10 +282,10 @@ def reaper_phi_loss(
     lm_logits = lm_logits[:, :-1].view(-1, lm_logits.shape[-1])
     true_res = true_res[:, :-1].view(-1)
     fake_res = fake_res[:, :-1].view(-1)
+    logz = logz[:, :-1].view(-1)
     input_ids = input_ids[:, 1:].view(-1)
     fake_ids = fake_ids[:, 1:].view(-1)
-    logz = logz[:, :-1].view(-1)
-
+    
     # true z is at least p_lm(x)*exp(-phi(x))
     logp = -F.cross_entropy(
         lm_logits,
@@ -307,21 +307,16 @@ def reaper_phi_loss(
 
 
 def reaper_z_loss(
-    true_res,
     fake_res,
-    mu,
-    sigma,
+    logz_dist,
     input_ids,
     ignore_index=-1,
 ):
-    true_res = true_res[:, :-1].view(-1)
     fake_res = fake_res[:, :-1].view(-1)
-    mu = mu[:, :-1].view(-1)
-    sigma = sigma[:, :-1].view(-1)
     input_ids = input_ids[:, 1:].view(-1)
 
-    dist = torch.distributions.Normal(mu, sigma)
-    loss = -dist.log_prob(-fake_res.detach())
+    logp = logz_dist.log_prob(-fake_res.detach(), remove_last=True)
+    loss = -logp
 
     mask = input_ids != ignore_index
     loss = torch.masked_fill(loss, ~mask, 0.0)
@@ -330,20 +325,14 @@ def reaper_z_loss(
 
 
 def reaper_penalty(
-    lm_logits,
-    true_res,
     fake_res,
     logz,
     input_ids,
-    fake_ids,
     ignore_index=-1
 ):
-    lm_logits = lm_logits[:, :-1].view(-1, lm_logits.shape[-1])
-    true_res = true_res[:, :-1].view(-1)
     fake_res = fake_res[:, :-1].view(-1)
-    input_ids = input_ids[:, 1:].view(-1)
-    fake_ids = fake_ids[:, 1:].view(-1)
     logz = logz[:, :-1].view(-1)
+    input_ids = input_ids[:, 1:].view(-1)
 
     logz_reparam = torch.log(
         logz.detach().exp() +
@@ -362,23 +351,19 @@ def reaper_penalty(
 def reaper_adj(
     lm_logits,
     true_res,
-    fake_res,
     logz,
     input_ids,
-    fake_ids,
     ignore_index=-1
 ):
     lm_logits = lm_logits[:, :-1].view(-1, lm_logits.shape[-1])
     true_res = true_res[:, :-1].view(-1)
-    fake_res = fake_res[:, :-1].view(-1)
-    input_ids = input_ids[:, 1:].view(-1)
-    fake_ids = fake_ids[:, 1:].view(-1)
     logz = logz[:, :-1].view(-1)
+    input_ids = input_ids[:, 1:].view(-1)
 
     # use the same z_min logic as reaper_phi_loss
     logp = -F.cross_entropy(
         lm_logits,
-        fake_ids,
+        input_ids,
         reduction='none'
     )
     logz_min = logp + (-true_res)
@@ -393,6 +378,38 @@ def reaper_adj(
 
 
 @torch.no_grad()
+def reaper_check(
+    lm_logits,
+    fake_res,
+    logz,
+    input_ids,
+    fake_ids,
+    ignore_index=-1
+):
+    lm_logits = lm_logits[:, :-1].view(-1, lm_logits.shape[-1])
+    fake_res = fake_res[:, :-1].view(-1)
+    logz = logz[:, :-1].view(-1)
+    input_ids = input_ids[:, 1:].view(-1)
+    fake_ids = fake_ids[:, 1:].view(-1)
+
+    # use the same z_min logic as reaper_phi_loss
+    logp = -F.cross_entropy(
+        lm_logits,
+        fake_ids,
+        reduction='none'
+    )
+    logz_min = logp + (-fake_res)
+    logz = torch.max(logz, logz_min)
+
+    check = torch.exp(-fake_res - logz)
+
+    mask = input_ids != ignore_index
+    check = torch.masked_fill(check, ~mask, 0.0)
+
+    return check.sum()/mask.float().sum()
+
+
+@torch.no_grad()
 def reaper_sample_abs(
     fake_res,
     input_ids,
@@ -402,23 +419,6 @@ def reaper_sample_abs(
     input_ids = input_ids[:, 1:].view(-1)
 
     out = fake_res.abs()
-
-    mask = input_ids != ignore_index
-    out = torch.masked_fill(out, ~mask, 0.0)
-
-    return out.sum()/mask.float().sum()
-
-
-@torch.no_grad()
-def reaper_mu_abs(
-    mu,
-    input_ids,
-    ignore_index=-1
-):
-    mu = mu[:, :-1].view(-1)
-    input_ids = input_ids[:, 1:].view(-1)
-
-    out = mu.abs()
 
     mask = input_ids != ignore_index
     out = torch.masked_fill(out, ~mask, 0.0)
@@ -444,57 +444,6 @@ def reaper_logz_abs(
 
 
 @torch.no_grad()
-def reaper_sigma(
-    sigma,
-    input_ids,
-    ignore_index=-1
-):
-    sigma = sigma[:, :-1].view(-1)
-    input_ids = input_ids[:, 1:].view(-1)
-
-    out = sigma.clone()
-
-    mask = input_ids != ignore_index
-    out = torch.masked_fill(out, ~mask, 0.0)
-
-    return out.sum()/mask.float().sum()
-
-
-@torch.no_grad()
-def reaper_check(
-    lm_logits,
-    true_res,
-    fake_res,
-    logz,
-    input_ids,
-    fake_ids,
-    ignore_index=-1
-):
-    lm_logits = lm_logits[:, :-1].view(-1, lm_logits.shape[-1])
-    true_res = true_res[:, :-1].view(-1)
-    fake_res = fake_res[:, :-1].view(-1)
-    input_ids = input_ids[:, 1:].view(-1)
-    fake_ids = fake_ids[:, 1:].view(-1)
-    logz = logz[:, :-1].view(-1)
-
-    # use the same z_min logic as reaper_phi_loss
-    logp = -F.cross_entropy(
-        lm_logits,
-        fake_ids,
-        reduction='none'
-    )
-    logz_min = logp + (-fake_res)
-    logz = torch.max(logz, logz_min)
-
-    check = torch.exp(-fake_res - logz)
-
-    mask = input_ids != ignore_index
-    check = torch.masked_fill(check, ~mask, 0.0)
-
-    return check.sum()/mask.float().sum()
-
-
-@torch.no_grad()
 def reaper_sample(
     fake_res,
     input_ids,
@@ -504,23 +453,6 @@ def reaper_sample(
     input_ids = input_ids[:, 1:].view(-1)
 
     out = -fake_res.clone()
-
-    mask = input_ids != ignore_index
-    out = torch.masked_fill(out, ~mask, 0.0)
-
-    return out.sum()/mask.float().sum()
-
-
-@torch.no_grad()
-def reaper_mu(
-    mu,
-    input_ids,
-    ignore_index=-1
-):
-    mu = mu[:, :-1].view(-1)
-    input_ids = input_ids[:, 1:].view(-1)
-
-    out = mu.clone()
 
     mask = input_ids != ignore_index
     out = torch.masked_fill(out, ~mask, 0.0)

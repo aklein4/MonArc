@@ -109,7 +109,7 @@ def arc_loss(phi, lm, targ_sample, mu, sigma):
     )
 
     dist = torch.distributions.Normal(mu, sigma.exp())
-    loss = loss - dist.log_prob(-phi[lm_sample].detach()).mean()
+    loss = loss - dist.log_prob(-phi[lm_sample]).mean()
 
     return loss
 
@@ -138,7 +138,7 @@ def comparison():
 
         mu = nn.Parameter(torch.zeros(1))
         sigma = nn.Parameter(torch.zeros(1))
-        phi = nn.Parameter(torch.randn(64))
+        phi = nn.Parameter(torch.zeros(64))
 
         optimizer = torch.optim.Adam([mu, sigma, phi], lr=1e-3)
 

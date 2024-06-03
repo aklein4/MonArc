@@ -13,7 +13,7 @@ from models.base import (
 from models.arc import (
     ArcTransformer
 )
-from utils.model_utils import EfficientSampler
+from utils.model_utils import EfficientSampler, LogMixture
 from utils.data_utils import DotDict
 from utils.logging_utils import log_print
 import utils.constants as constants
@@ -26,11 +26,11 @@ class ReaperConfig(BaseConfig):
     def __init__(
         self,
         *args,
-        sigma_bias: float = 0.0,
+        z_mixture_n: int=2,
         **kwargs,
     ):
         
-        self.sigma_bias = sigma_bias
+        self.z_mixture_n = z_mixture_n
 
         super().__init__(*args, **kwargs)
 
@@ -57,9 +57,7 @@ class ReaperLmModel(BaseModel):
 
         # z prediction
         self.z_norm = nn.LayerNorm(config.hidden_size, eps=config.layer_norm_eps)
-        self.mu_head = nn.Linear(config.hidden_size, 1, bias=True)
-        self.sigma_head = nn.Linear(config.hidden_size, 1, bias=True)
-        self.sigma_bias = config.sigma_bias
+        self.z_mix = LogMixture(config.hidden_size, config.z_mixture_n)
 
         # extras
         self.sampler = EfficientSampler(self.vocab_size)
@@ -68,11 +66,8 @@ class ReaperLmModel(BaseModel):
         self.post_init()
 
         # special initialization
-        self.forward_head.weight.data.zero_()
         self.l_forward_head.weight.data.zero_()
         self.l_backward_head.weight.data.zero_()
-        self.mu_head.weight.data.zero_()
-        self.sigma_head.weight.data.zero_()
 
 
     def _get_lm_logits(
@@ -133,12 +128,10 @@ class ReaperLmModel(BaseModel):
     ):
         hidden_states = self.z_norm(hidden_states)
 
-        mu = self.mu_head(hidden_states).squeeze(-1)
-        log_sigma = self.sigma_head(hidden_states).squeeze(-1)
-        sigma = torch.exp(log_sigma + self.sigma_bias)
-        
-        logz = mu + sigma.pow(2)/2
-        return mu, sigma, logz
+        logz_dist = self.z_mix(hidden_states)
+        logz = logz_dist.log_mean()
+
+        return logz_dist, logz
 
 
     def forward(
@@ -184,14 +177,13 @@ class ReaperLmModel(BaseModel):
         )
 
         # get z prediction
-        mu, sigma, logz = self._get_z(true_states)
+        logz_dist, logz = self._get_z(true_states)
 
         return (
             lm_logits,
             true_res,
             fake_res,
-            mu,
-            sigma,
+            logz_dist,
             logz,
             fake_ids
         )
@@ -214,15 +206,14 @@ class ReaperLmModel(BaseModel):
         lm_logits = self._get_lm_logits(true_states)
 
         # get z estimate
-        mu, sigma, logz = self._get_z(true_states)
+        logz_dist, logz = self._get_z(true_states)
 
         return DotDict(
             lm_logits=lm_logits,
             true_states=true_states,
             memory=memory,
-            mu=mu,
-            sigma=sigma,
-            logz=logz,
+            logz_dist=logz_dist,
+            logz=logz
         )
     
 

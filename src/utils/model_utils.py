@@ -55,4 +55,62 @@ class EfficientSampler(nn.Module):
         # combine and reshape
         sample = (self.vocab_chunk*outer_sample + inner_sample)
         return sample.view(batch_size, seq_length)
+
+
+class LogMixture(nn.Module):
+
+    def __init__(self, hidden_size, n):
+        super().__init__()
+
+        self.hidden_size = hidden_size
+        self.n = n
+
+        self.mu = nn.Linear(hidden_size, n, bias=True)
+        self.sigma = nn.Linear(hidden_size, n, bias=True)
+        self.pi = nn.Linear(hidden_size, n, bias=True)
     
+
+    def forward(self, hidden_states):
+        mu = self.mu(hidden_states)
+        sigma = self.sigma(hidden_states).exp()
+        pi = self.pi(hidden_states)
+        
+        return LogMixtureDistribution(self.n, mu, sigma, pi)
+
+
+class LogMixtureDistribution(nn.Module):
+    def __init__(self, n, mu, sigma, pi):
+        super().__init__()
+
+        self.n = n
+        self.mu = mu
+        self.sigma = sigma
+        self.pi = pi
+
+    
+    def log_mean(self):
+        means = self.mu + self.sigma.pow(2)/2
+        scales = torch.softmax(self.pi, -1)
+
+        return (means * scales).sum(-1)
+    
+
+    def log_prob(self, x, remove_last=False):
+        mu = self.mu
+        sigma = self.sigma
+        pi = self.pi
+        if remove_last:
+            mu = mu[:, :-1]
+            sigma = sigma[:, :-1]
+            pi = pi[:, :-1]
+
+        mu = mu.view(x.shape, self.n)
+        sigma = sigma.view(x.shape, self.n)
+        pi = pi.view(x.shape, self.n)
+
+        dist = torch.distributions.Normal(mu, sigma)
+        logp = dist.log_prob(x.unsqueeze(-1))
+
+        scales = F.log_softmax(pi, dim=-1)
+
+        return torch.logsumexp(logp + scales, dim=-1)

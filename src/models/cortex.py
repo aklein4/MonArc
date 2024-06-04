@@ -113,7 +113,7 @@ class CortexTransformer(BaseTransformer):
 class CortexLmModel(BaseLmModel):
 
     def __init__(self, config: BaseConfig):
-        BaseModel.__init__(config)
+        BaseModel.__init__(self, config)
 
         # transformer
         self.model = CortexTransformer(config)

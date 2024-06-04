@@ -236,7 +236,7 @@ class BaseXLATrainer:
                         curr_step
                     )
             
-            # add closure and mark if needed (for some reason)
+            # add closure
             xm.add_step_closure(_post_step)
 
         self.save_checkpoint(

@@ -168,6 +168,8 @@ class BaseXLATrainer:
             x_split = torch.split(x, self.mini_bs, dim=0)
             seg_split = torch.split(seg_ids, self.mini_bs, dim=0)
 
+            log_master_print(len(x_split))
+
             # accumulate gradients
             results_accum = DotDict()
             for split_idx in range(len(x_split)):

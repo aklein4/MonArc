@@ -167,7 +167,6 @@ class BaseXLATrainer:
                 log_print(f"Warning: sample size {n_x} with {constants.NUM_XLA_DEVICES()} devices does not match batch size {self.bs}")
             x_split = torch.split(x, self.mini_bs, dim=0)
             seg_split = torch.split(seg_ids, self.mini_bs, dim=0)
-            log_master_print(n_x)
 
             # accumulate gradients
             results_accum = DotDict()
@@ -193,8 +192,6 @@ class BaseXLATrainer:
                 results.loss.backward()
                 if len(x_split) > 1:
                     xm.mark_step()
-                log_master_print("hrng")
-            log_master_print("out of loop")
 
             # perform a single optimizer step
             xm.optimizer_step(optimizer)
@@ -240,11 +237,9 @@ class BaseXLATrainer:
                     )
             
             # add closure and mark if needed (for some reason)
-            log_master_print("Adding step closure")
             xm.add_step_closure(_post_step)
             if len(x_split) == 1:
                 xm.mark_step()
-            log_master_print("Marked step")
 
 
         self.save_checkpoint(

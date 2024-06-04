@@ -98,18 +98,13 @@ def cross_entropy_loss(phi, lm, targ_sample, mu, sigma):
 def arc_loss(phi, lm, targ_sample, mu, sigma):
     lm_sample = torch.multinomial(torch.softmax(lm, dim=-1), 1).item()
     
-    logz = mu + sigma.exp().pow(2)/2
-    
-    min_logz = F.log_softmax(lm, -1)[lm_sample] + (-phi[lm_sample])
-    logz = max(logz, min_logz)
-    
     loss = -(
         -phi[targ_sample] -
-        torch.exp(-phi[lm_sample] - logz).detach() * (-phi[lm_sample])
+        torch.exp(-phi[lm_sample]).detach() * (-phi[lm_sample])
     )
 
-    dist = torch.distributions.Normal(mu, sigma.exp())
-    loss = loss - dist.log_prob(-phi[lm_sample]).mean()
+    # dist = torch.distributions.Normal(mu, sigma.exp())
+    # loss = loss - dist.log_prob(-phi[lm_sample]).mean()
 
     return loss
 
@@ -136,21 +131,19 @@ def comparison():
         ("cne", cne_loss)
     ]:
 
-        mu = nn.Parameter(torch.zeros(1))
-        sigma = nn.Parameter(torch.zeros(1))
-        phi = nn.Parameter(torch.zeros(64))
+        phi = nn.Parameter(torch.zeros(64)-1)
 
-        optimizer = torch.optim.Adam([mu, sigma, phi], lr=1e-3)
+        optimizer = torch.optim.Adam([phi], lr=1e-3)
 
         kls = []
         zs = []
         est_zs = []
-        for _ in tqdm(range(5000)):
+        for _ in tqdm(range(20000)):
 
             loss = loss_fn(
                 phi, logp_lm,
                 torch.multinomial(torch.softmax(logp_targ, dim=-1), 1).item(),
-                mu, sigma
+                None, None
             )
 
             optimizer.zero_grad()
@@ -165,8 +158,8 @@ def comparison():
                 kls.append(kl)
 
                 zs.append(torch.log((torch.softmax(logp_lm, dim=-1) * torch.exp(-phi)).sum()).item())
-                logz = mu + sigma.exp().pow(2)/2
-                est_zs.append(logz.item())
+                # logz = mu + sigma.exp().pow(2)/2
+                est_zs.append(0)
 
         kl_dict[name] = kls
         z_dict[name] = zs
@@ -227,5 +220,5 @@ if __name__ == '__main__':
 
     # main()
     # prototype()
-    # comparison()
-    penalty_test()
+    comparison()
+    # penalty_test()

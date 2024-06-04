@@ -45,7 +45,12 @@ class CortexTransformer(BaseTransformer):
 
         # residual projections
         self.res_projections = nn.ModuleList(
-            [nn.Linear(config.hidden_size, config.hidden_size, bias=True) for _ in range(config.num_hidden_layers)]
+            [
+                nn.Sequential(
+                    nn.LayerNorm(config.hidden_size, eps=config.layer_norm_eps),
+                    nn.Linear(config.hidden_size, config.hidden_size, bias=True)
+                ) for _ in range(config.num_hidden_layers)
+            ]
         )
 
         # Initialize weights and apply final processing

@@ -115,7 +115,7 @@ def cne_loss(logp, lm, phi):
     l2 = -torch.softmax(lm, -1)*(
         F.logsigmoid(phi)
     )
-    return (l1 + l2).mean()
+    return 2*(l1 + l2).mean()
 
 
 def comparison():

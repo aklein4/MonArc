@@ -156,7 +156,6 @@ class BaseXLATrainer:
         curr_step = 0
         token_tracker = xm.RateTracker()
         step_tracker = xm.RateTracker()
-        log_master_print("before loop")
         for x, seg_ids in loader:
             assert x.shape == seg_ids.shape, f"Input ({x.shape}) and segment ids ({seg_ids.shape}) must have same shape!"
 
@@ -190,12 +189,9 @@ class BaseXLATrainer:
                                 results_accum[k] = 0.0
                             results_accum[k] = results_accum[k] + v.detach()
                 
-                log_master_print("before backward")
                 results.loss.backward()
-                log_master_print("after backward")
                 if len(x_split) > 1:
                     xm.mark_step()
-                log_master_print("after mark step")
 
             # perform a single optimizer step
             xm.optimizer_step(optimizer)
@@ -240,8 +236,12 @@ class BaseXLATrainer:
                         curr_step
                     )
             
+            # add closure and mark if needed (for some reason)
             xm.add_step_closure(_post_step)
-        
+            if len(x_split) == 1:
+                xm.mark_step()
+
+
         self.save_checkpoint(
             {
                 'model': (model, True),

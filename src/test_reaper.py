@@ -42,8 +42,8 @@ def main():
     for mess in ["zeroed", "random"]:
         print(f" === {mess} === ")
 
-        arc_out, debug_true, debug_false, debug_z = arc_model(x, segment_ids=seg_ids, debug=True)
-        arc_out, sample_true, sample_false, sample_z = arc_model(x, segment_ids=seg_ids, debug=False)
+        arc_out, debug_true, debug_false, debug_z, _ = arc_model(x, segment_ids=seg_ids, debug=True)
+        arc_out, sample_true, sample_false, sample_z, _ = arc_model(x, segment_ids=seg_ids, debug=False)
 
         diff = torch.abs(base_out - arc_out).max()
         print(f"Arc LM vs Base LM: {diff}")
@@ -60,7 +60,7 @@ def main():
         arc_model.forward_head.weight.data.normal_()
         arc_model.l_forward_head.weight.data.normal_()
         arc_model.l_backward_head.weight.data.normal_()
-        arc_model.z_head.weight.data.normal_()
+        arc_model.z_mu_head.weight.data.normal_()
     
 
 if __name__ == '__main__':

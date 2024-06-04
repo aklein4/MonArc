@@ -287,9 +287,6 @@ def reaper_phi_loss(
         torch.exp(-fake_res - logz).detach() * (-fake_res)
     )
 
-    # replace bad loss with something we will see in log
-    loss = torch.nan_to_num(loss, nan=1e8, posinf=1e8, neginf=-1e8)
-
     mask = input_ids != ignore_index
     loss = torch.masked_fill(loss, ~mask, 0.0)
 
@@ -298,21 +295,15 @@ def reaper_phi_loss(
 
 def reaper_z_loss(
     fake_res,
-    logz,
-    z_sigma,
+    logz_dist,
     input_ids,
     ignore_index=-1,
 ):
     fake_res = fake_res[:, :-1].view(-1)
-    logz = logz[:, :-1].view(-1)
-    z_sigma = z_sigma[:, :-1].view(-1)
     input_ids = input_ids[:, 1:].view(-1)
 
-    dist = torch.distributions.Normal(logz.exp(), z_sigma)
-    loss = -dist.log_prob(torch.exp(-fake_res).detach())
-
-    # replace bad loss with something we will see in log
-    loss = torch.nan_to_num(loss, nan=1e8, posinf=1e8, neginf=-1e8)
+    logp = logz_dist.log_prob(-fake_res.detach(), remove_last=True)
+    loss = -logp
 
     mask = input_ids != ignore_index
     loss = torch.masked_fill(loss, ~mask, 0.0)
@@ -337,9 +328,6 @@ def reaper_penalty(
         )
     )
     loss = logz_reparam.pow(2)
-
-    # replace bad loss with something we will see in log
-    loss = torch.nan_to_num(loss, nan=1e6, posinf=1e6, neginf=-1e6)
 
     mask = input_ids != ignore_index
     loss = torch.masked_fill(loss, ~mask, 0.0)
@@ -379,9 +367,6 @@ def reaper_check(
 
     check = torch.exp(-fake_res - logz)
 
-    # replace bad loss with something we will see in log
-    check = torch.nan_to_num(check, nan=1e6, posinf=1e6, neginf=-1e6)
-
     mask = input_ids != ignore_index
     check = torch.masked_fill(check, ~mask, 0.0)
 
@@ -397,7 +382,7 @@ def reaper_sample_abs(
     fake_res = fake_res[:, :-1].view(-1)
     input_ids = input_ids[:, 1:].view(-1)
 
-    out = (-fake_res).abs()
+    out = fake_res.abs()
 
     mask = input_ids != ignore_index
     out = torch.masked_fill(out, ~mask, 0.0)

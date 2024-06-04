@@ -23,7 +23,3 @@ max_position_embeddings: 1024
 
 _attn_implementation: eager
 gradient_checkpointing: False
-
-z_mixture_n: 8
-main_mask: 6.541
-main_bias: -2.3

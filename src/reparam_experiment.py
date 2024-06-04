@@ -139,7 +139,7 @@ def comparison():
 
         phi = nn.Parameter(phi_init.clone())
 
-        optimizer = torch.optim.Adam([phi], lr=1e-3)
+        optimizer = torch.optim.SGD([phi], lr=1e-3)
 
         kls = []
         zs = []

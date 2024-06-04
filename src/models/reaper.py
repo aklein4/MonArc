@@ -20,7 +20,21 @@ import utils.constants as constants
 
 
 class ReaperConfig(BaseConfig):
+
     model_type = 'reaper'
+
+    def __init__(
+        self,
+        *args,
+        phi_scale: float=None,
+        z_sigma_init: float=0.0,
+        **kwargs,
+    ):
+        
+        self.phi_scale = phi_scale
+        self.z_sigma_init = z_sigma_init
+
+        super().__init__(*args, **kwargs)
 
 
 class ReaperLmModel(BaseModel):
@@ -42,6 +56,7 @@ class ReaperLmModel(BaseModel):
         self.backward_head = nn.Linear(config.hidden_size, config.hidden_size, bias=True)
         self.l_forward_head = nn.Linear(1, config.hidden_size, bias=False)
         self.l_backward_head = nn.Linear(1, config.hidden_size, bias=False)
+        self.phi_scale = config.phi_scale
 
         # z prediction
         self.z_norm = nn.LayerNorm(config.hidden_size, eps=config.layer_norm_eps)
@@ -60,6 +75,7 @@ class ReaperLmModel(BaseModel):
         self.l_backward_head.weight.data.zero_()
         self.z_mu_head.weight.data.zero_()
         self.z_sigma_head.weight.data.zero_()
+        self.z_sigma_head.bias.data.fill_(config.z_sigma_init)
 
 
     def _get_lm_logits(
@@ -110,6 +126,10 @@ class ReaperLmModel(BaseModel):
         # dot product of embs
         true_res[:, :-1] = (forward_true * backward_true).sum(dim=-1) / np.sqrt(self.config.hidden_size)
         fake_res[:, :-1] = (forward_fake * backward_fake).sum(dim=-1) / np.sqrt(self.config.hidden_size)
+
+        if self.phi_scale is not None:
+            true_res = torch.tanh(true_res / self.phi_scale) * self.phi_scale
+            fake_res = torch.tanh(fake_res / self.phi_scale) * self.phi_scale
 
         return true_res, fake_res
 

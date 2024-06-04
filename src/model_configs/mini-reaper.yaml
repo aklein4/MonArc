@@ -23,3 +23,6 @@ max_position_embeddings: 1024
 
 _attn_implementation: eager
 gradient_checkpointing: False
+
+phi_scale: 2.303
+z_sigma_init: -2.303

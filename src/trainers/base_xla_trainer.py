@@ -162,9 +162,9 @@ class BaseXLATrainer:
             # prepare x for accum
             n_x = x.shape[0]
             if n_x % self.mini_bs != 0:
-                print(f"Warning: sample size {n_x} not divisible by mini batch size {self.mini_bs}")
+                log_print(f"Warning: sample size {n_x} not divisible by mini batch size {self.mini_bs}")
             if n_x * constants.NUM_XLA_DEVICES() != self.bs:
-                print(f"Warning: sample size {n_x} with {constants.NUM_XLA_DEVICES()} devices does not match batch size {self.bs}")
+                log_print(f"Warning: sample size {n_x} with {constants.NUM_XLA_DEVICES()} devices does not match batch size {self.bs}")
             x_split = torch.split(x, self.mini_bs, dim=0)
             seg_split = torch.split(seg_ids, self.mini_bs, dim=0)
             log_master_print(n_x)

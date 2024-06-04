@@ -111,10 +111,6 @@ class CortexTransformer(BaseTransformer):
 
             prev_residual = residual
 
-        # apply final norm
-        if not self.disable_norm:
-            hidden_states = self.norm(hidden_states)
-
         return hidden_states
 
 

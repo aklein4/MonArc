@@ -53,6 +53,9 @@ class CortexTransformer(BaseTransformer):
             ]
         )
 
+        # Compute configuration
+        self._attn_implementation = config._attn_implementation
+
         # Initialize weights and apply final processing
         self.post_init()
 

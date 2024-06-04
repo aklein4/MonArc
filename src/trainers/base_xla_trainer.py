@@ -167,6 +167,7 @@ class BaseXLATrainer:
                 print(f"Warning: sample size {n_x} with {constants.NUM_XLA_DEVICES()} devices does not match batch size {self.bs}")
             x_split = torch.split(x, self.mini_bs, dim=0)
             seg_split = torch.split(seg_ids, self.mini_bs, dim=0)
+            log_master_print(n_x)
 
             # accumulate gradients
             results_accum = DotDict()

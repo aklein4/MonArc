@@ -14,6 +14,7 @@ import datasets
 import huggingface_hub as hf
 
 import utils.constants as constants
+from utils.logging_utils import log_print
 
 
 class PackedCollator:
@@ -176,6 +177,8 @@ def get_packed_loader(
         total_mini_bs = mini_bs * constants.NUM_XLA_DEVICES()
         if bs % total_mini_bs != 0:
             raise ValueError(f"Batch size {bs} not divisible by total mini batch size {total_mini_bs}")
+        if total_mini_bs > bs:
+            log_print(f"Warning: total mini batch size {total_mini_bs} larger than batch size {bs}")
         sample_size = mini_bs * (bs // total_mini_bs)
     else:
         sample_size = bs

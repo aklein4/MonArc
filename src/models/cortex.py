@@ -70,38 +70,26 @@ class CortexTransformer(BaseTransformer):
         if extra_states is not None:
             hidden_states = hidden_states + extra_states
 
-        # previous hidden states for loss
-        prev_residual = None
-
         # run transformer
         for layer_idx, decoder_layer in enumerate(self.layers):
 
-            if layer_idx > 0:
-                hidden_states = hidden_states.detach()
-
             new_hidden_states = decoder_layer(
-                hidden_states=hidden_states,
+                hidden_states=hidden_states.detach(),
                 attention_mask=attention_mask,
                 position_ids=position_ids,
                 past_key_value=kv,
                 output_attentions=False,
                 use_cache=(kv is not None),
             )[0]
-
-            residual = new_hidden_states - hidden_states.detach()
+                
+            loss = F.mse_loss(
+                hidden_states,
+                new_hidden_states.detach()
+            )
+            with autocast(hidden_states.device, enabled=False):
+                loss.backward()
+            
             hidden_states = new_hidden_states
-
-            if prev_residual is not None:
-                
-                loss_residual = F.mse_loss(
-                    prev_residual,
-                    (prev_residual+residual).detach()
-                )
-                
-                with autocast(prev_residual.device, enabled=False):
-                    loss_residual.backward()
-
-            prev_residual = residual
 
         return hidden_states
 

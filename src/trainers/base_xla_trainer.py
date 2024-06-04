@@ -192,6 +192,8 @@ class BaseXLATrainer:
                 results.loss.backward()
                 if len(x_split) > 1:
                     xm.mark_step()
+                log_master_print("hrng")
+            log_master_print("out of loop")
 
             # perform a single optimizer step
             xm.optimizer_step(optimizer)
@@ -237,9 +239,11 @@ class BaseXLATrainer:
                     )
             
             # add closure and mark if needed (for some reason)
+            log_master_print("Adding step closure")
             xm.add_step_closure(_post_step)
             if len(x_split) == 1:
                 xm.mark_step()
+            log_master_print("Marked step")
 
 
         self.save_checkpoint(

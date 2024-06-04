@@ -43,16 +43,6 @@ class CortexTransformer(BaseTransformer):
         )
         self.norm = nn.LayerNorm(config.hidden_size, eps=config.layer_norm_eps)
 
-        # residual projections
-        self.res_projections = nn.ModuleList(
-            [
-                nn.Sequential(
-                    nn.LayerNorm(config.hidden_size, eps=config.layer_norm_eps),
-                    nn.Linear(config.hidden_size, config.hidden_size, bias=True)
-                ) for _ in range(config.num_hidden_layers)
-            ]
-        )
-
         # Compute configuration
         self._attn_implementation = config._attn_implementation
 
@@ -103,13 +93,12 @@ class CortexTransformer(BaseTransformer):
 
             if prev_residual is not None:
                 
-                pred_residual = self.res_projections[layer_idx](prev_residual)
                 loss_residual = F.mse_loss(
-                    pred_residual,
+                    prev_residual,
                     (prev_residual+residual).detach()
                 )
                 
-                with autocast(pred_residual.device, enabled=False):
+                with autocast(prev_residual.device, enabled=False):
                     loss_residual.backward()
 
             prev_residual = residual

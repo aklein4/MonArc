@@ -180,7 +180,7 @@ def get_packed_loader(
         if total_mini_bs > bs:
             log_print(f"Warning: total mini batch size {total_mini_bs} larger than batch size {bs}")
         sample_size = mini_bs * (bs // total_mini_bs)
-        log_print(mini_bs, bs, total_mini_bs, sample_size)
+    log_print(f"{mini_bs}, {bs}, {total_mini_bs}, {sample_size}")
     else:
         sample_size = bs
 

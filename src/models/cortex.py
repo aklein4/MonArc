@@ -89,6 +89,7 @@ class CortexTransformer(BaseTransformer):
             with autocast(hidden_states.device, enabled=False):
                 loss.backward()
             
+            del hidden_states
             hidden_states = new_hidden_states
 
         return hidden_states

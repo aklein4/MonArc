@@ -241,7 +241,6 @@ class BaseXLATrainer:
             if len(x_split) == 1:
                 xm.mark_step()
 
-
         self.save_checkpoint(
             {
                 'model': (model, True),

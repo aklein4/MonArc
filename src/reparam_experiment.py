@@ -102,7 +102,7 @@ def arc_loss(logp, lm, phi):
     l1 = -torch.softmax(logp, -1)*(
         -phi
     )
-    l2 = -torch.softmax(lm, -1)*(
+    l2 = torch.softmax(lm, -1)*(
         torch.exp(-phi).detach() * (-phi)
     )
     return (l1 + l2).mean()
@@ -120,12 +120,14 @@ def cne_loss(logp, lm, phi):
 
 def comparison():
 
-    logp_targ = torch.randn(64)
+    logp_targ = 2*torch.randn(256)
     logp_targ = torch.sort(logp_targ, descending=True)[0]
-    logp_lm = logp_targ + torch.randn(64)
+    logp_lm = logp_targ + 2*torch.randn(256)
 
     logp_targ = F.log_softmax(logp_targ, dim=-1)
     logp_lm = F.log_softmax(logp_lm, dim=-1)
+
+    phi_init = 2*torch.randn(256)
 
     kl_dict = {}
     z_dict = {}
@@ -135,7 +137,7 @@ def comparison():
         ("cne", cne_loss)
     ]:
 
-        phi = nn.Parameter(torch.zeros(64))
+        phi = nn.Parameter(phi_init.clone())
 
         optimizer = torch.optim.Adam([phi], lr=1e-3)
 

@@ -15,7 +15,7 @@ lr_steps: null
 
 checkpoint_interval: 2000
 
-w_reap: 0.1
+w_reap: 0.0
 
 start_seq_ind: 51200000
 checkpoint: Arc-packed_mini-lm/000000100000

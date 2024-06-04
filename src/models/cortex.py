@@ -104,7 +104,10 @@ class CortexTransformer(BaseTransformer):
             if prev_residual is not None:
                 
                 pred_residual = self.res_projections[layer_idx](prev_residual)
-                loss_residual = F.mse_loss(pred_residual, residual.detach())
+                loss_residual = F.mse_loss(
+                    pred_residual,
+                    (prev_residual+residual).detach()
+                )
                 
                 with autocast(pred_residual.device, enabled=False):
                     loss_residual.backward()

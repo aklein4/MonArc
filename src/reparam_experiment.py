@@ -91,60 +91,59 @@ def prototype():
     plt.show()
 
 
-def cross_entropy_loss(phi, lm, targ_sample, mu, sigma):
-    return -(torch.log_softmax(lm - phi, dim=-1)[targ_sample])
-
-
-def arc_loss(phi, lm, targ_sample, mu, sigma):
-    lm_sample = torch.multinomial(torch.softmax(lm, dim=-1), 1).item()
-    
-    loss = -(
-        -phi[targ_sample] -
-        torch.exp(-phi[lm_sample]).detach() * (-phi[lm_sample])
+def cross_entropy_loss(logp, lm, phi):
+    loss = -torch.softmax(logp, -1)*(
+        torch.log_softmax(lm - phi, dim=-1)
     )
-
-    # dist = torch.distributions.Normal(mu, sigma.exp())
-    # loss = loss - dist.log_prob(-phi[lm_sample]).mean()
-
-    return loss
+    return loss.mean()
 
 
-def cne_loss(phi, lm, targ_sample, mu, sigma):
-    lm_sample = torch.multinomial(torch.softmax(lm, dim=-1), 1).item()
+def arc_loss(logp, lm, phi):    
+    l1 = -torch.softmax(logp, -1)*(
+        -phi
+    )
+    l2 = -torch.softmax(lm, -1)*(
+        torch.exp(-phi).detach() * (-phi)
+    )
+    return (l1 + l2).mean()
 
-    return -F.logsigmoid(-phi[targ_sample]) - F.logsigmoid(phi[lm_sample])
+
+def cne_loss(logp, lm, phi):
+    l1 = -torch.softmax(logp, -1)*(
+        F.logsigmoid(-phi)
+    )
+    l2 = -torch.softmax(lm, -1)*(
+        F.logsigmoid(phi)
+    )
+    return (l1 + l2).mean()
 
 
 def comparison():
 
     logp_targ = torch.randn(64)
     logp_targ = torch.sort(logp_targ, descending=True)[0]
-
     logp_lm = logp_targ + torch.randn(64)
+
+    logp_targ = F.log_softmax(logp_targ, dim=-1)
+    logp_lm = F.log_softmax(logp_lm, dim=-1)
 
     kl_dict = {}
     z_dict = {}
-    est_z_dict = {}
     for name, loss_fn in [
         ("cross_entropy", cross_entropy_loss),
         ("arc", arc_loss),
         ("cne", cne_loss)
     ]:
 
-        phi = nn.Parameter(torch.zeros(64)-1)
+        phi = nn.Parameter(torch.zeros(64))
 
         optimizer = torch.optim.Adam([phi], lr=1e-3)
 
         kls = []
         zs = []
-        est_zs = []
-        for _ in tqdm(range(20000)):
+        for _ in tqdm(range(5000)):
 
-            loss = loss_fn(
-                phi, logp_lm,
-                torch.multinomial(torch.softmax(logp_targ, dim=-1), 1).item(),
-                None, None
-            )
+            loss = loss_fn(logp_targ, logp_lm, phi)
 
             optimizer.zero_grad()
             loss.backward()
@@ -158,12 +157,9 @@ def comparison():
                 kls.append(kl)
 
                 zs.append(torch.log((torch.softmax(logp_lm, dim=-1) * torch.exp(-phi)).sum()).item())
-                # logz = mu + sigma.exp().pow(2)/2
-                est_zs.append(0)
 
         kl_dict[name] = kls
         z_dict[name] = zs
-        est_z_dict[name] = est_zs
     
     fig, ax = plt.subplots(1, 2, figsize=(10, 5))
 
@@ -175,7 +171,6 @@ def comparison():
     for name, kls in kl_dict.items():
         ax[0].plot(kls, label=name, color=colors[name])
         ax[1].plot(z_dict[name], label=name, color=colors[name])
-        ax[1].plot(est_z_dict[name], '--', label=f"{name} (est)", color=colors[name])
 
     ax[0].legend()
     ax[0].set_title("KL Divergence")

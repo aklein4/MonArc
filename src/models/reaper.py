@@ -60,8 +60,8 @@ class ReaperLmModel(BaseModel):
 
         # z prediction
         self.z_norm = nn.LayerNorm(config.hidden_size, eps=config.layer_norm_eps)
-        self.z_mu_head = nn.Linear(config.hidden_size, 1, bias=False)
-        self.z_sigma_head = nn.Linear(config.hidden_size, 1, bias=False)
+        self.z_mu_head = nn.Linear(config.hidden_size, 1, bias=True)
+        self.z_sigma_head = nn.Linear(config.hidden_size, 1, bias=True)
 
         # extras
         self.sampler = EfficientSampler(self.vocab_size)

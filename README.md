@@ -1,5 +1,8 @@
-# QLM
-quasi-causal language models
+# Monarc
+
+### Overview
+
+MonArc is a  method to train energy-based language models. Previous methods required 
 
 
 ## TPU VM Setup Instructions

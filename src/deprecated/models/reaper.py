@@ -26,17 +26,13 @@ class ReaperConfig(BaseConfig):
     def __init__(
         self,
         *args,
-        z_mixture_n: int=2,
-        main_mask: int=0,
-        main_bias: float=0.0,
-        phi_clamp: float=None,
+        phi_scale: float=None,
+        z_sigma_init: float=0.0,
         **kwargs,
     ):
         
-        self.z_mixture_n = z_mixture_n
-        self.main_mask = main_mask
-        self.main_bias = main_bias
-        self.phi_clamp = phi_clamp
+        self.phi_scale = phi_scale
+        self.z_sigma_init = z_sigma_init
 
         super().__init__(*args, **kwargs)
 
@@ -60,11 +56,12 @@ class ReaperLmModel(BaseModel):
         self.backward_head = nn.Linear(config.hidden_size, config.hidden_size, bias=True)
         self.l_forward_head = nn.Linear(1, config.hidden_size, bias=False)
         self.l_backward_head = nn.Linear(1, config.hidden_size, bias=False)
-        self.phi_clamp = config.phi_clamp
+        self.phi_scale = config.phi_scale
 
         # z prediction
         self.z_norm = nn.LayerNorm(config.hidden_size, eps=config.layer_norm_eps)
-        self.z_mix = LogMixture(config.hidden_size, config.z_mixture_n, bias=config.main_bias, mask=config.main_mask)
+        self.z_mu_head = nn.Linear(config.hidden_size, 1, bias=True)
+        self.z_sigma_head = nn.Linear(config.hidden_size, 1, bias=True)
 
         # extras
         self.sampler = EfficientSampler(self.vocab_size)
@@ -76,9 +73,9 @@ class ReaperLmModel(BaseModel):
         self.forward_head.weight.data.zero_()
         self.l_forward_head.weight.data.zero_()
         self.l_backward_head.weight.data.zero_()
-        self.z_mix.mu.weight.data[0].zero_()
-        self.z_mix.sigma.weight.data[0].zero_()
-        self.z_mix.pi.weight.data.zero_()
+        self.z_mu_head.weight.data.zero_()
+        self.z_sigma_head.weight.data.zero_()
+        self.z_sigma_head.bias.data.fill_(config.z_sigma_init)
 
 
     def _get_lm_logits(
@@ -130,9 +127,9 @@ class ReaperLmModel(BaseModel):
         true_res[:, :-1] = (forward_true * backward_true).sum(dim=-1) / np.sqrt(self.config.hidden_size)
         fake_res[:, :-1] = (forward_fake * backward_fake).sum(dim=-1) / np.sqrt(self.config.hidden_size)
 
-        if self.phi_clamp is not None:
-            true_res = torch.tanh(true_res/self.phi_clamp) * self.phi_clamp
-            fake_res = torch.tanh(fake_res/self.phi_clamp) * self.phi_clamp
+        if self.phi_scale is not None:
+            true_res = torch.tanh(true_res / self.phi_scale) * self.phi_scale
+            fake_res = torch.tanh(fake_res / self.phi_scale) * self.phi_scale
 
         return true_res, fake_res
 
@@ -143,10 +140,10 @@ class ReaperLmModel(BaseModel):
     ):
         hidden_states = self.z_norm(hidden_states)
 
-        logz_dist = self.z_mix(hidden_states)
-        logz = logz_dist.log_mean()
+        logz = self.z_mu_head(hidden_states).squeeze(-1)
+        z_sigma = self.z_sigma_head(hidden_states).squeeze(-1).exp()
 
-        return logz_dist, logz
+        return logz, z_sigma
 
 
     def forward(
@@ -192,15 +189,14 @@ class ReaperLmModel(BaseModel):
         )
 
         # get z prediction
-        logz_dist, logz = self._get_z(true_states)
+        logz, z_sigma = self._get_z(true_states)
 
         return (
             lm_logits,
             true_res,
             fake_res,
-            logz_dist,
             logz,
-            fake_ids
+            z_sigma
         )
 
 
@@ -221,14 +217,14 @@ class ReaperLmModel(BaseModel):
         lm_logits = self._get_lm_logits(true_states)
 
         # get z estimate
-        logz_dist, logz = self._get_z(true_states)
+        logz, z_sigma = self._get_z(true_states)
 
         return DotDict(
             lm_logits=lm_logits,
             true_states=true_states,
             memory=memory,
-            logz_dist=logz_dist,
-            logz=logz
+            logz=logz,
+            logz_sigma=z_sigma
         )
     
 

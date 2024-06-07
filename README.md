@@ -6,7 +6,7 @@ MonArc is a practical method to train energy-based language models (ELMs) using 
 
 Previous residual energy methods require 'negative' sequences to be sampled from the LM at training time, which is a computational bottleneck due to the non-parallelizable nature of autoregressive sampling. MonArc overcomes this limitation by having the residual EBM operate on the token level, rather than the sequence level. This means that sampling negatives only requires one parallelizable pass through the LM to generate negatives, greatly improving efficiency.
 
-When using a single causal transformer decoder as both the LM and residual EBM, MonArc has shown improved performance over LM baselines in terms of both data and compute at training time. In the results below, we see that using MonArc to fine-tune an existing LM quickly reduces the loss of the full ELM, while maintaining its standard LM capabilities.
+When using a single causal transformer decoder as both the LM and residual EBM, MonArc has shown improved performance over LM baselines when both training from scratch and adapting existing models.
 
 ## Experiments
 

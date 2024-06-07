@@ -21,11 +21,11 @@ When using a single causal transformer decoder as both the LM and residual EBM, 
 
 First, we train models the size of gpt2-small from scratch for 50 billion tokens, comparing a standard LM with MonArc. We see that the LM component of the MonArc model maintains similar performance to the standard LM, while the combined MonArc ELM performs better.
 
-[./figures/train-loss-163M.png](./figures/train-loss-163M.png)
+![./figures/train-loss-163M.png](./figures/train-loss-163M.png)
 
 Second, we train a standard LM the size of gpt2-medium from scratch for 50 billion tokens. Then, we fine-tune that model using MonArc for another 10 billion tokens. For comparison, we also continue training the standard LM for 10 billion tokens. We see that the standard LM improves very slowly with continued training, while the MonArc ELM shows much more improvement. The MonArc LM component also maintains similar performance to the standard LM.
 
-[./figures/finetune-loss-430M.png](./figures/finetune-loss-430M.png)
+![./figures/finetune-loss-430M.png](./figures/finetune-loss-430M.png)
 
 ## TPU VM Setup Instructions
 

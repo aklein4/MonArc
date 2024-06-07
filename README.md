@@ -23,6 +23,8 @@ Using the specific Z-log(Z) penalty above, our loss simplifies to the tractable 
 
 ![./figures/loss-tractable.png](./figures/loss-tractable.png)
 
+Since this loss requires the transformer to calculate energy outputs for both the data tokens and sampled tokens, we must use a custom attention mask or modified attention mechanism to process them effectively. In our implementation, a single training pass of MonArc consumes approximately double the time and memory as a standard training pass. This means that it is more efficient to adapt an existing LM rather than train a MonArc model from scratch.
+
 ## Experiments
 
 ### Settings

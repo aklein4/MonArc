@@ -2,7 +2,7 @@
 
 ## Overview
 
-MonArc is a practical method to train energy-based language models (ELMs) using a residual energy framework. In this framework, we have an autoregressive language model (LM) that samples candidates for generation, and a residual energy-based model (EBM) that resamples from those candidates to improve accuracy. The LM component is trained with the usual cross-entropy loss, while the EBM can use Noise Contrastive Estimation (NCE) or contrastive divergence methods.
+MonArc is a practical method to train energy-based language models (ELMs) using a residual energy framework. In this framework, we have an autoregressive language model (LM) that samples candidates for generation, and a residual energy-based model (EBM) that resamples from those candidates to improve accuracy. The LM component is trained with the usual cross-entropy loss, while the EBM can use Noise Contrastive Estimation (NCE) or the direct optimization method described below.
 
 Previous residual energy methods require 'negative' sequences to be sampled from the LM at training time, which is a computational bottleneck due to the non-parallelizable nature of autoregressive sampling. MonArc overcomes this limitation by having the residual EBM operate on the token level, rather than the sequence level. This means that sampling negatives only requires one parallelizable pass through the LM, greatly improving efficiency.
 
@@ -13,11 +13,15 @@ We define our model with the following parameterization, using a token-level res
 
 ![./figures/parameterization.png](./figures/parameterization.png)
 
+We represent the model using a single transformer. The LM logits for the n-th token come from a language modeling head on top of the embeddings of the (n-1)-th token, as is standard. The energy of the n-th token is predicted by a linear head on top of the embeddings of the n-th token. This means that the model only needs to calculate the energy for a *single token at a time*, compared to the LM logits that are predicted *all at once*. We theorize that this focus makes the model more powerful. 
+
 We train our model with the typical log-likelihood maximization, and add a regularization penalty to keep Z close to 1:
 
 ![./figures/loss-definition.png](./figures/loss-definition.png)
 
-Using the specific Z-log(Z) penalty above, our loss simplifies 
+Using the specific Z-log(Z) penalty above, our loss simplifies to the tractable form:
+
+![./figures/loss-tractable.png](./figures/loss-tractable.png)
 
 ## Experiments
 

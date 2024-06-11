@@ -89,6 +89,8 @@ class HydeDecoderLayer(StableLmDecoderLayer):
         self.post_attention_layernorm = nn.LayerNorm(config.hidden_size, eps=config.layer_norm_eps)
         self.dropout = nn.Dropout(config.hidden_dropout)
 
+        self.use_parallel_residual = False
+
 
 class HydeTransformer(BaseTransformer):
 

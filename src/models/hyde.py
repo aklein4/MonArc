@@ -50,10 +50,10 @@ class HydeAttention(StableLmAttention):
         self.config = config
         self.layer_idx = layer_idx
 
-        self.hidden_size = config.hidden_size
-        self.attn_size = config.attn_size
+        self.hidden_size = config.attn_size
+        self.external_size = config.hidden_size
         self.num_heads = config.num_attention_heads
-        self.head_dim = self.attn_size // self.num_heads
+        self.head_dim = self.hidden_size // self.num_heads
         self.num_key_value_heads = config.num_key_value_heads
         self.num_key_value_groups = self.num_heads // self.num_key_value_heads
         self.max_position_embeddings = config.max_position_embeddings
@@ -61,15 +61,15 @@ class HydeAttention(StableLmAttention):
         self.partial_rotary_factor = config.partial_rotary_factor
         self.is_causal = True
 
-        if (self.head_dim * self.num_heads) != self.attn_size:
+        if (self.head_dim * self.num_heads) != self.hidden_size:
             raise ValueError(
-                f"attn_size must be divisible by num_heads (got `attn_size`: {self.attn_size}"
+                f"hidden_size must be divisible by num_heads (got `hidden_size`: {self.hidden_size}"
                 f" and `num_heads`: {self.num_heads})."
             )
-        self.q_proj = nn.Linear(self.hidden_size, self.num_heads * self.head_dim, bias=config.use_qkv_bias)
-        self.k_proj = nn.Linear(self.hidden_size, self.num_key_value_heads * self.head_dim, bias=config.use_qkv_bias)
-        self.v_proj = nn.Linear(self.hidden_size, self.num_key_value_heads * self.head_dim, bias=config.use_qkv_bias)
-        self.o_proj = nn.Linear(self.attn_size, self.hidden_size, bias=False)
+        self.q_proj = nn.Linear(self.external_size, self.num_heads * self.head_dim, bias=config.use_qkv_bias)
+        self.k_proj = nn.Linear(self.external_size, self.num_key_value_heads * self.head_dim, bias=config.use_qkv_bias)
+        self.v_proj = nn.Linear(self.external_size, self.num_key_value_heads * self.head_dim, bias=config.use_qkv_bias)
+        self.o_proj = nn.Linear(self.hidden_size, self.external_size, bias=False)
 
         self.qk_layernorm = False
 

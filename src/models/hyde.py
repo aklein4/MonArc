@@ -71,6 +71,8 @@ class HydeAttention(StableLmAttention):
         self.v_proj = nn.Linear(self.hidden_size, self.num_key_value_heads * self.head_dim, bias=config.use_qkv_bias)
         self.o_proj = nn.Linear(self.attn_size, self.hidden_size, bias=False)
 
+        self.qk_layernorm = False
+
         self.attention_dropout = nn.Dropout(config.attention_dropout)
         self._init_rope()
 

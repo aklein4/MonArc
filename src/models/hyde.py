@@ -10,8 +10,7 @@ import numpy as np
 from transformers.models.stablelm.modeling_stablelm import (
     StableLmAttention,
     StableLmMLP,
-    apply_rotary_pos_emb,
-    repeat_kv
+    StableLmDecoderLayer
 )
 
 from models.base import (
@@ -76,11 +75,11 @@ class HydeAttention(StableLmAttention):
         self._init_rope()
 
 
-class HydeDecoderLayer(nn.Module):
+class HydeDecoderLayer(StableLmDecoderLayer):
 
     # copied from StableLmDecoderLayer, changed attention
     def __init__(self, config, layer_idx: int):
-        super().__init__()
+        nn.Module.__init__(self)
         self.hidden_size = config.hidden_size
         self.self_attn = HydeAttention(config, layer_idx=layer_idx)
         self.mlp = StableLmMLP(config)

@@ -69,6 +69,7 @@ class PackedCollator:
 
         # get list tensors
         input_ids = [x['input_ids.npy'] for x in data]
+        log_print(input_ids)
         input_ids = [self._load_data(x) for x in input_ids]
         
         seg_ids = [x['segment_ids.npy'] for x in data]

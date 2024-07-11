@@ -69,11 +69,16 @@ class PackedCollator:
 
         # get list tensors
         input_ids = [x['input_ids.npy'] for x in data]
-        log_print(type(input_ids[0][0]))
-        input_ids = [self._load_data(x) for x in input_ids]
-        
+        try:
+            input_ids = [self._load_data(x) for x in input_ids]
+        except TypeError:
+            input_ids = [torch.tensor(x).long() for x in input_ids]
+
         seg_ids = [x['segment_ids.npy'] for x in data]
-        seg_ids = [self._load_data(x) for x in seg_ids]
+        try:
+            seg_ids = [self._load_data(x) for x in seg_ids]
+        except TypeError:
+            seg_ids = [torch.tensor(x).long() for x in seg_ids]
 
         # pad into single tensor
         out = torch.nn.utils.rnn.pad_sequence(

@@ -58,7 +58,7 @@ class ForgDecoderLayer(StableLmDecoderLayer):
             output_attentions=output_attentions,
             use_cache=use_cache,
         )
-        hidden_states = residual + hidden_states + self.attn_forg(hidden_states_in)
+        hidden_states = residual + hidden_states + # self.attn_forg(hidden_states_in)
 
         # Fully Connected
         residual = hidden_states
@@ -66,7 +66,7 @@ class ForgDecoderLayer(StableLmDecoderLayer):
         hidden_states = self.mlp(hidden_states_in)
 
         hidden_states = self.dropout(hidden_states)
-        hidden_states = hidden_states + residual + self.mlp_forg(hidden_states_in)
+        hidden_states = hidden_states + residual + # self.mlp_forg(hidden_states_in)
 
         outputs = (hidden_states,)
 
